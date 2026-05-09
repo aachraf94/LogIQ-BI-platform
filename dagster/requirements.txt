@@ -1,0 +1,8 @@
+dagster
+dagster-webserver
+dagster-postgres
+pandas
+sqlalchemy
+requests
+pymysql
+psycopg2-binary

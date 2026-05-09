@@ -1,0 +1,8 @@
+-- fact_parcel_cost: One row per parcel with full cost breakdown (CCC)
+-- Grain: one parcel from pickup to delivery
+-- Columns: parcel_sk (PK), date_id (FK dim_date), demand_sk (FK fact_transport_demand),
+--          client_sk (FK dim_client), origin_site_sk, destination_site_sk,
+--          tracking_code, weight_kg, weight_class (light/medium/heavy),
+--          transport_cost_dzd, handling_cost_dzd, storage_cost_dzd,
+--          surcharges_dzd, total_cost_dzd (CCC),
+--          revenue_dzd, profit_dzd, delivery_status, delivered_at
