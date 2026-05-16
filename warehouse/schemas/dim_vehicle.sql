@@ -1,5 +1,0 @@
--- dim_vehicle: Vehicle/fleet dimension
--- Columns: vehicle_sk (surrogate PK), vehicle_id (business key), plate_number,
---          type (van/truck/motorcycle), brand, model, year,
---          capacity_kg, assigned_driver_id, home_depot_sk, is_active
--- TODO: Link to dim_site for home_depot and implement is_active flag updates

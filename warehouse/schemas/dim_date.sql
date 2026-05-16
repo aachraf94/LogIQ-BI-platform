@@ -1,5 +1,0 @@
--- dim_date: Calendar dimension table
--- Pre-populated with dates from 2020-01-01 to 2030-12-31
--- Columns: date_id (PK), full_date, day, month, month_name, quarter, year,
---          week_of_year, day_of_week, day_name, is_weekend, is_holiday
--- TODO: Implement with generate_series and Algerian public holidays

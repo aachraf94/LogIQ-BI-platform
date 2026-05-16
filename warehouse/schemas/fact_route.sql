@@ -1,8 +1,0 @@
--- fact_route: One row per route execution (vehicle trip between two sites)
--- Grain: one trip = one vehicle, one origin, one destination, one date
--- Columns: route_sk (PK), date_id, vehicle_sk, origin_site_sk, destination_site_sk,
---          actual_distance_km, osrm_optimized_distance_km,
---          actual_duration_min, osrm_optimized_duration_min,
---          actual_cost_dzd, optimized_cost_dzd, savings_potential_dzd,
---          cost_per_km_dzd, efficiency_score (0-100),
---          parcels_delivered, parcels_total, on_time_flag

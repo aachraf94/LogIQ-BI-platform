@@ -1,6 +1,0 @@
--- dim_site: Depot/city site dimension
--- Columns: site_sk (surrogate PK), site_code (business key), name,
---          city, wilaya, latitude, longitude, site_type (depot/agency/relay),
---          capacity_parcels, is_active
--- Algerian cities: Algiers, Oran, Constantine, Annaba, Sétif, Batna, Tlemcen, etc.
--- TODO: Populate with actual Yalidine depot locations and GPS coordinates

@@ -1,5 +1,0 @@
--- dim_client: Client/shipper master dimension (SCD Type 2)
--- Columns: client_sk (surrogate PK), client_id (business key), name,
---          city, wilaya, segment (SME/Enterprise/Individual),
---          contract_type, valid_from, valid_to, is_current
--- TODO: Implement SCD Type 2 with valid_from/valid_to date tracking
