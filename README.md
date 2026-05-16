@@ -23,7 +23,7 @@ LOGIQ is a Business Intelligence platform built for **Yalidine El Djazair Servic
 - Python 3.11+
 - Node.js 18+
 - Docker & Docker Compose
-- PostgreSQL 15 (for local dev without Docker)
+- PostgreSQL 16 or 17 (for local dev without Docker)
 - Redis (for local dev without Docker)
 
 ## Local Setup
