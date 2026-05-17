@@ -3,6 +3,7 @@ Base Django settings shared across all environments.
 """
 
 import os
+from datetime import timedelta
 from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
@@ -18,14 +19,19 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     # Third-party
     "rest_framework",
+    "rest_framework_simplejwt",
+    "rest_framework_simplejwt.token_blacklist",
     "corsheaders",
     "django_filters",
+    "drf_spectacular",
     # Local apps
     "apps.users",
     "apps.notifications",
     "apps.analytics",
     "apps.integrations",
 ]
+
+AUTH_USER_MODEL = "users.User"
 
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
@@ -73,27 +79,83 @@ DATABASES = {
         "USER": os.environ.get("WAREHOUSE_DB_USER", "postgres"),
         "PASSWORD": os.environ.get("WAREHOUSE_DB_PASSWORD", "changeme"),
         "HOST": os.environ.get("WAREHOUSE_DB_HOST", "localhost"),
-        "PORT": os.environ.get("WAREHOUSE_DB_PORT", "5432"),
+        "PORT": os.environ.get("WAREHOUSE_DB_PORT", "5433"),
     },
 }
 
 DATABASE_ROUTERS = ["config.db_router.LogiqDBRouter"]
 
+# --- Celery ---
 CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_BEAT_SCHEDULE = {
+    "evaluate-alert-rules": {
+        "task": "apps.notifications.tasks.evaluate_alert_rules",
+        "schedule": timedelta(minutes=15),
+    },
+}
 
+# --- DRF ---
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework.authentication.SessionAuthentication",
+        "rest_framework_simplejwt.authentication.JWTAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.SearchFilter",
+        "rest_framework.filters.OrderingFilter",
     ],
     "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
     "PAGE_SIZE": 50,
+    "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
+}
+
+# --- JWT ---
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "REFRESH_TOKEN_LIFETIME": timedelta(days=7),
+    "ROTATE_REFRESH_TOKENS": True,
+    "BLACKLIST_AFTER_ROTATION": True,
+    "UPDATE_LAST_LOGIN": True,
+    "ALGORITHM": "HS256",
+    "AUTH_HEADER_TYPES": ("Bearer",),
+    "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
+    "USER_ID_FIELD": "id",
+    "USER_ID_CLAIM": "user_id",
+}
+
+# --- OpenAPI / Swagger ---
+SPECTACULAR_SETTINGS = {
+    "TITLE": "LOGIQ Platform API",
+    "DESCRIPTION": (
+        "REST API for the LOGIQ BI Platform — Yalidine logistics operations.\n\n"
+        "**Authentication**: Use `POST /api/users/auth/login/` to obtain a Bearer token, "
+        "then click **Authorize** and enter `Bearer <access_token>`."
+    ),
+    "VERSION": "1.0.0",
+    "SERVE_INCLUDE_SCHEMA": False,
+    "SWAGGER_UI_SETTINGS": {
+        "deepLinking": True,
+        "persistAuthorization": True,
+        "displayOperationId": False,
+        "filter": True,
+        "syntaxHighlight.activate": True,
+    },
+    "COMPONENT_SPLIT_REQUEST": True,
+    "SORT_OPERATIONS": False,
+    "TAGS": [
+        {"name": "auth", "description": "Login, logout, token refresh"},
+        {"name": "profile", "description": "Current user profile & sessions"},
+        {"name": "preferences", "description": "UI & notification preferences"},
+        {"name": "notifications", "description": "In-app notifications"},
+        {"name": "announcements", "description": "System-wide announcements"},
+        {"name": "alert-rules", "description": "Threshold alert configuration (admin)"},
+        {"name": "alerts", "description": "Triggered alert instances"},
+        {"name": "admin-users", "description": "User management (superadmin only)"},
+    ],
 }
 
 CORS_ALLOWED_ORIGINS = [
@@ -101,7 +163,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3001",
 ]
 
-LANGUAGE_CODE = "en-us"
+LANGUAGE_CODE = "fr-fr"
 TIME_ZONE = "Africa/Algiers"
 USE_I18N = True
 USE_TZ = True

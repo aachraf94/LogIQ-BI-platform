@@ -6,3 +6,6 @@ celery
 redis
 python-dotenv
 django-filter
+djangorestframework-simplejwt
+drf-spectacular
+user-agents
