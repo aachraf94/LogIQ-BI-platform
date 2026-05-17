@@ -1,8 +1,6 @@
-dagster
+dagster>=1.9
 dagster-webserver
-dagster-postgres
-pandas
-sqlalchemy
-requests
-pymysql
 psycopg2-binary
+requests
+tenacity
+python-dotenv
