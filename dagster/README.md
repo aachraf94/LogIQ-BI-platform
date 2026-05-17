@@ -19,9 +19,7 @@ dagster/
     ├── assets/
     │   ├── __init__.py       # all_assets = staging_assets + warehouse_assets (40 total)
     │   ├── staging/          # 18 staging assets — extract from APIs into staging tables
-    │   ├── warehouse/        # 22 warehouse assets — dim/fact loads + aggregate refreshes
-    │   ├── sources/          # Placeholder (unused — direct API extraction in staging/)
-    │   └── transforms/       # Placeholder (unused — transforms run as SQL in warehouse/)
+    │   └── warehouse/        # 22 warehouse assets — dim/fact loads + aggregate refreshes
     └── schedules/
         └── __init__.py       # 4 jobs + 2 schedules
 ```
@@ -259,8 +257,8 @@ Implemented via PCC columns on `fact_livraisons` + `agg_profitabilite_colis`.
 
 ## Design Decisions
 
-- **Direct API extraction in staging assets**: The `sources/` layer was skipped — each staging asset calls its API client directly. This removes an indirection layer with no benefit given the pipeline size.
-- **SQL-side transforms**: Business transforms (tariff lookup, SCD2 logic, parcel collapse) run as SQL inside the warehouse assets rather than in a separate `transforms/` layer. Keeps transformation logic co-located with the table it populates.
+- **Direct API extraction in staging assets**: Each staging asset calls its API client directly — no intermediate extraction layer. Removes indirection with no benefit at this pipeline size.
+- **SQL-side transforms**: Business transforms (tariff lookup, SCD2 logic, parcel collapse) run as SQL inside the warehouse assets, co-located with the table they populate.
 - **Incremental parcel history**: `stg_yalidine_parcel_history` uses `MAX(date_statut::DATE)` as a low-watermark. Each run deletes and reloads the latest day to handle late-arriving events. Full reload from 2023-01-01 on first run.
 - **Company id=9 exclusion**: Applied at three levels — API (already filtered by mock-datasources), staging Python code (guard check), and warehouse schema (CHECK constraint on fact tables).
 - **Sensitive field exclusion**: `password` (HRForce users), `CIN`/`NSS`/`RIB` (payroll bulletins) are never extracted — not present in any staging table.
