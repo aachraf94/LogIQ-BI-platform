@@ -13,6 +13,7 @@ from .views import (
     AdminUserRoleAssignView,
     AdminUserSessionsView,
     AdminUserStatsView,
+    AdminUserSyncView,
     AnnouncementAdminView,
     AnnouncementDetailView,
     AnnouncementListView,
@@ -54,6 +55,7 @@ urlpatterns = [
     # ── Admin — user management ───────────────────────────────────────────
     path("admin/users/",                       AdminUserListView.as_view(),      name="admin-user-list"),
     path("admin/users/stats/",                 AdminUserStatsView.as_view(),     name="admin-user-stats"),
+    path("admin/users/sync-hrforce/",          AdminUserSyncView.as_view(),      name="admin-user-sync"),
     path("admin/users/activate/",              AdminUserActivateView.as_view(),  name="admin-user-activate"),
     path("admin/users/assign-role/",           AdminUserRoleAssignView.as_view(), name="admin-user-role"),
     path("admin/users/<uuid:pk>/",             AdminUserDetailView.as_view(),    name="admin-user-detail"),

@@ -1,3 +1,6 @@
+import os
+
+import requests as http_requests
 from django.db.models import Q
 from django.utils import timezone
 from drf_spectacular.utils import OpenApiExample, OpenApiResponse, extend_schema, extend_schema_view
@@ -317,8 +320,12 @@ class AdminUserDetailView(generics.RetrieveUpdateAPIView):
         return UserDetailSerializer
 
     def partial_update(self, request, *args, **kwargs):
-        kwargs["partial"] = True
-        return self.update(request, *args, **kwargs)
+        instance = self.get_object()
+        serializer = AdminUserEditSerializer(instance, data=request.data, partial=True)
+        serializer.is_valid(raise_exception=True)
+        serializer.save()
+        instance.refresh_from_db()
+        return Response(UserDetailSerializer(instance, context={"request": request}).data)
 
 
 @extend_schema(tags=["admin-users"])
@@ -417,6 +424,141 @@ class AdminRoleDetailView(generics.RetrieveUpdateDestroyAPIView):
         role.users.update(role=None)
         role.delete()
         return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+@extend_schema(tags=["admin-users"])
+class AdminUserSyncView(APIView):
+    """
+    Trigger an immediate HRForce → platform user sync.
+    Mirrors the logic of the sync_hrforce_users management command.
+    New users are created with is_active=False; existing profiles are updated.
+    Role and is_active are never overwritten on existing users.
+    """
+    permission_classes = [IsSuperAdmin]
+
+    @extend_schema(
+        responses={200: OpenApiResponse(description="Sync summary: created / updated / skipped / errors")},
+    )
+    def post(self, request):
+        base_url = os.environ.get("API_BASE_URL", "http://localhost:8001")
+        token = os.environ.get("HRFORCE_API_TOKEN", "")
+        if not token:
+            return Response({"detail": "HRFORCE_API_TOKEN not configured."}, status=status.HTTP_503_SERVICE_UNAVAILABLE)
+
+        headers = {"Authorization": f"Bearer {token}", "Accept": "application/json"}
+        EXCLUDED = {9}
+        LIMIT = 100
+
+        # HRForce /hrforce/users/ uses 'limit' param and returns {"items": [...]}
+        all_users = []
+        page = 1
+        try:
+            while True:
+                resp = http_requests.get(
+                    f"{base_url}/hrforce/users/",
+                    headers=headers,
+                    params={"page": page, "limit": LIMIT},
+                    timeout=30,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+                # Response is {"items": [...]}
+                items = data.get("items", []) if isinstance(data, dict) else data
+                if not items:
+                    break
+                all_users.extend(items)
+                if len(items) < LIMIT:
+                    break
+                page += 1
+        except Exception as exc:
+            return Response(
+                {"detail": f"Cannot reach HRForce API: {exc}"},
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        created = updated = skipped = errors = 0
+
+        for u in all_users:
+            # HRForce nests company/agency/occupation as objects
+            company = u.get("company") or {}
+            agency = u.get("agency") or {}
+            occupation = u.get("occupation") or {}
+
+            company_id = company.get("id")
+            if company_id in EXCLUDED:
+                skipped += 1
+                continue
+
+            hrforce_id = u.get("id")
+            if not hrforce_id:
+                skipped += 1
+                continue
+
+            email = u.get("email", "")
+            # Build a collision-proof username: prefix_hrforceid (e.g. "a.benali_1042")
+            # Plain email prefixes collide across companies; the hrforce_id suffix makes it unique.
+            email_prefix = email.split("@")[0] if email else ""
+            username = f"{email_prefix}_{hrforce_id}" if email_prefix else f"user_{hrforce_id}"
+
+            raw_pw = u.get("password", "")
+            if raw_pw and not raw_pw.startswith("bcrypt$"):
+                django_pw = f"bcrypt${raw_pw}" if raw_pw.startswith(("$2b$", "$2a$", "$2y$")) else "!"
+            else:
+                django_pw = raw_pw or "!"
+
+            # Fields synced from HRForce — never overwrites is_active or role on existing users
+            profile = {
+                "first_name": (u.get("firstName") or "").strip(),
+                "last_name": (u.get("familyName") or "").strip(),
+                "email": email,
+                "hrforce_code": u.get("code") or "",
+                "hrforce_role": u.get("role") or "",
+                "occupation": occupation.get("name") or "",
+                "agence_id": agency.get("id"),
+                "agence_name": agency.get("name") or "",
+                "agence_code": agency.get("code") or "",
+                "company_id": company_id,
+                "company_name": company.get("companyName") or "",
+            }
+
+            try:
+                existing = User.objects.filter(hrforce_id=hrforce_id).first()
+                if existing is None:
+                    user = User(
+                        hrforce_id=hrforce_id,
+                        username=username,
+                        is_active=False,  # admin must activate
+                        **profile,
+                    )
+                    user.password = django_pw
+                    user.save()
+                    created += 1
+                else:
+                    changed = any(getattr(existing, f) != v for f, v in profile.items())
+                    # Migrate username to the collision-proof format on existing users
+                    if existing.username != username:
+                        existing.username = username
+                        changed = True
+                    if django_pw != "!" and existing.password != django_pw:
+                        existing.password = django_pw
+                        changed = True
+                    if changed:
+                        for f, v in profile.items():
+                            setattr(existing, f, v)
+                        existing.save()
+                        updated += 1
+                    else:
+                        skipped += 1
+            except Exception:
+                errors += 1
+
+        return Response({
+            "total_fetched": len(all_users),
+            "created": created,
+            "updated": updated,
+            "skipped": skipped,
+            "errors": errors,
+        })
 
 
 @extend_schema(tags=["admin-users"])

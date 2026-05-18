@@ -5,13 +5,15 @@ from .models import Alert, AlertRule, Notification
 
 
 class NotificationSerializer(serializers.ModelSerializer):
+    type = serializers.CharField(source="notification_type", read_only=True)
     type_display = serializers.CharField(source="get_notification_type_display", read_only=True)
+    body = serializers.CharField(source="message", read_only=True)
 
     class Meta:
         model = Notification
         fields = [
-            "id", "notification_type", "type_display",
-            "title", "message", "is_read", "read_at",
+            "id", "type", "type_display",
+            "title", "body", "is_read", "read_at",
             "metadata", "created_at",
         ]
         read_only_fields = fields
@@ -24,6 +26,7 @@ class NotificationCountSerializer(serializers.Serializer):
 
 class AlertRuleSerializer(serializers.ModelSerializer):
     metric_display = serializers.CharField(source="get_metric_display", read_only=True)
+    condition = serializers.CharField(source="operator", read_only=True)
     operator_display = serializers.CharField(source="get_operator_display", read_only=True)
     severity_display = serializers.CharField(source="get_severity_display", read_only=True)
     trigger_count = serializers.SerializerMethodField()
@@ -34,7 +37,7 @@ class AlertRuleSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "description",
             "metric", "metric_display",
-            "operator", "operator_display",
+            "operator", "condition", "operator_display",
             "threshold", "severity", "severity_display",
             "dashboard", "notify_roles",
             "is_active", "cooldown_minutes",
@@ -65,23 +68,22 @@ class AlertRuleWriteSerializer(serializers.ModelSerializer):
 
 
 class AlertSerializer(serializers.ModelSerializer):
-    rule_name = serializers.CharField(source="rule.name", read_only=True)
-    rule_metric = serializers.CharField(source="rule.metric", read_only=True)
-    rule_severity = serializers.CharField(source="rule.severity", read_only=True)
-    rule_dashboard = serializers.CharField(source="rule.dashboard", read_only=True)
-    acknowledged_by_name = serializers.SerializerMethodField()
+    rule = AlertRuleSerializer(read_only=True)
+    severity = serializers.CharField(source="rule.severity", read_only=True)
+    acknowledged_by = serializers.SerializerMethodField()
+    created_at = serializers.DateTimeField(source="triggered_at", read_only=True)
 
     class Meta:
         model = Alert
         fields = [
-            "id", "rule", "rule_name", "rule_metric", "rule_severity", "rule_dashboard",
-            "triggered_value", "triggered_at",
-            "is_acknowledged", "acknowledged_by_name", "acknowledged_at", "note",
+            "id", "rule",
+            "triggered_value", "severity", "created_at",
+            "is_acknowledged", "acknowledged_by", "acknowledged_at", "note",
         ]
-        read_only_fields = [f for f in fields if f != "rule"]
+        read_only_fields = fields
 
     @extend_schema_field(serializers.CharField(allow_null=True))
-    def get_acknowledged_by_name(self, obj):
+    def get_acknowledged_by(self, obj):
         if obj.acknowledged_by:
             return obj.acknowledged_by.full_name or obj.acknowledged_by.username
         return None

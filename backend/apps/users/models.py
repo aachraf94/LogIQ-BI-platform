@@ -42,7 +42,19 @@ class User(AbstractUser):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     hrforce_id = models.IntegerField(
         unique=True, null=True, blank=True, db_index=True,
-        help_text="Corresponding user_id in HRForce — used for sync identification",
+        help_text="Corresponding user id in HRForce — used for sync identification",
+    )
+    hrforce_code = models.CharField(
+        max_length=100, blank=True,
+        help_text="Employee code from HRForce (e.g. '1042-Benali')",
+    )
+    hrforce_role = models.CharField(
+        max_length=20, blank=True,
+        help_text="HRForce role: Employé | Manager | Admin",
+    )
+    occupation = models.CharField(
+        max_length=150, blank=True,
+        help_text="Job title from HRForce occupation field",
     )
     role = models.ForeignKey(
         Role, on_delete=models.SET_NULL, null=True, blank=True, related_name="users"
@@ -52,6 +64,7 @@ class User(AbstractUser):
     department = models.CharField(max_length=150, blank=True)
     agence_id = models.IntegerField(null=True, blank=True)
     agence_name = models.CharField(max_length=200, blank=True)
+    agence_code = models.CharField(max_length=50, blank=True)
     company_id = models.IntegerField(null=True, blank=True)
     company_name = models.CharField(max_length=200, blank=True)
     # Imported users are inactive by default until activated by a superadmin

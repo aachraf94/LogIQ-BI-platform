@@ -38,14 +38,14 @@ from django.core.management.base import BaseCommand, CommandError
 from apps.users.models import User
 
 
-HRFORCE_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8000")
+HRFORCE_BASE_URL = os.environ.get("API_BASE_URL", "http://localhost:8001")
 HRFORCE_TOKEN = os.environ.get("HRFORCE_API_TOKEN", "")
 EXCLUDED_COMPANY_IDS = {9}
-PAGE_SIZE = 100
+LIMIT = 100
 
 
 def _hrforce_headers() -> dict:
-    return {"Authorization": f"Token {HRFORCE_TOKEN}", "Accept": "application/json"}
+    return {"Authorization": f"Bearer {HRFORCE_TOKEN}", "Accept": "application/json"}
 
 
 def _to_django_bcrypt(raw_hash: str) -> str:
@@ -73,31 +73,32 @@ def _to_django_bcrypt(raw_hash: str) -> str:
 
 
 def _fetch_all_users() -> list:
-    """Paginate through HRForce /users endpoint and return all user dicts."""
+    """Paginate through HRForce /hrforce/users/ and return all user dicts.
+
+    HRForce uses ?page=&limit= and returns {"items": [...]}.
+    """
     users = []
     page = 1
     while True:
         resp = requests.get(
             f"{HRFORCE_BASE_URL}/hrforce/users/",
             headers=_hrforce_headers(),
-            params={"page": page, "page_size": PAGE_SIZE},
+            params={"page": page, "limit": LIMIT},
             timeout=30,
         )
         resp.raise_for_status()
         data = resp.json()
 
-        # Support both {"results": [...]} and plain list responses
-        items = data.get("results", data) if isinstance(data, dict) else data
+        items = data.get("items", []) if isinstance(data, dict) else data
         if not items:
             break
 
         users.extend(items)
 
-        # Stop when we get fewer items than a full page
-        if len(items) < PAGE_SIZE:
+        if len(items) < LIMIT:
             break
         page += 1
-        time.sleep(0.1)  # be polite to the API
+        time.sleep(0.1)
 
     return users
 
@@ -146,7 +147,12 @@ class Command(BaseCommand):
         created = updated = skipped = errors = 0
 
         for u in raw_users:
-            company_id = u.get("company_id")
+            # HRForce returns nested company/agency/occupation objects
+            company = u.get("company") or {}
+            agency = u.get("agency") or {}
+            occupation = u.get("occupation") or {}
+
+            company_id = company.get("id")
 
             # Exclude TEST company and optional company filter
             if company_id in EXCLUDED_COMPANY_IDS:
@@ -156,31 +162,33 @@ class Command(BaseCommand):
                 skipped += 1
                 continue
 
-            hrforce_id = u.get("user_id") or u.get("id")
+            hrforce_id = u.get("id")
             if not hrforce_id:
                 self.stderr.write(f"  [SKIP] User with no id: {u}")
                 skipped += 1
                 continue
 
-            username = u.get("username") or u.get("email", "").split("@")[0]
-            if not username:
-                self.stderr.write(f"  [SKIP] User {hrforce_id} has no username or email")
-                skipped += 1
-                continue
+            email = u.get("email", "")
+            # Build a collision-proof username: prefix_hrforceid (e.g. "a.benali_1042")
+            # Plain email prefixes collide across companies; the hrforce_id suffix makes it unique.
+            email_prefix = email.split("@")[0] if email else ""
+            username = f"{email_prefix}_{hrforce_id}" if email_prefix else f"user_{hrforce_id}"
 
             raw_password = u.get("password", "")
             django_password = _to_django_bcrypt(raw_password)
 
             profile = {
-                "first_name": (u.get("first_name") or u.get("family_name") or "").strip(),
-                "last_name": (u.get("last_name") or u.get("first_name") or "").strip(),
-                "email": u.get("email", ""),
-                "phone": u.get("phone", "") or "",
-                "department": u.get("department", "") or "",
-                "agence_id": u.get("agency_id"),
-                "agence_name": u.get("agency_name", "") or "",
+                "first_name": (u.get("firstName") or "").strip(),
+                "last_name": (u.get("familyName") or "").strip(),
+                "email": email,
+                "hrforce_code": u.get("code") or "",
+                "hrforce_role": u.get("role") or "",
+                "occupation": occupation.get("name") or "",
+                "agence_id": agency.get("id"),
+                "agence_name": agency.get("name") or "",
+                "agence_code": agency.get("code") or "",
                 "company_id": company_id,
-                "company_name": u.get("company_name", "") or "",
+                "company_name": company.get("companyName") or "",
             }
 
             try:
@@ -203,13 +211,19 @@ class Command(BaseCommand):
                     created += 1
 
                 else:
-                    # ── Existing user — update profile fields only ────────
+                    # ── Existing user — update profile + migrate username ──
                     changed = False
                     for field, value in profile.items():
                         if getattr(existing, field) != value:
                             if not dry_run:
                                 setattr(existing, field, value)
                             changed = True
+
+                    # Migrate username to collision-proof format
+                    if existing.username != username:
+                        if not dry_run:
+                            existing.username = username
+                        changed = True
 
                     # Re-sync password if the hash changed or update_passwords flag is set
                     if update_passwords and existing.password != django_password and django_password != "!":

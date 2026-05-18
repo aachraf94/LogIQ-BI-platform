@@ -20,11 +20,24 @@ class RoleSerializer(serializers.ModelSerializer):
 
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField(help_text="Nom d'utilisateur HRForce")
+    username = serializers.CharField(help_text="Email ou identifiant HRForce")
     password = serializers.CharField(write_only=True, style={"input_type": "password"})
 
     def validate(self, data):
-        user = authenticate(username=data["username"], password=data["password"])
+        login_input = data["username"]
+        password = data["password"]
+
+        # Try direct username authentication first
+        user = authenticate(username=login_input, password=password)
+
+        if not user:
+            # Fall back: look up by email (unique per HRForce import)
+            try:
+                found = User.objects.get(email=login_input)
+                user = authenticate(username=found.username, password=password)
+            except (User.DoesNotExist, User.MultipleObjectsReturned):
+                pass
+
         if not user:
             raise serializers.ValidationError("Identifiants invalides.")
         if not user.is_active:
@@ -92,9 +105,10 @@ class UserDetailSerializer(serializers.ModelSerializer):
         fields = [
             "id", "username", "first_name", "last_name", "email",
             "phone", "avatar_url", "department",
-            "agence_id", "agence_name", "company_id", "company_name",
+            "hrforce_id", "hrforce_code", "hrforce_role", "occupation",
+            "agence_id", "agence_name", "agence_code", "company_id", "company_name",
             "role", "accessible_dashboards",
-            "is_superuser", "has_completed_onboarding",
+            "is_active", "is_staff", "is_superuser", "has_completed_onboarding",
             "last_login", "last_login_display",
             "preferences", "unread_notifications",
             "date_joined",
@@ -128,18 +142,34 @@ class UserDetailSerializer(serializers.ModelSerializer):
 
 class UserListSerializer(serializers.ModelSerializer):
     """Compact user representation for admin user-management list."""
-    role_name = serializers.CharField(source="role.display_name", default=None, read_only=True)
-    role_color = serializers.CharField(source="role.color", default=None, read_only=True)
+    role = RoleSerializer(read_only=True)
+    last_login_display = serializers.SerializerMethodField()
 
     class Meta:
         model = User
         fields = [
             "id", "username", "first_name", "last_name", "email",
-            "phone", "agence_name", "company_name",
-            "role_name", "role_color", "is_active", "is_superuser",
-            "last_login", "date_joined", "hrforce_id",
+            "phone", "department",
+            "hrforce_id", "hrforce_code", "hrforce_role", "occupation",
+            "agence_id", "agence_name", "agence_code", "company_id", "company_name",
+            "role", "is_active", "is_staff", "is_superuser",
+            "last_login", "last_login_display", "date_joined",
         ]
         read_only_fields = fields
+
+    @extend_schema_field(serializers.CharField(allow_null=True))
+    def get_last_login_display(self, obj):
+        if not obj.last_login:
+            return None
+        delta = timezone.now() - obj.last_login
+        minutes = int(delta.total_seconds() / 60)
+        if minutes < 60:
+            return f"Il y a {minutes} min" if minutes >= 1 else "À l'instant"
+        hours = minutes // 60
+        if hours < 24:
+            return f"Il y a {hours}h"
+        days = hours // 24
+        return "Hier" if days == 1 else (f"Il y a {days} jours" if days < 7 else obj.last_login.strftime("%d/%m/%Y"))
 
 
 class UserActivateSerializer(serializers.Serializer):

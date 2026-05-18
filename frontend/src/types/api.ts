@@ -47,7 +47,7 @@ export interface LoginSession {
   logged_in_at: string
   logged_out_at: string | null
   is_active: boolean
-  duration_display: string
+  duration_minutes: number | null
 }
 
 // ─── User ─────────────────────────────────────────────────────────────────────
@@ -60,11 +60,15 @@ export interface User {
   last_name: string
   phone: string
   department: string
+  hrforce_id: number | null
+  hrforce_code: string
+  hrforce_role: string
+  occupation: string
   agence_id: number | null
   agence_name: string
+  agence_code: string
   company_id: number | null
   company_name: string
-  hrforce_id: number | null
   role: Role | null
   is_active: boolean
   is_staff: boolean
@@ -73,7 +77,8 @@ export interface User {
   accessible_dashboards: string[]
   preferences: UserPreferences
   unread_notifications: number
-  last_login_display: string
+  last_login: string | null
+  last_login_display: string | null
   date_joined: string
 }
 
@@ -87,8 +92,8 @@ export interface Notification {
   title: string
   body: string
   is_read: boolean
+  metadata: Record<string, unknown>
   created_at: string
-  link: string | null
 }
 
 export interface NotificationCount {
@@ -104,15 +109,22 @@ export type AlertCondition = 'gt' | 'lt' | 'gte' | 'lte'
 export interface AlertRule {
   id: number
   name: string
+  description: string
   metric: string
+  metric_display: string
+  operator: string
   condition: AlertCondition
   threshold: number
   severity: AlertSeverity
   dashboard: string
+  notify_roles: number[]
   is_active: boolean
   cooldown_minutes: number
   last_triggered_at: string | null
   trigger_count: number
+  created_by_name: string | null
+  created_at: string
+  updated_at: string
 }
 
 export interface Alert {
@@ -120,11 +132,11 @@ export interface Alert {
   rule: AlertRule
   triggered_value: number
   severity: AlertSeverity
+  created_at: string
   is_acknowledged: boolean
   acknowledged_by: string | null
   acknowledged_at: string | null
   note: string
-  created_at: string
 }
 
 // ─── ETL ──────────────────────────────────────────────────────────────────────

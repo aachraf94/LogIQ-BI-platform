@@ -206,7 +206,7 @@ function SessionsTab() {
               </div>
               <p className="text-xs text-slate-500 mt-0.5">
                 {s.ip_address} · {format(new Date(s.logged_in_at), 'dd MMM yyyy, HH:mm')}
-                {s.duration_display && ` · ${s.duration_display}`}
+                {s.duration_minutes != null && ` · ${s.duration_minutes}m`}
               </p>
             </div>
           </div>

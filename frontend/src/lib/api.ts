@@ -183,7 +183,7 @@ export const meApi = {
   getActivity: () => request<UserActivity[]>('/users/me/activity/'),
 
   trackActivity: (dashboard: string, action = 'view') =>
-    request('/activity/track/', {
+    request('/users/activity/track/', {
       method: 'POST',
       body: JSON.stringify({ dashboard, action }),
     }).catch(() => undefined), // fire-and-forget
@@ -289,6 +289,23 @@ export const healthApi = {
 
 // ─── Admin — users ────────────────────────────────────────────────────────────
 
+export interface SyncResult {
+  total_fetched: number
+  created: number
+  updated: number
+  skipped: number
+  errors: number
+}
+
+export interface AdminUserPatch {
+  role?: number | null
+  is_active?: boolean
+  is_staff?: boolean
+  phone?: string
+  department?: string
+  avatar_url?: string
+}
+
 export const adminUsersApi = {
   list: (params?: {
     search?: string
@@ -311,11 +328,14 @@ export const adminUsersApi = {
 
   get: (id: string) => request<User>(`/users/admin/users/${id}/`),
 
-  update: (id: string, data: Partial<User>) =>
+  update: (id: string, data: AdminUserPatch) =>
     request<User>(`/users/admin/users/${id}/`, {
       method: 'PATCH',
       body: JSON.stringify(data),
     }),
+
+  syncHRForce: () =>
+    request<SyncResult>('/users/admin/users/sync-hrforce/', { method: 'POST' }),
 
   bulkActivate: (userIds: string[], isActive: boolean) =>
     request('/users/admin/users/activate/', {
@@ -330,7 +350,7 @@ export const adminUsersApi = {
     }),
 
   getSessions: (id: string) =>
-    request<LoginSession[]>(`/users/admin/users/${id}/sessions/`),
+    requestList<LoginSession>(`/users/admin/users/${id}/sessions/`),
 
   forceLogout: (id: string) =>
     request(`/users/admin/users/${id}/force-logout/`, { method: 'POST' }),

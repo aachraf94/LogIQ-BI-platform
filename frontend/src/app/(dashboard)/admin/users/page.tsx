@@ -3,54 +3,117 @@
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import {
-  Search, Filter, UserCheck, UserX, KeyRound, LogOut,
+  Search, UserCheck, UserX, LogOut,
   ChevronLeft, ChevronRight, X, Laptop, Smartphone, RefreshCw,
+  Download, CheckCircle, AlertTriangle, Power,
 } from 'lucide-react'
 import { adminUsersApi, adminRolesApi, ApiError } from '@/lib/api'
-import type { User, Role, LoginSession } from '@/types/api'
+import type { User, Role, LoginSession, SyncResult } from '@/lib/api'
+import type { Role as RoleType } from '@/types/api'
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'next/navigation'
-import { format, formatDistanceToNow } from 'date-fns'
+import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
+
+// Re-export the types we need
+type UserType = User
+type LoginSessionType = LoginSession
+
+// ─── HRForce sync banner ──────────────────────────────────────────────────────
+
+function SyncBanner({
+  result,
+  onDismiss,
+}: {
+  result: SyncResult
+  onDismiss: () => void
+}) {
+  const hasErrors = result.errors > 0
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -8 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -8 }}
+      className={cn(
+        'flex items-start gap-3 p-4 rounded-xl border text-sm',
+        hasErrors
+          ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
+          : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200',
+      )}
+    >
+      {hasErrors ? <AlertTriangle size={16} className="mt-0.5 shrink-0" /> : <CheckCircle size={16} className="mt-0.5 shrink-0" />}
+      <div className="flex-1 min-w-0">
+        <p className="font-semibold">
+          HRForce sync complete — {result.total_fetched} users fetched
+        </p>
+        <p className="text-xs mt-1 opacity-80">
+          {result.created} created · {result.updated} updated · {result.skipped} unchanged
+          {result.errors > 0 && ` · ${result.errors} errors`}
+        </p>
+      </div>
+      <button onClick={onDismiss} className="p-1 opacity-60 hover:opacity-100 transition-opacity">
+        <X size={14} />
+      </button>
+    </motion.div>
+  )
+}
 
 // ─── User detail modal ────────────────────────────────────────────────────────
 
 function UserModal({
-  user, roles, onClose, onUpdate,
+  user,
+  roles,
+  onClose,
+  onUpdate,
 }: {
-  user: User
-  roles: Role[]
+  user: UserType
+  roles: RoleType[]
   onClose: () => void
-  onUpdate: (updated: User) => void
+  onUpdate: (updated: UserType) => void
 }) {
-  const [sessions, setSessions] = useState<LoginSession[]>([])
+  const [sessions, setSessions] = useState<LoginSessionType[]>([])
   const [sessionsLoading, setSessLoading] = useState(true)
   const [roleId, setRoleId] = useState<number | ''>(user.role?.id ?? '')
   const [saving, setSaving] = useState(false)
+  const [toggling, setToggling] = useState(false)
   const [loggingOut, setLoggingOut] = useState(false)
+  const [localUser, setLocalUser] = useState(user)
 
   useEffect(() => {
-    adminUsersApi.getSessions(user.id)
+    adminUsersApi
+      .getSessions(user.id)
       .then(setSessions)
       .catch(() => {})
       .finally(() => setSessLoading(false))
   }, [user.id])
 
-  const handleSave = async () => {
+  const handleSaveRole = async () => {
     setSaving(true)
     try {
       const updated = await adminUsersApi.update(user.id, {
-        role: roleId ? { id: roleId as number } as Role : null,
+        role: roleId === '' ? null : (roleId as number),
       })
+      setLocalUser(updated)
       onUpdate(updated)
     } catch { /* ignore */ } finally { setSaving(false) }
   }
 
+  const handleToggleActive = async () => {
+    setToggling(true)
+    try {
+      const updated = await adminUsersApi.update(user.id, {
+        is_active: !localUser.is_active,
+      })
+      setLocalUser(updated)
+      onUpdate(updated)
+    } catch { /* ignore */ } finally { setToggling(false) }
+  }
+
   const handleForceLogout = async () => {
-    if (!confirm(`Force logout ${user.username}?`)) return
+    if (!confirm(`Force logout ${localUser.username}?`)) return
     setLoggingOut(true)
     try {
-      await adminUsersApi.forceLogout(user.id)
+      await adminUsersApi.forceLogout(localUser.id)
       setSessions((s) => s.map((sess) => ({ ...sess, is_active: false })))
     } catch { /* ignore */ } finally { setLoggingOut(false) }
   }
@@ -74,13 +137,13 @@ function UserModal({
         <div className="flex items-center justify-between px-6 py-4 border-b border-[#2D3050] sticky top-0 bg-[#1E2030] z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">
-              {[user.first_name?.[0], user.last_name?.[0]].filter(Boolean).join('').toUpperCase() || user.username[0].toUpperCase()}
+              {[localUser.first_name?.[0], localUser.last_name?.[0]].filter(Boolean).join('').toUpperCase() || localUser.username[0].toUpperCase()}
             </div>
             <div>
               <p className="text-white font-semibold text-sm">
-                {[user.first_name, user.last_name].filter(Boolean).join(' ') || user.username}
+                {[localUser.first_name, localUser.last_name].filter(Boolean).join(' ') || localUser.username}
               </p>
-              <p className="text-xs text-slate-400">@{user.username}</p>
+              <p className="text-xs text-slate-400">@{localUser.username}</p>
             </div>
           </div>
           <button onClick={onClose} className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors">
@@ -89,29 +152,59 @@ function UserModal({
         </div>
 
         <div className="flex-1 p-6 space-y-6">
-          {/* Status badges */}
-          <div className="flex flex-wrap gap-2">
+          {/* Status badges + activate/deactivate */}
+          <div className="flex flex-wrap items-center gap-2">
             <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full',
-              user.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
-              {user.is_active ? 'Active' : 'Inactive'}
+              localUser.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
+              {localUser.is_active ? 'Active' : 'Inactive'}
             </span>
-            {user.is_superuser && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">Superadmin</span>}
-            {user.hrforce_id && <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-400">HRForce #{user.hrforce_id}</span>}
+            {localUser.is_superuser && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">Superadmin</span>
+            )}
+            {localUser.hrforce_role && (
+              <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-500/10 text-slate-400">
+                {localUser.hrforce_role}
+              </span>
+            )}
+            {localUser.hrforce_id && (
+              <span className="text-[10px] font-medium px-2 py-0.5 rounded-full bg-slate-800 text-slate-500 font-mono">
+                #{localUser.hrforce_id}
+              </span>
+            )}
+
+            {/* Activate / deactivate toggle — superadmin cannot be deactivated */}
+            {!localUser.is_superuser && (
+              <button
+                onClick={handleToggleActive}
+                disabled={toggling}
+                className={cn(
+                  'ml-auto flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors disabled:opacity-60',
+                  localUser.is_active
+                    ? 'bg-red-500/10 text-red-400 border-red-500/20 hover:bg-red-500/20'
+                    : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20',
+                )}
+              >
+                <Power size={12} />
+                {toggling ? '…' : localUser.is_active ? 'Deactivate' : 'Activate'}
+              </button>
+            )}
           </div>
 
-          {/* Info */}
+          {/* Info grid */}
           <div className="grid grid-cols-2 gap-4 text-sm">
             {[
-              { label: 'Email', value: user.email || '—' },
-              { label: 'Phone', value: user.phone || '—' },
-              { label: 'Department', value: user.department || '—' },
-              { label: 'Company', value: user.company_name || '—' },
-              { label: 'Agency', value: user.agence_name || '—' },
-              { label: 'Last Login', value: user.last_login_display || '—' },
+              { label: 'Email', value: localUser.email || '—' },
+              { label: 'Phone', value: localUser.phone || '—' },
+              { label: 'Occupation', value: localUser.occupation || '—' },
+              { label: 'Department', value: localUser.department || '—' },
+              { label: 'Company', value: localUser.company_name || '—' },
+              { label: 'Agency', value: localUser.agence_name ? `${localUser.agence_name}${localUser.agence_code ? ` (${localUser.agence_code})` : ''}` : '—' },
+              { label: 'Employee Code', value: localUser.hrforce_code || '—' },
+              { label: 'Last Login', value: localUser.last_login_display || '—' },
             ].map((f) => (
               <div key={f.label}>
                 <p className="text-xs text-slate-500 mb-0.5">{f.label}</p>
-                <p className="text-slate-200">{f.value}</p>
+                <p className="text-slate-200 text-xs">{f.value}</p>
               </div>
             ))}
           </div>
@@ -130,18 +223,29 @@ function UserModal({
                   <option key={r.id} value={r.id}>{r.display_name}</option>
                 ))}
               </select>
-              <button onClick={handleSave} disabled={saving}
-                className="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/80 transition-colors disabled:opacity-60">
+              <button
+                onClick={handleSaveRole}
+                disabled={saving}
+                className="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/80 transition-colors disabled:opacity-60"
+              >
                 {saving ? '…' : 'Save'}
               </button>
             </div>
+            {localUser.role && (
+              <p className="text-xs text-slate-500 mt-2">
+                Current: <span style={{ color: localUser.role.color }} className="font-semibold">{localUser.role.display_name}</span>
+              </p>
+            )}
           </div>
 
           {/* Danger zone */}
           <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
             <h4 className="text-xs font-semibold text-red-400 mb-3">Danger Zone</h4>
-            <button onClick={handleForceLogout} disabled={loggingOut}
-              className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-60">
+            <button
+              onClick={handleForceLogout}
+              disabled={loggingOut}
+              className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-60"
+            >
               <LogOut size={13} />
               {loggingOut ? 'Logging out…' : 'Force Logout All Sessions'}
             </button>
@@ -165,9 +269,15 @@ function UserModal({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs text-slate-300">{s.browser} · {s.os}</p>
-                      <p className="text-[11px] text-slate-600">{s.ip_address} · {formatDistanceToNow(new Date(s.logged_in_at), { addSuffix: true })}</p>
+                      <p className="text-[11px] text-slate-600">
+                        {s.ip_address} · {formatDistanceToNow(new Date(s.logged_in_at), { addSuffix: true })}
+                      </p>
                     </div>
-                    {s.is_active && <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">Active</span>}
+                    {s.is_active && (
+                      <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
+                        Active
+                      </span>
+                    )}
                   </div>
                 ))}
               </div>
@@ -187,8 +297,8 @@ export default function AdminUsersPage() {
   const router = useRouter()
   const { user: me } = useAuthStore()
 
-  const [users, setUsers] = useState<User[]>([])
-  const [roles, setRoles] = useState<Role[]>([])
+  const [users, setUsers] = useState<UserType[]>([])
+  const [roles, setRoles] = useState<RoleType[]>([])
   const [count, setCount] = useState(0)
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState('')
@@ -196,8 +306,10 @@ export default function AdminUsersPage() {
   const [filterRole, setFilterRole] = useState<number | undefined>(undefined)
   const [loading, setLoading] = useState(true)
   const [selected, setSelected] = useState<string[]>([])
-  const [selectedUser, setSelectedUser] = useState<User | null>(null)
+  const [selectedUser, setSelectedUser] = useState<UserType | null>(null)
   const [bulkLoading, setBulkLoading] = useState(false)
+  const [syncing, setSyncing] = useState(false)
+  const [syncResult, setSyncResult] = useState<SyncResult | null>(null)
 
   useEffect(() => {
     if (me && !me.is_superuser) router.replace('/overview')
@@ -222,9 +334,21 @@ export default function AdminUsersPage() {
   }, [search, filterActive, filterRole, page])
 
   useEffect(() => { load() }, [load])
-
-  // Reset page on filter change
   useEffect(() => { setPage(1) }, [search, filterActive, filterRole])
+
+  const handleSync = async () => {
+    setSyncing(true)
+    setSyncResult(null)
+    try {
+      const result = await adminUsersApi.syncHRForce()
+      setSyncResult(result)
+      load() // refresh list after sync
+    } catch (err) {
+      setSyncResult({ total_fetched: 0, created: 0, updated: 0, skipped: 0, errors: 1 })
+    } finally {
+      setSyncing(false)
+    }
+  }
 
   const toggleSelect = (id: string) =>
     setSelected((s) => s.includes(id) ? s.filter((x) => x !== id) : [...s, id])
@@ -253,8 +377,8 @@ export default function AdminUsersPage() {
     } catch { /* ignore */ } finally { setBulkLoading(false) }
   }
 
-  const handleUserUpdate = (updated: User) => {
-    setUsers((u) => u.map((usr) => usr.id === updated.id ? updated : usr))
+  const handleUserUpdate = (updated: UserType) => {
+    setUsers((u) => u.map((usr) => usr.id === updated.id ? { ...usr, ...updated } : usr))
     setSelectedUser(updated)
   }
 
@@ -264,15 +388,39 @@ export default function AdminUsersPage() {
 
   return (
     <div className="space-y-5">
-      <div className="flex items-center justify-between">
+      {/* Header */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-white">User Management</h2>
           <p className="text-sm text-slate-400 mt-0.5">{count} users total</p>
         </div>
-        <button onClick={load} disabled={loading} className="p-2 text-slate-500 hover:text-slate-300 transition-colors">
-          <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={load}
+            disabled={loading}
+            className="p-2 text-slate-500 hover:text-slate-300 transition-colors"
+          >
+            <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
+          </button>
+          <button
+            onClick={handleSync}
+            disabled={syncing}
+            className="flex items-center gap-2 px-4 py-2 bg-[#1E2030] border border-[#2D3050] text-slate-300 hover:text-white hover:border-primary text-sm font-medium rounded-xl transition-colors disabled:opacity-60"
+          >
+            {syncing
+              ? <span className="w-4 h-4 border-2 border-slate-500/30 border-t-slate-400 rounded-full animate-spin" />
+              : <Download size={15} />}
+            {syncing ? 'Syncing…' : 'Import from HRForce'}
+          </button>
+        </div>
       </div>
+
+      {/* Sync result banner */}
+      <AnimatePresence>
+        {syncResult && (
+          <SyncBanner result={syncResult} onDismiss={() => setSyncResult(null)} />
+        )}
+      </AnimatePresence>
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3">
@@ -311,20 +459,31 @@ export default function AdminUsersPage() {
         {selected.length > 0 && (
           <motion.div
             initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
-            className="flex items-center gap-3 p-3 bg-primary/10 border border-primary/30 rounded-xl"
+            className="flex items-center gap-3 p-3 bg-primary/10 border border-primary/30 rounded-xl flex-wrap"
           >
             <span className="text-sm text-primary font-semibold">{selected.length} selected</span>
             <div className="flex gap-2 ml-auto flex-wrap">
-              <button onClick={() => bulkActivate(true)} disabled={bulkLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/20 transition-colors disabled:opacity-60">
+              <button
+                onClick={() => bulkActivate(true)}
+                disabled={bulkLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/20 transition-colors disabled:opacity-60"
+              >
                 <UserCheck size={12} /> Activate
               </button>
-              <button onClick={() => bulkActivate(false)} disabled={bulkLoading}
-                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-60">
+              <button
+                onClick={() => bulkActivate(false)}
+                disabled={bulkLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-60"
+              >
                 <UserX size={12} /> Deactivate
               </button>
               <select
-                onChange={(e) => { if (e.target.value !== '') { bulkAssignRole(e.target.value === 'null' ? null : Number(e.target.value)); e.target.value = '' } }}
+                onChange={(e) => {
+                  if (e.target.value !== '') {
+                    bulkAssignRole(e.target.value === 'null' ? null : Number(e.target.value))
+                    e.target.value = ''
+                  }
+                }}
                 disabled={bulkLoading}
                 className="px-3 py-1.5 text-xs font-semibold bg-[#252840] text-slate-300 border border-[#2D3050] rounded-lg focus:outline-none focus:border-primary disabled:opacity-60"
               >
@@ -347,10 +506,15 @@ export default function AdminUsersPage() {
             <thead>
               <tr className="border-b border-[#2D3050] text-xs text-slate-500 uppercase tracking-wide">
                 <th className="px-4 py-3 text-left">
-                  <input type="checkbox" checked={selected.length === users.length && users.length > 0}
-                    onChange={selectAll} className="accent-primary" />
+                  <input
+                    type="checkbox"
+                    checked={selected.length === users.length && users.length > 0}
+                    onChange={selectAll}
+                    className="accent-primary"
+                  />
                 </th>
                 <th className="px-4 py-3 text-left">User</th>
+                <th className="px-4 py-3 text-left">Occupation</th>
                 <th className="px-4 py-3 text-left">Role</th>
                 <th className="px-4 py-3 text-left">Company</th>
                 <th className="px-4 py-3 text-left">Status</th>
@@ -359,11 +523,15 @@ export default function AdminUsersPage() {
             </thead>
             <tbody className="divide-y divide-[#2D3050]">
               {loading ? (
-                <tr><td colSpan={6} className="text-center py-12 text-slate-500">
-                  <span className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin inline-block" />
-                </td></tr>
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-slate-500">
+                    <span className="w-5 h-5 border-2 border-primary/30 border-t-primary rounded-full animate-spin inline-block" />
+                  </td>
+                </tr>
               ) : users.length === 0 ? (
-                <tr><td colSpan={6} className="text-center py-12 text-slate-500 text-sm">No users found</td></tr>
+                <tr>
+                  <td colSpan={7} className="text-center py-12 text-slate-500 text-sm">No users found</td>
+                </tr>
               ) : (
                 users.map((u) => (
                   <tr
@@ -372,8 +540,12 @@ export default function AdminUsersPage() {
                     className="hover:bg-[#252840]/60 cursor-pointer transition-colors"
                   >
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      <input type="checkbox" checked={selected.includes(u.id)}
-                        onChange={() => toggleSelect(u.id)} className="accent-primary" />
+                      <input
+                        type="checkbox"
+                        checked={selected.includes(u.id)}
+                        onChange={() => toggleSelect(u.id)}
+                        className="accent-primary"
+                      />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -381,15 +553,22 @@ export default function AdminUsersPage() {
                           {[u.first_name?.[0], u.last_name?.[0]].filter(Boolean).join('').toUpperCase() || u.username[0].toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-white font-medium">{[u.first_name, u.last_name].filter(Boolean).join(' ') || u.username}</p>
+                          <p className="text-white font-medium">
+                            {[u.first_name, u.last_name].filter(Boolean).join(' ') || u.username}
+                          </p>
                           <p className="text-xs text-slate-500">@{u.username}</p>
                         </div>
                       </div>
                     </td>
+                    <td className="px-4 py-3 text-slate-400 text-xs max-w-[160px] truncate" title={u.occupation || undefined}>
+                      {u.occupation || '—'}
+                    </td>
                     <td className="px-4 py-3">
                       {u.role ? (
-                        <span className="text-xs font-semibold px-2 py-0.5 rounded-full"
-                          style={{ backgroundColor: u.role.color + '20', color: u.role.color }}>
+                        <span
+                          className="text-xs font-semibold px-2 py-0.5 rounded-full"
+                          style={{ backgroundColor: u.role.color + '20', color: u.role.color }}
+                        >
                           {u.role.display_name}
                         </span>
                       ) : (
@@ -397,11 +576,24 @@ export default function AdminUsersPage() {
                       )}
                     </td>
                     <td className="px-4 py-3 text-slate-400 text-xs">{u.company_name || '—'}</td>
-                    <td className="px-4 py-3">
-                      <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full',
-                        u.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
+                    <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      <button
+                        onClick={() => {
+                          if (u.is_superuser) return
+                          adminUsersApi.update(u.id, { is_active: !u.is_active }).then((updated) => {
+                            setUsers((prev) => prev.map((x) => x.id === u.id ? { ...x, is_active: updated.is_active } : x))
+                          }).catch(() => {})
+                        }}
+                        disabled={u.is_superuser}
+                        title={u.is_superuser ? 'Superadmin cannot be deactivated' : (u.is_active ? 'Click to deactivate' : 'Click to activate')}
+                        className={cn(
+                          'text-[10px] font-bold px-2 py-0.5 rounded-full transition-opacity',
+                          u.is_superuser ? 'cursor-default' : 'hover:opacity-70 cursor-pointer',
+                          u.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400',
+                        )}
+                      >
                         {u.is_active ? 'Active' : 'Inactive'}
-                      </span>
+                      </button>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">{u.last_login_display || '—'}</td>
                   </tr>
@@ -416,12 +608,18 @@ export default function AdminUsersPage() {
           <div className="flex items-center justify-between px-4 py-3 border-t border-[#2D3050]">
             <span className="text-xs text-slate-500">Page {page} of {totalPages}</span>
             <div className="flex gap-1">
-              <button onClick={() => setPage((p) => Math.max(1, p - 1))} disabled={page === 1}
-                className="p-1.5 text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-colors">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-1.5 text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-colors"
+              >
                 <ChevronLeft size={16} />
               </button>
-              <button onClick={() => setPage((p) => Math.min(totalPages, p + 1))} disabled={page === totalPages}
-                className="p-1.5 text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-colors">
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-1.5 text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-colors"
+              >
                 <ChevronRight size={16} />
               </button>
             </div>

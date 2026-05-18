@@ -1,8 +1,9 @@
 import json
 import time
 
-from django.http import StreamingHttpResponse
+from django.http import HttpResponse, StreamingHttpResponse
 from django.utils import timezone
+from django.views import View
 from drf_spectacular.utils import OpenApiParameter, OpenApiResponse, extend_schema
 from rest_framework import generics, status
 from rest_framework.permissions import IsAuthenticated
@@ -13,7 +14,6 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 from apps.users.permissions import IsSuperAdmin
 
 from .models import Alert, AlertRule, Notification
-from .serializers import NotificationSerializer
 from .serializers import (
     AlertAcknowledgeSerializer,
     AlertRuleSerializer,
@@ -255,36 +255,17 @@ def _notification_stream(user):
             yield ": heartbeat\n\n"
 
 
-class NotificationStreamView(APIView):
+class NotificationStreamView(View):
     """
     Server-Sent Events endpoint for real-time notification delivery.
+    Plain Django View — bypasses DRF content negotiation which rejects text/event-stream.
 
-    The client connects once with `EventSource('/api/notifications/stream/')`.
-    New notifications are pushed instantly without polling.
-
-    **Event types:**
-    - `notification` — a new Notification object (same schema as GET /api/notifications/)
-    - `count` — `{"unread": N}` — fires on connect and after each new notification
-
-    **Auth:** Pass the JWT access token as `?token=<access_token>` query param
-    (EventSource does not support Authorization headers).
+    Auth: JWT access token passed as ?token= query param (EventSource cannot set headers).
     """
-    # Manual JWT auth via query param — EventSource cannot set headers
-    authentication_classes = []
-    permission_classes = []
 
-    @extend_schema(
-        tags=["notifications"],
-        responses={200: OpenApiResponse(description="text/event-stream — SSE stream")},
-        parameters=[
-            OpenApiParameter("token", str, location="query", description="JWT access token"),
-        ],
-    )
     def get(self, request):
-        # Authenticate via ?token= query param
-        token_str = request.query_params.get("token", "")
+        token_str = request.GET.get("token", "")
         if not token_str:
-            from django.http import HttpResponse
             return HttpResponse("Unauthorized", status=401)
 
         try:
@@ -292,11 +273,9 @@ class NotificationStreamView(APIView):
             validated_token = auth.get_validated_token(token_str)
             user = auth.get_user(validated_token)
         except Exception:
-            from django.http import HttpResponse
             return HttpResponse("Unauthorized", status=401)
 
         if not user or not user.is_active:
-            from django.http import HttpResponse
             return HttpResponse("Forbidden", status=403)
 
         response = StreamingHttpResponse(
@@ -304,5 +283,5 @@ class NotificationStreamView(APIView):
             content_type="text/event-stream",
         )
         response["Cache-Control"] = "no-cache"
-        response["X-Accel-Buffering"] = "no"  # disable Nginx buffering
+        response["X-Accel-Buffering"] = "no"
         return response
