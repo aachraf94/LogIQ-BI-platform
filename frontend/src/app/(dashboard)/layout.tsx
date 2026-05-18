@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePathname, useRouter } from 'next/navigation'
+import { useTheme } from 'next-themes'
 import { Sidebar } from '@/components/ui/Sidebar'
 import { Topbar } from '@/components/ui/Topbar'
 import { ToastContainer } from '@/components/ui/ToastContainer'
@@ -10,22 +11,32 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotifications } from '@/hooks/useNotifications'
 import { meApi } from '@/lib/api'
+import { useTranslation } from '@/lib/i18n'
+import type { Locale } from '@/lib/i18n'
 
-const PAGE_TITLES: Record<string, string> = {
-  '/overview': 'Overview',
-  '/transport': 'Transport Demands',
-  '/parcel-costs': 'Parcel Costs (CCC)',
-  '/routes': 'Route Analysis',
-  '/alerts': 'Alerts',
-  '/settings': 'Settings',
-  '/admin': 'Admin Overview',
-  '/admin/users': 'User Management',
-  '/admin/roles': 'Role Management',
-  '/admin/etl': 'ETL Runs',
+// Syncs next-themes to the user's saved theme preference on login/refresh
+function ThemeSync() {
+  const { setTheme } = useTheme()
+  const theme = useAuthStore((s) => s.user?.preferences?.theme)
+
+  useEffect(() => {
+    if (theme) setTheme(theme)
+  }, [theme, setTheme])
+
+  return null
 }
 
-function pageTitle(pathname: string): string {
-  return PAGE_TITLES[pathname] ?? 'Dashboard'
+// Syncs the <html> lang + dir attributes to the user's saved language
+function LanguageSync() {
+  const language = useAuthStore((s) => s.user?.preferences?.language as Locale | undefined)
+
+  useEffect(() => {
+    const lang = language ?? 'fr'
+    document.documentElement.lang = lang
+    document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+  }, [language])
+
+  return null
 }
 
 // Starts SSE notification stream — runs inside auth-guarded layout
@@ -34,25 +45,38 @@ function NotificationsInit() {
   return null
 }
 
+function pageTitle(pathname: string, t: ReturnType<typeof useTranslation>['t']): string {
+  const map: Record<string, string> = {
+    '/overview':    t.nav.overview,
+    '/transport':   t.nav.transport,
+    '/parcel-costs':t.nav.parcelCosts,
+    '/routes':      t.nav.routes,
+    '/alerts':      t.nav.alerts,
+    '/settings':    t.nav.settings,
+    '/admin':       t.nav.adminOverview,
+    '/admin/users': t.nav.users,
+    '/admin/roles': t.nav.roles,
+    '/admin/etl':   t.nav.etl,
+  }
+  return map[pathname] ?? 'LOGIQ'
+}
+
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const { isAuthenticated, isFirstLogin, user, updateUser } = useAuthStore()
+  const { t } = useTranslation()
 
   const [hydrated, setHydrated] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
 
   // Zustand persist rehydrates after first render
-  useEffect(() => {
-    setHydrated(true)
-  }, [])
+  useEffect(() => { setHydrated(true) }, [])
 
   // Auth guard
   useEffect(() => {
     if (!hydrated) return
-    if (!isAuthenticated) {
-      router.replace('/login')
-    }
+    if (!isAuthenticated) router.replace('/login')
   }, [hydrated, isAuthenticated, router])
 
   // Show onboarding on first login
@@ -71,18 +95,20 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
 
   if (!hydrated || !isAuthenticated) {
     return (
-      <div className="min-h-screen bg-[#161829] flex items-center justify-center">
+      <div className="min-h-screen bg-[var(--bg)] flex items-center justify-center">
         <span className="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
       </div>
     )
   }
 
   return (
-    <div className="flex min-h-screen bg-[#161829]">
+    <div className="flex min-h-screen bg-[var(--bg)]">
+      <ThemeSync />
+      <LanguageSync />
       <NotificationsInit />
       <Sidebar />
       <div className="flex-1 flex flex-col" style={{ marginLeft: 240 }}>
-        <Topbar title={pageTitle(pathname)} />
+        <Topbar title={pageTitle(pathname, t)} />
         <AnimatePresence mode="wait">
           <motion.main
             key={pathname}

@@ -4,49 +4,76 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Design tokens — light mode (default) ───────────────────────────────── */
+
 :root {
   --color-primary: #6366F1;
   --color-secondary: #22D3EE;
   --color-success: #10B981;
   --color-warning: #F59E0B;
   --color-danger: #EF4444;
-  --color-surface: #1E2030;
-  --color-surface-secondary: #252840;
-  --color-surface-tertiary: #2D3050;
+
+  --bg:               #F8FAFC;
+  --surface:          #FFFFFF;
+  --surface-secondary:#F1F5F9;
+  --surface-tertiary: #E2E8F0;
+  --border:           #E2E8F0;
+  --text-primary:     #0F172A;
+  --text-secondary:   #64748B;
+  --text-muted:       #94A3B8;
+
+  --scrollbar-track:       #F1F5F9;
+  --scrollbar-thumb:       #CBD5E1;
+  --scrollbar-thumb-hover: #94A3B8;
 }
 
-* {
-  box-sizing: border-box;
+/* ─── Design tokens — dark mode ──────────────────────────────────────────── */
+
+.dark {
+  --bg:               #161829;
+  --surface:          #1E2030;
+  --surface-secondary:#252840;
+  --surface-tertiary: #2D3050;
+  --border:           #2D3050;
+  --text-primary:     #E2E8F0;
+  --text-secondary:   #94A3B8;
+  --text-muted:       #475569;
+
+  --scrollbar-track:       #1E2030;
+  --scrollbar-thumb:       #3D4267;
+  --scrollbar-thumb-hover: #6366F1;
 }
 
-html {
-  font-family: 'Inter', system-ui, sans-serif;
-}
+/* ─── Base ────────────────────────────────────────────────────────────────── */
+
+* { box-sizing: border-box; }
+
+html { font-family: 'Inter', system-ui, sans-serif; }
 
 body {
-  background-color: #161829;
-  color: #E2E8F0;
+  background-color: var(--bg);
+  color: var(--text-primary);
   min-height: 100vh;
+  transition: background-color 0.2s ease, color 0.2s ease;
 }
 
-/* Custom scrollbar */
-::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
-}
-::-webkit-scrollbar-track {
-  background: #1E2030;
-}
-::-webkit-scrollbar-thumb {
-  background: #3D4267;
-  border-radius: 3px;
-}
-::-webkit-scrollbar-thumb:hover {
-  background: #6366F1;
-}
+/* ─── Custom scrollbar ────────────────────────────────────────────────────── */
 
-/* Tremor overrides for dark theme */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: var(--scrollbar-track); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--scrollbar-thumb-hover); }
+
+/* ─── Tremor overrides ────────────────────────────────────────────────────── */
+
 .tremor-Card-root {
-  background-color: var(--color-surface) !important;
-  border-color: #2D3050 !important;
+  background-color: var(--surface) !important;
+  border-color: var(--border) !important;
+}
+
+/* ─── RTL adjustments ─────────────────────────────────────────────────────── */
+
+[dir="rtl"] .sidebar-collapse-btn {
+  left: auto;
+  right: 0;
 }

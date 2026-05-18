@@ -8,8 +8,9 @@ import {
   Download, CheckCircle, AlertTriangle, Power,
 } from 'lucide-react'
 import { adminUsersApi, adminRolesApi, ApiError } from '@/lib/api'
-import type { User, Role, LoginSession, SyncResult } from '@/lib/api'
-import type { Role as RoleType } from '@/types/api'
+import type { SyncResult } from '@/lib/api'
+import type { User, Role, LoginSession } from '@/types/api'
+type RoleType = Role
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
