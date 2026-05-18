@@ -11,8 +11,8 @@ Serves the Next.js frontend, orchestrates Celery alert workers, and exposes a fu
 cd logiq\backend
 
 # 1. Create and activate virtual environment
-python -m venv venv
-venv\Scripts\activate
+python -m venv .venv
+.venv\Scripts\activate
 
 # 2. Install dependencies
 pip install -r requirements.txt
