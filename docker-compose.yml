@@ -2,7 +2,7 @@ version: "3.9"
 
 services:
   platform-db:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_DB: ${PLATFORM_DB_NAME}
       POSTGRES_USER: ${PLATFORM_DB_USER}
@@ -18,7 +18,7 @@ services:
       retries: 5
 
   warehouse-db:
-    image: postgres:15-alpine
+    image: postgres:17-alpine
     environment:
       POSTGRES_DB: ${WAREHOUSE_DB_NAME}
       POSTGRES_USER: ${WAREHOUSE_DB_USER}
@@ -48,12 +48,16 @@ services:
     environment:
       - PLATFORM_DB_HOST=platform-db
       - WAREHOUSE_DB_HOST=warehouse-db
+      - WAREHOUSE_DB_PORT=5432
       - PLATFORM_DB_NAME=${PLATFORM_DB_NAME}
       - PLATFORM_DB_USER=${PLATFORM_DB_USER}
       - PLATFORM_DB_PASSWORD=${PLATFORM_DB_PASSWORD}
       - WAREHOUSE_DB_NAME=${WAREHOUSE_DB_NAME}
       - WAREHOUSE_DB_USER=${WAREHOUSE_DB_USER}
       - WAREHOUSE_DB_PASSWORD=${WAREHOUSE_DB_PASSWORD}
+      # mock-datasources runs as a separate container; expose it on host port 8001
+      # and reference it here via host.docker.internal or a shared network
+      - API_BASE_URL=http://host.docker.internal:8001
     ports:
       - "3000:3000"
     depends_on:
