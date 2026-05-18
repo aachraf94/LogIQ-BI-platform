@@ -86,6 +86,15 @@ async function attemptTokenRefresh(): Promise<string | null> {
 
 // ─── Core request ─────────────────────────────────────────────────────────────
 
+async function requestList<T>(
+  path: string,
+  init: RequestInit = {},
+): Promise<T[]> {
+  const data = await request<PaginatedResponse<T> | T[]>(path, init)
+  if (Array.isArray(data)) return data
+  return (data as PaginatedResponse<T>).results ?? []
+}
+
 async function request<T>(
   path: string,
   init: RequestInit = {},
@@ -152,9 +161,9 @@ export const meApi = {
       body: JSON.stringify(data),
     }),
 
-  getSessions: () => request<LoginSession[]>('/users/me/sessions/'),
+  getSessions: () => requestList<LoginSession>('/users/me/sessions/'),
 
-  getBookmarks: () => request<DashboardBookmark[]>('/users/me/bookmarks/'),
+  getBookmarks: () => requestList<DashboardBookmark>('/users/me/bookmarks/'),
 
   createBookmark: (data: Omit<DashboardBookmark, 'id' | 'created_at' | 'owner_name'>) =>
     request<DashboardBookmark>('/users/me/bookmarks/', {
@@ -183,7 +192,7 @@ export const meApi = {
 // ─── Announcements ────────────────────────────────────────────────────────────
 
 export const announcementsApi = {
-  list: () => request<Announcement[]>('/users/announcements/'),
+  list: () => requestList<Announcement>('/users/announcements/'),
 
   create: (data: Partial<Announcement>) =>
     request<Announcement>('/users/announcements/manage/', {
@@ -205,7 +214,7 @@ export const announcementsApi = {
 
 export const notificationsApi = {
   list: (unreadOnly?: boolean) =>
-    request<Notification[]>(`/notifications/${unreadOnly ? '?unread=true' : ''}`),
+    requestList<Notification>(`/notifications/${unreadOnly ? '?unread=true' : ''}`),
 
   count: () => request<NotificationCount>('/notifications/count/'),
 
@@ -223,7 +232,7 @@ export const notificationsApi = {
 // ─── Alert rules ──────────────────────────────────────────────────────────────
 
 export const alertRulesApi = {
-  list: () => request<AlertRule[]>('/notifications/rules/'),
+  list: () => requestList<AlertRule>('/notifications/rules/'),
 
   create: (data: Partial<AlertRule>) =>
     request<AlertRule>('/notifications/rules/', {
@@ -247,7 +256,7 @@ export const alertRulesApi = {
 
 export const alertsApi = {
   list: (unacknowledged?: boolean) =>
-    request<Alert[]>(
+    requestList<Alert>(
       `/notifications/alerts/${unacknowledged ? '?unacknowledged=true' : ''}`
     ),
 
@@ -332,7 +341,7 @@ export const adminUsersApi = {
 // ─── Admin — roles ────────────────────────────────────────────────────────────
 
 export const adminRolesApi = {
-  list: () => request<Role[]>('/users/admin/roles/'),
+  list: () => requestList<Role>('/users/admin/roles/'),
 
   create: (data: Partial<Role>) =>
     request<Role>('/users/admin/roles/create/', {

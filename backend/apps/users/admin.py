@@ -127,7 +127,7 @@ class UserAdmin(BaseUserAdmin):
 
     def role_badge(self, obj):
         if not obj.role:
-            return format_html('<span style="color:#9ca3af">—</span>')
+            return mark_safe('<span style="color:#9ca3af">—</span>')
         return format_html(
             '<span style="background:{};color:#fff;padding:2px 10px;'
             'border-radius:9999px;font-size:11px">{}</span>',
@@ -137,16 +137,16 @@ class UserAdmin(BaseUserAdmin):
 
     def status_badge(self, obj):
         if obj.is_superuser:
-            return format_html(
+            return mark_safe(
                 '<span style="background:#7c3aed;color:#fff;padding:2px 8px;'
                 'border-radius:9999px;font-size:11px">Super Admin</span>'
             )
         if obj.is_active:
-            return format_html(
+            return mark_safe(
                 '<span style="background:#10b981;color:#fff;padding:2px 8px;'
                 'border-radius:9999px;font-size:11px">Actif</span>'
             )
-        return format_html(
+        return mark_safe(
             '<span style="background:#ef4444;color:#fff;padding:2px 8px;'
             'border-radius:9999px;font-size:11px">Inactif</span>'
         )

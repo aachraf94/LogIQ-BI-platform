@@ -29,11 +29,11 @@ export interface UserPreferences {
   language: string
   pinned_dashboards: string[]
   saved_filters: Record<string, unknown>
-  notif_alerts: boolean
+  notif_in_app: boolean
+  notif_email: boolean
+  notif_alert_triggered: boolean
   notif_etl_status: boolean
   notif_announcements: boolean
-  notif_system: boolean
-  notif_email: boolean
 }
 
 // ─── Sessions ────────────────────────────────────────────────────────────────

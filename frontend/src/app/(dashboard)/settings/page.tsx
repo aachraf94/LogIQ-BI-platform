@@ -119,10 +119,10 @@ function PreferencesTab() {
   }
 
   const notifToggles: { key: keyof UserPreferences; label: string; desc: string }[] = [
-    { key: 'notif_alerts', label: 'Alert Notifications', desc: 'In-app alerts when KPI thresholds are breached' },
+    { key: 'notif_in_app', label: 'In-App Notifications', desc: 'Show notifications inside the platform' },
+    { key: 'notif_alert_triggered', label: 'Alert Notifications', desc: 'In-app alerts when KPI thresholds are breached' },
     { key: 'notif_etl_status', label: 'ETL Status', desc: 'Notify when data pipelines complete or fail' },
     { key: 'notif_announcements', label: 'Announcements', desc: 'Platform announcements from the admin team' },
-    { key: 'notif_system', label: 'System Notifications', desc: 'Maintenance windows and system messages' },
     { key: 'notif_email', label: 'Email Digest', desc: 'Daily summary via email' },
   ]
 
