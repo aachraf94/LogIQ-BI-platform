@@ -23,6 +23,16 @@ media/
 # Dagster
 .dagster/
 
+# Dagster temporary and runtime files
+.tmp_dagster_home_*/
+dagster_home/
+logiq/dagster/.tmp_dagster_home_*/
+.dagster/
+storage/
+*.db
+*.sqlite
+*.sqlite3
+
 # Node
 node_modules/
 .next/
@@ -47,3 +57,4 @@ yarn-error.log*
 
 # Docker
 *.override.yml
+
