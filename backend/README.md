@@ -30,10 +30,13 @@ python manage.py createsuperuser --settings=config.settings.dev
 python manage.py runserver --settings=config.settings.dev
 # → http://localhost:8000
 
-# 7. Run Celery worker (separate terminal)
+# 7. Import users from HRForce (first-time setup)
+python manage.py sync_hrforce_users --settings=config.settings.dev
+
+# 8. Run Celery worker (separate terminal)
 celery -A config worker -l info
 
-# 8. Run Celery Beat scheduler (separate terminal)
+# 9. Run Celery Beat scheduler (separate terminal)
 celery -A config beat -l info
 ```
 
@@ -356,6 +359,72 @@ Returns HTTP 503 when any service is down.
 
 ---
 
+## HRForce User Sync
+
+Users are imported from HRForce using a management command — **not** through the ETL pipeline.
+This keeps bcrypt password hashes out of the warehouse staging tables entirely.
+
+### Why a management command?
+
+The ETL pipeline writes to the **warehouse DB** (analytical). Django users live in the **platform DB** (operational). The management command bridges the two by calling the HRForce API directly and writing to Django's `User` table — no intermediate staging table, no password at rest in the warehouse.
+
+### Password handling
+
+HRForce hashes passwords with **bcrypt** (`$2b$12$...`).
+Django's default hasher is PBKDF2 — it cannot verify raw bcrypt hashes.
+
+**Solution:**
+1. `PASSWORD_HASHERS` in `base.py` sets `BCryptPasswordHasher` as the primary hasher.
+2. The sync command prefixes the raw hash with `bcrypt$` before saving:
+
+```
+HRForce raw hash  →  $2b$12$abcdef...
+Django stores     →  bcrypt$$2b$12$abcdef...
+```
+
+Django's `BCryptPasswordHasher.verify()` strips the `bcrypt$` prefix and passes the rest directly to the `bcrypt` library — no re-hashing, no data loss.
+
+### Running the sync
+
+```powershell
+# Full sync (creates new users, updates profiles + passwords)
+python manage.py sync_hrforce_users --settings=config.settings.dev
+
+# Preview changes without writing anything
+python manage.py sync_hrforce_users --dry-run --settings=config.settings.dev
+
+# Sync only one company
+python manage.py sync_hrforce_users --company-id 3 --settings=config.settings.dev
+```
+
+### What the command does per user
+
+| Condition | Action |
+|---|---|
+| `company_id == 9` (TEST company) | Skip |
+| User not in Django yet | Create with `is_active=False`, bcrypt password |
+| User exists, profile fields changed | Update name / email / phone / agence / company |
+| User exists, bcrypt hash changed | Re-sync password hash |
+| User exists, nothing changed | Skip (no DB write) |
+| `is_active` or `role` on existing user | **Never overwritten** — admin controls these |
+
+### Environment variables required
+
+```
+HRFORCE_API_TOKEN=<token>
+API_BASE_URL=http://localhost:8000
+```
+
+### After the sync
+
+Imported users have `is_active=False`. The superadmin must activate them in:
+- **Django Admin** → Users → select → "Activer les utilisateurs sélectionnés"
+- **API** → `POST /api/users/admin/users/activate/` `{"user_ids": [...], "is_active": true}`
+
+The superadmin also assigns a role before the user can access any dashboard.
+
+---
+
 ## Permissions
 
 | Class | Who passes |
@@ -479,3 +548,5 @@ Configured tasks:
 | `redis` | Celery broker + result backend |
 | `python-dotenv` | `.env` file loading |
 | `user-agents` | Parse browser/OS/device from User-Agent header |
+| `bcrypt` | Verify HRForce bcrypt password hashes in Django |
+| `requests` | HTTP client used by `sync_hrforce_users` management command |

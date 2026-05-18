@@ -64,6 +64,14 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
+# Password hashers — bcrypt first so imported HRForce hashes are verified correctly.
+# Django's BCryptPasswordHasher stores hashes as "bcrypt$$2b$12$..."
+# HRForce raw bcrypt: "$2b$12$..." → prefix with "bcrypt$" on import.
+PASSWORD_HASHERS = [
+    "django.contrib.auth.hashers.BCryptPasswordHasher",
+    "django.contrib.auth.hashers.PBKDF2PasswordHasher",   # fallback for superusers created via createsuperuser
+]
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",

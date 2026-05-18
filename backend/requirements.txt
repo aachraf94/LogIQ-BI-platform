@@ -9,3 +9,5 @@ django-filter
 djangorestframework-simplejwt
 drf-spectacular
 user-agents
+bcrypt
+requests
