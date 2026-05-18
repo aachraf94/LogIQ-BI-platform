@@ -1,9 +1,8 @@
-"use client";
+'use client'
 
-import { useAuthStore } from "@/stores/authStore";
+import { useAuthStore } from '@/stores/authStore'
 
 export function useAuth() {
-  const { isAuthenticated, userName, userEmail, userRole, login, logout } =
-    useAuthStore();
-  return { isAuthenticated, userName, userEmail, userRole, login, logout };
+  const { isAuthenticated, userName, userEmail, userRole, user, logout } = useAuthStore()
+  return { isAuthenticated, userName, userEmail, userRole, user, logout }
 }

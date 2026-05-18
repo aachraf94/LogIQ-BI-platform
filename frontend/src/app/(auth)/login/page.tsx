@@ -1,46 +1,50 @@
-"use client";
+'use client'
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
-import { motion } from "framer-motion";
-import { Eye, EyeOff, LogIn, AlertCircle } from "lucide-react";
-import { useAuthStore } from "@/stores/authStore";
+import { useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { motion } from 'framer-motion'
+import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react'
+import { authApi, saveTokens, ApiError } from '@/lib/api'
+import { useAuthStore } from '@/stores/authStore'
 
 export default function LoginPage() {
-  const router = useRouter();
-  const { login } = useAuthStore();
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const router = useRouter()
+  const setAuth = useAuthStore((s) => s.setAuth)
+
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
+  const [error, setError] = useState('')
+  const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError("");
-    setLoading(true);
+    e.preventDefault()
+    setError('')
+    setLoading(true)
 
-    // Mock auth — any @yalidine.dz email with 6+ char password works
-    await new Promise((r) => setTimeout(r, 800));
-
-    if (email.endsWith("@yalidine.dz") && password.length >= 6) {
-      const name = email.split("@")[0].replace(".", " ").replace(/\b\w/g, (c) => c.toUpperCase());
-      login(email, name, "Admin");
-      router.push("/overview");
-    } else {
-      setError("Use a @yalidine.dz email with at least 6 characters password.");
-      setLoading(false);
+    try {
+      const data = await authApi.login(username, password)
+      saveTokens(data.access, data.refresh)
+      setAuth(data.user, data.access, data.refresh, data.is_first_login)
+      router.replace('/overview')
+    } catch (err) {
+      if (err instanceof ApiError) {
+        setError(err.message)
+      } else {
+        setError('Unable to reach the server. Please try again.')
+      }
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <motion.div
-      initial={{ opacity: 0, scale: 0.96 }}
+      initial={{ opacity: 0, scale: 0.97 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.4, ease: "easeOut" }}
+      transition={{ duration: 0.35, ease: 'easeOut' }}
       className="w-full max-w-md"
     >
-      {/* Background glow */}
+      {/* Ambient glow */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] rounded-full bg-primary/5 blur-3xl" />
         <div className="absolute top-1/3 left-1/3 w-[400px] h-[400px] rounded-full bg-secondary/5 blur-3xl" />
@@ -58,26 +62,32 @@ export default function LoginPage() {
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">Email</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Username
+            </label>
             <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="you@yalidine.dz"
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              placeholder="your.username"
               required
+              autoComplete="username"
               className="w-full bg-[#252840] border border-[#2D3050] rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary transition-colors"
             />
           </div>
 
           <div>
-            <label className="block text-xs font-medium text-slate-400 mb-1.5">Password</label>
+            <label className="block text-xs font-medium text-slate-400 mb-1.5">
+              Password
+            </label>
             <div className="relative">
               <input
-                type={showPassword ? "text" : "password"}
+                type={showPassword ? 'text' : 'password'}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 required
+                autoComplete="current-password"
                 className="w-full bg-[#252840] border border-[#2D3050] rounded-xl px-4 py-3 pr-11 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary transition-colors"
               />
               <button
@@ -104,21 +114,21 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/80 transition-colors flex items-center justify-center gap-2 disabled:opacity-60"
+            className="w-full py-3 bg-primary text-white font-semibold rounded-xl hover:bg-primary/80 transition-colors flex items-center justify-center gap-2 disabled:opacity-60 mt-2"
           >
             {loading ? (
               <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
             ) : (
               <LogIn size={16} />
             )}
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? 'Signing in…' : 'Sign In'}
           </button>
         </form>
 
         <p className="text-center text-xs text-slate-600 mt-6">
-          Demo credentials: any @yalidine.dz email + 6+ chars password
+          Use your HRForce credentials to access the platform.
         </p>
       </div>
     </motion.div>
-  );
+  )
 }

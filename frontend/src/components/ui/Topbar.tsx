@@ -1,43 +1,68 @@
-"use client";
+'use client'
 
-import { Bell, ChevronDown, Calendar } from "lucide-react";
-import { useAlerts } from "@/hooks/useAlerts";
-import { useAuthStore } from "@/stores/authStore";
-import { useFilterStore } from "@/stores/filterStore";
-import { cn } from "@/lib/utils";
+import { useState } from 'react'
+import { Bell, ChevronDown, LogOut } from 'lucide-react'
+import { useRouter } from 'next/navigation'
+import { useAuthStore } from '@/stores/authStore'
+import { useNotificationStore } from '@/stores/notificationStore'
+import { useFilterStore } from '@/stores/filterStore'
+import { authApi, clearTokens, getRefreshToken } from '@/lib/api'
+import { NotificationPanel } from '@/components/ui/NotificationPanel'
+import { cn } from '@/lib/utils'
 
 const DATE_RANGES = [
-  { value: "7d" as const, label: "Last 7 days" },
-  { value: "30d" as const, label: "Last 30 days" },
-  { value: "3m" as const, label: "Last 3 months" },
-  { value: "12m" as const, label: "Last 12 months" },
-];
+  { value: '7d' as const, label: '7d' },
+  { value: '30d' as const, label: '30d' },
+  { value: '3m' as const, label: '3m' },
+  { value: '12m' as const, label: '12m' },
+]
 
 interface TopbarProps {
-  title: string;
+  title: string
 }
 
 export function Topbar({ title }: TopbarProps) {
-  const { criticalCount } = useAlerts();
-  const { userName } = useAuthStore();
-  const { dateRange, setDateRange } = useFilterStore();
+  const router = useRouter()
+  const { userName, userRole, logout } = useAuthStore()
+  const unreadCount = useNotificationStore((s) => s.unreadCount)
+  const { dateRange, setDateRange } = useFilterStore()
+
+  const [notifOpen, setNotifOpen] = useState(false)
+  const [userMenuOpen, setUserMenuOpen] = useState(false)
+
+  const initials = userName
+    .split(' ')
+    .map((w) => w[0])
+    .join('')
+    .toUpperCase()
+    .slice(0, 2) || '?'
+
+  const handleLogout = async () => {
+    const refresh = getRefreshToken()
+    if (refresh) {
+      try { await authApi.logout(refresh) } catch { /* proceed */ }
+    }
+    clearTokens()
+    logout()
+    router.replace('/login')
+  }
 
   return (
     <header className="h-16 bg-[#1E2030] border-b border-[#2D3050] flex items-center justify-between px-6 sticky top-0 z-30">
-      <h1 className="text-lg font-semibold text-white">{title}</h1>
+      <h1 className="text-lg font-semibold text-white truncate">{title}</h1>
 
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-3">
         {/* Date range */}
-        <div className="flex items-center gap-1 bg-[#252840] rounded-lg p-1">
+        <div className="flex items-center gap-0.5 bg-[#252840] rounded-lg p-1">
           {DATE_RANGES.map((r) => (
             <button
               key={r.value}
               onClick={() => setDateRange(r.value)}
               className={cn(
-                "px-3 py-1 rounded-md text-xs font-medium transition-colors",
+                'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
                 dateRange === r.value
-                  ? "bg-primary text-white"
-                  : "text-slate-400 hover:text-slate-200"
+                  ? 'bg-primary text-white'
+                  : 'text-slate-400 hover:text-slate-200'
               )}
             >
               {r.label}
@@ -45,25 +70,57 @@ export function Topbar({ title }: TopbarProps) {
           ))}
         </div>
 
-        {/* Notifications */}
-        <button className="relative p-2 rounded-lg bg-[#252840] text-slate-400 hover:text-white transition-colors">
-          <Bell size={18} />
-          {criticalCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-              {criticalCount}
-            </span>
-          )}
-        </button>
+        {/* Notification bell */}
+        <div className="relative">
+          <button
+            onClick={() => {
+              setNotifOpen((o) => !o)
+              setUserMenuOpen(false)
+            }}
+            className="relative p-2 rounded-lg bg-[#252840] text-slate-400 hover:text-white transition-colors"
+          >
+            <Bell size={18} />
+            {unreadCount > 0 && (
+              <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 bg-danger text-white text-[10px] font-bold rounded-full flex items-center justify-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </span>
+            )}
+          </button>
+          <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+        </div>
 
-        {/* User */}
-        <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#252840] text-slate-300 hover:text-white transition-colors">
-          <div className="w-7 h-7 rounded-full bg-primary/30 text-primary flex items-center justify-center text-xs font-bold">
-            {userName ? userName[0].toUpperCase() : "K"}
-          </div>
-          <span className="text-sm font-medium">{userName || "Karim B."}</span>
-          <ChevronDown size={14} className="text-slate-500" />
-        </button>
+        {/* User button */}
+        <div className="relative">
+          <button
+            onClick={() => {
+              setUserMenuOpen((o) => !o)
+              setNotifOpen(false)
+            }}
+            className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-[#252840] text-slate-300 hover:text-white transition-colors"
+          >
+            <div className="w-7 h-7 rounded-full bg-primary/30 text-primary flex items-center justify-center text-xs font-bold shrink-0">
+              {initials}
+            </div>
+            <div className="text-left hidden sm:block">
+              <p className="text-xs font-medium text-white leading-none">{userName || '—'}</p>
+              <p className="text-[10px] text-slate-500 leading-none mt-0.5">{userRole || 'User'}</p>
+            </div>
+            <ChevronDown size={13} className="text-slate-500" />
+          </button>
+
+          {userMenuOpen && (
+            <div className="absolute right-0 top-full mt-2 w-40 bg-[#1E2030] border border-[#2D3050] rounded-xl shadow-2xl overflow-hidden z-50">
+              <button
+                onClick={handleLogout}
+                className="w-full flex items-center gap-2 px-4 py-3 text-sm text-red-400 hover:bg-[#252840] transition-colors"
+              >
+                <LogOut size={14} />
+                Sign out
+              </button>
+            </div>
+          )}
+        </div>
       </div>
     </header>
-  );
+  )
 }
