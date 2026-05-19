@@ -3,6 +3,7 @@ Staging assets — Yalidine Express API (5 endpoints → 5 staging tables).
 """
 
 import uuid
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import date, timedelta
 
 import psycopg2.extras
@@ -10,6 +11,8 @@ from dagster import asset, AssetExecutionContext, MaterializeResult, MetadataVal
 
 from ...resources.api_clients import YalidineAPIClient
 from ...resources.database import WarehousePostgresResource
+
+_HISTORY_WORKERS = 8  # parallel day-loaders for stg_yalidine_parcel_history
 
 
 @asset(group_name="staging", description="Load /yalidine/wilayas → stg_yalidine_wilayas")
@@ -183,58 +186,74 @@ def stg_yalidine_parcel_history(
         context.log.info("Staging parcel_history is already up to date.")
         return MaterializeResult(metadata={"row_count": MetadataValue.int(0)})
 
-    total_loaded = 0
+    days = []
     current = start_date
-
     while current <= end_date:
-        day_str = current.isoformat()
-        context.log.info(f"Loading parcel history for {day_str}")
-
-        # Delete existing records for this day to allow safe re-run
-        with warehouse_db.get_connection() as conn:
-            with conn.cursor() as cur:
-                cur.execute(
-                    "DELETE FROM warehouse.stg_yalidine_parcel_history "
-                    "WHERE date_statut::DATE = %s",
-                    (current,),
-                )
-
-        # Paginate through all events for this day
-        page = 1
-        day_count = 0
-        while True:
-            resp = yalidine_api.get_histories_page(day_str, day_str, page=page, limit=1000)
-            results = resp.get("results", [])
-            if not results:
-                break
-
-            records = [_history_to_row(r) for r in results if r.get("tracking")]
-
-            if records:
-                with warehouse_db.get_connection() as conn:
-                    warehouse_db.bulk_insert(conn, """
-                        INSERT INTO warehouse.stg_yalidine_parcel_history (
-                            source_id, date_statut, tracking, statut, current_status,
-                            hub_id, hub_name, seller_id, seller_company_id, seller_company_name,
-                            store_name, depart_wilaya_id, whois, whois_company_id,
-                            forced, forced_by, firstname, familyname,
-                            destination_commune_id, destination_wilaya_id, destination_hub_id,
-                            delivery_type, zone, delivery_fee, parcel_type
-                        ) VALUES %s
-                    """, records)
-                day_count += len(records)
-
-            pagination = resp.get("pagination", {})
-            if pagination.get("next_page") is None:
-                break
-            page += 1
-
-        total_loaded += day_count
-        context.log.info(f"  {day_str}: {day_count} events")
+        days.append(current)
         current += timedelta(days=1)
+
+    context.log.info(
+        f"Loading {len(days)} day(s) of parcel history "
+        f"({days[0]} → {days[-1]}) with {_HISTORY_WORKERS} workers"
+    )
+
+    total_loaded = 0
+    with ThreadPoolExecutor(max_workers=_HISTORY_WORKERS) as pool:
+        futures = {
+            pool.submit(_load_history_day, day, yalidine_api, warehouse_db): day
+            for day in days
+        }
+        for future in as_completed(futures):
+            day_str, count = future.result()   # re-raises any exception from the thread
+            context.log.info(f"  {day_str}: {count} events")
+            total_loaded += count
 
     context.log.info(f"Total parcel history events loaded: {total_loaded}")
     return MaterializeResult(metadata={"row_count": MetadataValue.int(total_loaded)})
+
+
+def _load_history_day(
+    day: date,
+    yalidine_api: YalidineAPIClient,
+    warehouse_db: WarehousePostgresResource,
+) -> tuple[str, int]:
+    """Load one day of parcel history (DELETE + paginate API + INSERT). Thread-safe."""
+    day_str = day.isoformat()
+
+    with warehouse_db.get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute(
+                "DELETE FROM warehouse.stg_yalidine_parcel_history WHERE date_statut::DATE = %s",
+                (day,),
+            )
+
+    page, day_count = 1, 0
+    while True:
+        resp = yalidine_api.get_histories_page(day_str, day_str, page=page, limit=1000)
+        results = resp.get("results", [])
+        if not results:
+            break
+
+        records = [_history_to_row(r) for r in results if r.get("tracking")]
+        if records:
+            with warehouse_db.get_connection() as conn:
+                warehouse_db.bulk_insert(conn, """
+                    INSERT INTO warehouse.stg_yalidine_parcel_history (
+                        source_id, date_statut, tracking, statut, current_status,
+                        hub_id, hub_name, seller_id, seller_company_id, seller_company_name,
+                        store_name, depart_wilaya_id, whois, whois_company_id,
+                        forced, forced_by, firstname, familyname,
+                        destination_commune_id, destination_wilaya_id, destination_hub_id,
+                        delivery_type, zone, delivery_fee, parcel_type
+                    ) VALUES %s
+                """, records)
+            day_count += len(records)
+
+        if resp.get("pagination", {}).get("next_page") is None:
+            break
+        page += 1
+
+    return day_str, day_count
 
 
 def _history_to_row(r: dict) -> tuple:

@@ -86,6 +86,14 @@ def fact_livraisons(
                     SELECT wilaya_id, tarif::NUMERIC(15,2) AS tarif_hd, tarif_stopdesk::NUMERIC(15,2) AS tarif_sd
                     FROM warehouse.stg_yalidine_pricing
                     WHERE service_type = 'livraison' AND is_active = TRUE
+                ),
+                -- hub_id is not unique in dim_agence (multiple agence_id may share one hub_id);
+                -- deduplicate so the JOIN below never fans out.
+                hub_agences AS (
+                    SELECT DISTINCT ON (hub_id) hub_id, agence_key
+                    FROM warehouse.dim_agence
+                    WHERE is_current = TRUE AND hub_id IS NOT NULL
+                    ORDER BY hub_id, agence_key
                 )
                 SELECT
                     dd_c.date_key                       AS date_creation_key,
@@ -122,8 +130,8 @@ def fact_livraisons(
                 LEFT JOIN warehouse.dim_date dd_l ON dd_l.full_date = pa.last_dt::DATE
                 LEFT JOIN is_terminal t ON t.statut_name = pa.current_status
                 -- Agency keys (current SCD2 rows)
-                LEFT JOIN warehouse.dim_agence ao ON ao.hub_id = pa.hub_id AND ao.is_current = TRUE
-                LEFT JOIN warehouse.dim_agence ad ON ad.hub_id = pa.dest_hub_id AND ad.is_current = TRUE
+                LEFT JOIN hub_agences ao ON ao.hub_id = pa.hub_id
+                LEFT JOIN hub_agences ad ON ad.hub_id = pa.dest_hub_id
                 -- Wilaya/commune keys
                 LEFT JOIN warehouse.dim_wilaya wo ON wo.wilaya_id = pa.depart_wilaya_id
                 LEFT JOIN warehouse.dim_wilaya wd ON wd.wilaya_id = pa.dest_wilaya_id
@@ -350,7 +358,10 @@ def fact_bulletins_salaire(
                     jours_travailles, jours_absence, jours_conge, jours_maladie,
                     heures_normales, heures_sup
                 )
-                SELECT
+                -- DISTINCT ON prevents CardinalityViolation when dim_occupation has multiple rows
+                -- for the same occupation_name (one per company/service). ORDER BY bulletin_id DESC
+                -- keeps the latest bulletin when an employee has multiple for the same period.
+                SELECT DISTINCT ON (emp.employee_key, s.period_month, s.period_year)
                     dd.date_key,
                     s.period_month, s.period_year,
                     emp.employee_key,
@@ -374,6 +385,7 @@ def fact_bulletins_salaire(
                 JOIN warehouse.dim_company dc ON dc.company_id = s.company_id
                 JOIN warehouse.dim_occupation occ ON occ.occupation_name = s.occupation
                 WHERE dc.company_id != 9
+                ORDER BY emp.employee_key, s.period_month, s.period_year, s.bulletin_id DESC
 
                 ON CONFLICT (employee_key, period_month, period_year) DO UPDATE SET
                     net_a_payer              = EXCLUDED.net_a_payer,
@@ -426,6 +438,12 @@ def fact_transport(
                     fragile, hazardous, requires_clark, requires_packaging,
                     is_night_shift, return_trip, on_time
                 )
+                WITH hub_agences AS (
+                    SELECT DISTINCT ON (hub_id) hub_id, agence_key
+                    FROM warehouse.dim_agence
+                    WHERE is_current = TRUE AND hub_id IS NOT NULL
+                    ORDER BY hub_id, agence_key
+                )
                 SELECT
                     dd_c.date_key,
                     dd_cp.date_key,
@@ -454,8 +472,7 @@ def fact_transport(
                 FROM warehouse.stg_transport_requests s
                 JOIN warehouse.dim_date dd_c ON dd_c.full_date = s.created_at_src::DATE
                 LEFT JOIN warehouse.dim_date dd_cp ON dd_cp.full_date = s.completed_at::DATE
-                LEFT JOIN warehouse.dim_agence a
-                    ON a.hub_id = s.dispatched_from_hub_id AND a.is_current = TRUE
+                LEFT JOIN hub_agences a ON a.hub_id = s.dispatched_from_hub_id
                 JOIN warehouse.dim_wilaya wd ON wd.wilaya_id = s.depart_wilaya_id
                 JOIN warehouse.dim_wilaya wa ON wa.wilaya_id = s.arrival_wilaya_id
                 LEFT JOIN warehouse.dim_commune cd ON cd.commune_id = s.depart_commune_id
