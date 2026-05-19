@@ -27,6 +27,7 @@ media/
 .tmp_dagster_home_*/
 dagster_home/
 logiq/dagster/.tmp_dagster_home_*/
+logiq/dagster/.tmp_dagster_home_gkdv8443
 .dagster/
 storage/
 *.db
