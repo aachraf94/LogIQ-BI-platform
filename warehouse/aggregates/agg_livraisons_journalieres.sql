@@ -89,7 +89,7 @@ COMMENT ON MATERIALIZED VIEW warehouse.agg_livraisons_journalieres IS
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_agg_lj_unique
     ON warehouse.agg_livraisons_journalieres
-    (full_date, agence_id, delivery_type, status_group);
+    (full_date, agence_id, COALESCE(delivery_type, ''), status_group);
 
 CREATE INDEX IF NOT EXISTS idx_agg_lj_date        ON warehouse.agg_livraisons_journalieres (full_date);
 CREATE INDEX IF NOT EXISTS idx_agg_lj_year_month  ON warehouse.agg_livraisons_journalieres (year, month_num);

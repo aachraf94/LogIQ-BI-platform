@@ -14,14 +14,15 @@ from dagster import asset, AssetExecutionContext, MaterializeResult, MetadataVal
 from ...resources.database import WarehousePostgresResource
 
 # Wilaya → administrative region mapping (58 Algerian wilayas)
+# HP-14 follows the official HCDS (Hauts Commissariat au Développement des Steppes)
+# administrative perimeter. Sud = Saharan wilayas. Nord = Tell + all remaining wilayas.
 _WILAYA_REGIONS: dict = {
     **{w: "Nord" for w in [
-        2, 4, 5, 6, 8, 9, 11, 12, 13, 14, 15, 17, 18,
-        21, 22, 23, 24, 25, 26, 27, 29, 31, 34, 35, 36,
-        38, 40, 41, 42, 43, 44, 46, 48,
+        2, 6, 9, 10, 13, 15, 16, 18, 21, 22, 23, 24, 25, 26,
+        27, 29, 31, 35, 36, 41, 42, 43, 44, 46, 48,
     ]},
-    **{w: "Hauts Plateaux" for w in [3, 16, 19, 28, 32, 33, 39, 45, 47]},
-    **{w: "Sud" for w in [1, 7, 10, 20, 30, 37, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58]},
+    **{w: "Hauts Plateaux" for w in [3, 4, 5, 12, 14, 17, 19, 20, 28, 32, 34, 38, 40, 45]},
+    **{w: "Sud" for w in [1, 7, 8, 11, 30, 33, 37, 39, 47, 49, 50, 51, 52, 53, 54, 55, 56, 57, 58]},
 }
 
 
@@ -92,14 +93,16 @@ def dim_commune(
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO warehouse.dim_commune (commune_id, nom, wilaya_key)
-                SELECT s.commune_id, s.nom, d.wilaya_key
+                INSERT INTO warehouse.dim_commune (commune_id, nom, wilaya_key, wilaya_id, code_postal, has_stop_desk)
+                SELECT s.commune_id, s.nom, d.wilaya_key, s.wilaya_id, s.code_postal, (s.has_stop_desk != 0)
                 FROM warehouse.stg_yalidine_communes s
                 JOIN warehouse.dim_wilaya d ON s.wilaya_id = d.wilaya_id
                 ON CONFLICT (commune_id) DO UPDATE SET
-                    nom        = EXCLUDED.nom,
-                    wilaya_key = EXCLUDED.wilaya_key,
-                    updated_at = NOW()
+                    nom          = EXCLUDED.nom,
+                    wilaya_key   = EXCLUDED.wilaya_key,
+                    wilaya_id    = EXCLUDED.wilaya_id,
+                    has_stop_desk= EXCLUDED.has_stop_desk,
+                    updated_at   = NOW()
             """)
             n = cur.rowcount
     context.log.info(f"Upserted {n} communes")
@@ -118,12 +121,18 @@ def dim_occupation(
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO warehouse.dim_occupation (occupation_name, service_name)
-                SELECT DISTINCT name, service_name
-                FROM warehouse.stg_hrforce_occupations
-                ON CONFLICT (occupation_name) DO UPDATE SET
-                    service_name = EXCLUDED.service_name,
-                    updated_at   = NOW()
+                INSERT INTO warehouse.dim_occupation (occupation_id, occupation_name, service_name, department_name, company_key)
+                SELECT DISTINCT ON (o.occupation_id)
+                    o.occupation_id, o.name, o.service_name, o.department_name, dc.company_key
+                FROM warehouse.stg_hrforce_occupations o
+                JOIN warehouse.dim_company dc ON dc.company_id = o.company_id
+                WHERE o.company_id != 9
+                ORDER BY o.occupation_id
+                ON CONFLICT (occupation_id) DO UPDATE SET
+                    occupation_name = EXCLUDED.occupation_name,
+                    service_name    = EXCLUDED.service_name,
+                    department_name = EXCLUDED.department_name,
+                    updated_at      = NOW()
             """)
             n = cur.rowcount
     context.log.info(f"Upserted {n} occupations")
@@ -132,7 +141,7 @@ def dim_occupation(
 
 @asset(
     group_name="dimensions",
-    deps=["stg_hrforce_agencies", "stg_yalidine_centers", "dim_company", "dim_wilaya"],
+    deps=["stg_hrforce_agencies", "stg_yalidine_centers", "dim_company", "dim_wilaya", "dim_commune"],
     description=(
         "SCD Type 2: merge stg_hrforce_agencies + stg_yalidine_centers → dim_agence. "
         "Tracked attributes: name, type, address."
@@ -151,7 +160,11 @@ def dim_agence(
             NULLIF(a.code_yal_two, '') AS code_yal_two,
             COALESCE(c.address, a.address) AS address,
             a.company_id,
-            COALESCE(c.wilaya_id, NULLIF(a.state_code, '')::INTEGER) AS wilaya_id
+            COALESCE(c.wilaya_id, NULLIF(a.state_code, '')::INTEGER) AS wilaya_id,
+            c.commune_id,
+            COALESCE(c.service_stopdesk, 0)    AS service_stopdesk,
+            COALESCE(c.service_depot_colis, 0) AS service_depot_colis,
+            c.gps
         FROM warehouse.stg_hrforce_agencies a
         LEFT JOIN warehouse.stg_yalidine_centers c
             ON NULLIF(a.code_yal, '') IS NOT NULL
@@ -160,7 +173,7 @@ def dim_agence(
     """)
 
     current_rows = warehouse_db.fetch_all(
-        "SELECT agence_key, agency_id, name, type, address FROM warehouse.dim_agence WHERE is_current = TRUE"
+        "SELECT agence_key, agence_id, name, type, address FROM warehouse.dim_agence WHERE is_current = TRUE"
     )
     current = {
         int(r[1]): {"agence_key": r[0], "name": r[2], "type": r[3], "address": r[4]}
@@ -170,23 +183,36 @@ def dim_agence(
     company_map = dict(warehouse_db.fetch_all(
         "SELECT company_id, company_key FROM warehouse.dim_company"
     ))
-    wilaya_map = dict(warehouse_db.fetch_all(
-        "SELECT wilaya_id, wilaya_key FROM warehouse.dim_wilaya"
-    ))
+    wilaya_rows = warehouse_db.fetch_all(
+        "SELECT wilaya_id, wilaya_key, wilaya_name FROM warehouse.dim_wilaya"
+    )
+    wilaya_map = {int(r[0]): r[1] for r in wilaya_rows}
+    wilaya_name_map = {int(r[0]): r[2] for r in wilaya_rows}
+    commune_map = {int(r[0]): r[1] for r in warehouse_db.fetch_all(
+        "SELECT commune_id, commune_key FROM warehouse.dim_commune"
+    )}
+
+    _NON_OPERATIONAL = {'Direction générale', 'Direction régionale', 'Sous direction', 'Parc', 'Call center'}
 
     to_close, to_insert = [], []
     today = date.today()
 
     for row in source_rows:
-        agence_id, hub_id, name, type_, code, code_yal, code_yal_two, address, company_id, wilaya_id = row
+        (agence_id, hub_id, name, type_, code, code_yal, code_yal_two, address,
+         company_id, wilaya_id, commune_id, service_stopdesk, service_depot_colis, gps) = row
         agence_id = int(agence_id)
         company_key = company_map.get(int(company_id)) if company_id else None
         wilaya_key = wilaya_map.get(int(wilaya_id)) if wilaya_id else None
-        if not company_key or not wilaya_key:
+        wname = wilaya_name_map.get(int(wilaya_id)) if wilaya_id else None
+        commune_key = commune_map.get(int(commune_id)) if commune_id else None
+        is_operational = type_ not in _NON_OPERATIONAL
+        if not company_key or not wilaya_key or not wname:
             continue
 
         ins = (agence_id, hub_id, name, type_, code, code_yal, code_yal_two,
-               address, company_key, wilaya_key, today, None, True)
+               address, company_key, wilaya_key, commune_key, int(wilaya_id), wname, int(company_id),
+               is_operational, bool(service_stopdesk), bool(service_depot_colis), gps,
+               today, None, True)
 
         if agence_id not in current:
             to_insert.append(ins)
@@ -208,7 +234,9 @@ def dim_agence(
                 psycopg2.extras.execute_values(cur, """
                     INSERT INTO warehouse.dim_agence (
                         agence_id, hub_id, name, type, code, code_yal, code_yal_two,
-                        address, company_key, wilaya_key, valid_from, valid_to, is_current
+                        address, company_key, wilaya_key, commune_key, wilaya_id, wilaya_name, company_id,
+                        is_operational, service_stopdesk, service_depot_colis, gps,
+                        valid_from, valid_to, is_current
                     ) VALUES %s
                 """, to_insert)
 
@@ -232,7 +260,7 @@ def dim_employee(
     warehouse_db: WarehousePostgresResource,
 ) -> MaterializeResult:
     source_rows = warehouse_db.fetch_all("""
-        SELECT u.user_id, u.family_name, u.first_name,
+        SELECT u.user_id, u.code, u.family_name, u.first_name,
                u.family_name || ' ' || u.first_name AS full_name,
                u.email, u.status, u.role, u.is_supervisor,
                u.company_id, u.agency_id, u.occupation_name
@@ -251,7 +279,7 @@ def dim_employee(
     }
 
     agence_map = dict(warehouse_db.fetch_all(
-        "SELECT agency_id, agence_key FROM warehouse.dim_agence WHERE is_current = TRUE"
+        "SELECT agence_id, agence_key FROM warehouse.dim_agence WHERE is_current = TRUE"
     ))
     occ_map = dict(warehouse_db.fetch_all(
         "SELECT occupation_name, occupation_key FROM warehouse.dim_occupation"
@@ -264,7 +292,7 @@ def dim_employee(
     today = date.today()
 
     for row in source_rows:
-        uid, family, first, full, email, status, role, is_sup, company_id, agency_id, occ_name = row
+        uid, code, family, first, full, email, status, role, is_sup, company_id, agency_id, occ_name = row
         uid = int(uid)
         company_key = company_map.get(int(company_id)) if company_id else None
         agence_key = agence_map.get(int(agency_id)) if agency_id else None
@@ -272,8 +300,12 @@ def dim_employee(
         if not company_key:
             continue
 
-        ins = (uid, family, first, full, email, status, role, bool(is_sup),
-               agence_key, occ_key, company_key, today, None, True)
+        ins = (uid, family, first, full, email, code or f"{uid}-{family.upper()}",
+               status, role, bool(is_sup),
+               agence_key, int(agency_id) if agency_id else None,
+               occ_key, occ_name,
+               company_key, int(company_id),
+               today, None, True)
 
         if uid not in current:
             to_insert.append(ins)
@@ -281,8 +313,8 @@ def dim_employee(
             old = current[uid]
             if (status != old["status"] or role != old["role"]
                     or bool(is_sup) != bool(old["is_supervisor"])
-                    or agence_key != old["agence_key"]
-                    or occ_key != old["occupation_key"]):
+                    or agence_key != old.get("agence_key")
+                    or occ_key != old.get("occupation_key")):
                 to_close.append(old["employee_key"])
                 to_insert.append(ins)
 
@@ -297,9 +329,9 @@ def dim_employee(
             if to_insert:
                 psycopg2.extras.execute_values(cur, """
                     INSERT INTO warehouse.dim_employee (
-                        employee_id, family_name, first_name, full_name, email,
+                        employee_id, family_name, first_name, full_name, email, employee_code,
                         status, role, is_supervisor,
-                        agence_key, occupation_key, company_key,
+                        agence_key, agence_id, occupation_key, occupation_name, company_key, company_id,
                         valid_from, valid_to, is_current
                     ) VALUES %s
                 """, to_insert)
@@ -326,18 +358,26 @@ def dim_freelance_driver(
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO warehouse.dim_freelance_driver (livreur_id, vehicule_type, agence_key)
+                INSERT INTO warehouse.dim_freelance_driver (
+                    livreur_id, nom, prenom, full_name, phone, vehicule_type, agence_key, agence_id
+                )
                 SELECT DISTINCT ON (p.livreur_id)
                     p.livreur_id,
+                    p.livreur_nom,
+                    p.livreur_prenom,
+                    p.livreur_nom || ' ' || p.livreur_prenom,
+                    p.livreur_phone,
                     p.livreur_vehicule_type,
-                    a.agence_key
+                    a.agence_key,
+                    p.agence_id
                 FROM warehouse.stg_cashbox_paiements_livreurs p
-                LEFT JOIN warehouse.dim_agence a
-                    ON a.agency_id = p.agence_id AND a.is_current = TRUE
+                INNER JOIN warehouse.dim_agence a
+                    ON a.agence_id = p.agence_id AND a.is_current = TRUE
                 ORDER BY p.livreur_id, p.date_paiement DESC
                 ON CONFLICT (livreur_id) DO UPDATE SET
                     vehicule_type = EXCLUDED.vehicule_type,
                     agence_key    = EXCLUDED.agence_key,
+                    agence_id     = EXCLUDED.agence_id,
                     updated_at    = NOW()
             """)
             n = cur.rowcount

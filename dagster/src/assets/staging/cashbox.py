@@ -3,6 +3,7 @@ Staging assets — CashBox expense management API (5 endpoints → 6 staging tab
 natures and rubriques come from the same API endpoint but load into separate tables.
 """
 
+import json
 import uuid
 
 from dagster import asset, AssetExecutionContext, MaterializeResult, MetadataValue
@@ -196,7 +197,7 @@ def stg_cashbox_paiements_livreurs(
             int(p["activite"].get("nbr_colis_echoues", 0)),
             int(p["activite"].get("nbr_jours_travailles", 0)),
             int(p["activite"].get("nbr_tournees", 0)),
-            p["activite"].get("zones_couvertes"),
+            json.dumps(p["activite"].get("zones_couvertes") or []),
             p["remuneration"].get("tarif_par_colis"),
             p["remuneration"].get("tarif_par_colis_echoue"),
             p["remuneration"].get("montant_colis_livres"),
@@ -282,6 +283,12 @@ def stg_cashbox_remboursements(
         for r in remboursements
         if r.get("remboursement_id") and r.get("colis") and r.get("agence_responsable")
     ]
+
+    # Deduplicate within batch — API sometimes returns the same remboursement_id twice
+    seen: dict = {}
+    for rec in records:
+        seen[rec[0]] = rec
+    records = list(seen.values())
 
     with warehouse_db.get_connection() as conn:
         warehouse_db.bulk_insert(conn, """

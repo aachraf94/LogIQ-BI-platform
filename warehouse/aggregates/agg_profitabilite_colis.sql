@@ -64,7 +64,7 @@ SELECT
                                             AS nbr_sous_tarif,      -- below pricing grid
     COUNT(*) FILTER (WHERE fl.ecart_tarif_dzd > 0)
                                             AS nbr_sur_tarif,       -- above pricing grid (overcharge)
-    COUNT(*) FILTER (WHERE fl.ecart_tarif_dzd = 0 OR fl.ecart_tarif_dzd IS NULL AND fl.tarif_theorique IS NOT NULL)
+    COUNT(*) FILTER (WHERE fl.ecart_tarif_dzd = 0 OR (fl.ecart_tarif_dzd IS NULL AND fl.tarif_theorique IS NOT NULL))
                                             AS nbr_au_tarif,        -- exactly on grid
 
     -- Average deviation magnitude (absolute) — for alerting threshold calibration

@@ -51,7 +51,7 @@ def stg_yalidine_communes(
 
     records = [
         (
-            int(c["id"]) if "id" in c else hash(f"{c['wilaya_id']}-{c['nom']}") % 1_000_000,
+            int(c["id"]),
             c["nom"],
             int(c["wilaya_id"]),
             c.get("code_postal"),
@@ -59,7 +59,7 @@ def stg_yalidine_communes(
             batch_id,
         )
         for c in communes
-        if c.get("wilaya_id") and c.get("nom")
+        if c.get("id") and c.get("wilaya_id") and c.get("nom")
     ]
 
     with warehouse_db.get_connection() as conn:

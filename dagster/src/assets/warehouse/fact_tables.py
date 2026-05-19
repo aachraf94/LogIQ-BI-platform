@@ -141,6 +141,7 @@ def fact_livraisons(
                 WHERE dd_c.date_key IS NOT NULL
                   AND sc.statut_key IS NOT NULL
                   AND dc.company_key IS NOT NULL
+                  AND ao.agence_key IS NOT NULL
 
                 ON CONFLICT (tracking) DO UPDATE SET
                     date_livraison_key     = EXCLUDED.date_livraison_key,
@@ -173,27 +174,35 @@ def fact_depenses(
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO warehouse.fact_depenses (
-                    date_depense_key, agence_key, company_key, nature_depense_key,
-                    employee_requester_key, depense_id, status, montant
+                    date_depense_key, date_creation_key, agence_key, company_key, nature_depense_key,
+                    employee_requester_key, employee_validator_key,
+                    depense_id, status, mode_paiement, montant, quantite
                 )
                 SELECT
                     dd.date_key,
+                    dd_c.date_key,
                     a.agence_key,
                     dc.company_key,
                     nd.nature_depense_key,
-                    emp.employee_key,
+                    emp_req.employee_key,
+                    emp_val.employee_key,
                     s.depense_id,
                     s.status,
-                    s.montant
+                    s.mode_paiement,
+                    s.montant,
+                    s.quantite
                 FROM warehouse.stg_cashbox_depenses s
-                JOIN warehouse.dim_date dd ON dd.full_date = s.date_depense
-                JOIN warehouse.dim_agence a ON a.agency_id = s.agence_id AND a.is_current = TRUE
+                JOIN warehouse.dim_date dd   ON dd.full_date   = s.date_depense
+                JOIN warehouse.dim_date dd_c ON dd_c.full_date = s.created_at_src::DATE
+                JOIN warehouse.dim_agence a ON a.agence_id = s.agence_id AND a.is_current = TRUE
                 JOIN warehouse.dim_company dc ON dc.company_id = s.entreprise_id
-                LEFT JOIN warehouse.dim_nature_depense nd
+                JOIN warehouse.dim_nature_depense nd
                     ON nd.nature_id = s.nature_id
                     AND (nd.rubrique_id = s.rubrique_id OR (nd.rubrique_id IS NULL AND s.rubrique_id IS NULL))
-                LEFT JOIN warehouse.dim_employee emp
-                    ON emp.employee_id = s.requested_by_user_id AND emp.is_current = TRUE
+                LEFT JOIN warehouse.dim_employee emp_req
+                    ON emp_req.employee_id = s.requested_by_user_id AND emp_req.is_current = TRUE
+                LEFT JOIN warehouse.dim_employee emp_val
+                    ON emp_val.employee_id = s.validated_by_user_id AND emp_val.is_current = TRUE
                 WHERE dc.company_id != 9
 
                 ON CONFLICT (depense_id) DO UPDATE SET
@@ -219,20 +228,37 @@ def fact_remboursements(
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO warehouse.fact_remboursements (
-                    date_remboursement_key, agence_key,
-                    sinistre_type, declared_value, montant_rembourse
+                    date_remboursement_key, agence_key, company_key,
+                    employee_validator_key,
+                    remboursement_id, colis_tracking, sinistre_type, mode_paiement,
+                    declared_value, montant_rembourse,
+                    taux_remboursement
                 )
                 SELECT
                     dd.date_key,
                     a.agence_key,
+                    dc.company_key,
+                    emp.employee_key,
+                    s.remboursement_id,
+                    s.colis_tracking,
                     s.sinistre_type,
+                    s.mode_paiement,
                     s.declared_value,
-                    s.montant_rembourse
+                    s.montant_rembourse,
+                    CASE WHEN s.declared_value > 0
+                        THEN ROUND(s.montant_rembourse / s.declared_value * 100, 2)
+                    END
                 FROM warehouse.stg_cashbox_remboursements s
                 JOIN warehouse.dim_date dd ON dd.full_date = s.date_remboursement
-                JOIN warehouse.dim_agence a ON a.agency_id = s.agence_responsable_id AND a.is_current = TRUE
+                JOIN warehouse.dim_agence a ON a.agence_id = s.agence_responsable_id AND a.is_current = TRUE
+                JOIN warehouse.dim_company dc ON dc.company_key = a.company_key
+                LEFT JOIN warehouse.dim_employee emp
+                    ON emp.employee_id = s.validated_by_user_id AND emp.is_current = TRUE
 
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (remboursement_id) DO UPDATE SET
+                    montant_rembourse  = EXCLUDED.montant_rembourse,
+                    taux_remboursement = EXCLUDED.taux_remboursement,
+                    updated_at         = NOW()
             """)
             n = cur.rowcount
     context.log.info(f"Inserted {n} remboursements")
@@ -252,21 +278,47 @@ def fact_paiements_livreurs(
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO warehouse.fact_paiements_livreurs (
-                    date_paiement_key, agence_key, driver_key,
-                    nbr_colis_livres, total_net
+                    date_paiement_key, date_debut_periode_key, date_fin_periode_key,
+                    agence_key, driver_key, employee_validator_key,
+                    paiement_id, mode_paiement,
+                    nbr_colis_livres, nbr_colis_echoues, nbr_jours_travailles, nbr_tournees,
+                    tarif_par_colis, tarif_par_colis_echoue,
+                    montant_colis_livres, montant_colis_echoues,
+                    prime_rendement, deductions, total_brut, total_net
                 )
                 SELECT
                     dd.date_key,
+                    dd_debut.date_key,
+                    dd_fin.date_key,
                     a.agence_key,
                     drv.driver_key,
+                    emp_val.employee_key,
+                    s.paiement_id,
+                    s.mode_paiement,
                     s.nbr_colis_livres,
+                    s.nbr_colis_echoues,
+                    s.nbr_jours_travailles,
+                    s.nbr_tournees,
+                    s.tarif_par_colis,
+                    s.tarif_par_colis_echoue,
+                    s.montant_colis_livres,
+                    s.montant_colis_echoues,
+                    s.prime_rendement,
+                    COALESCE(s.deductions, 0),
+                    s.total_brut,
                     s.total_net
                 FROM warehouse.stg_cashbox_paiements_livreurs s
-                JOIN warehouse.dim_date dd ON dd.full_date = s.date_paiement
-                JOIN warehouse.dim_agence a ON a.agency_id = s.agence_id AND a.is_current = TRUE
+                JOIN warehouse.dim_date dd       ON dd.full_date       = s.date_paiement
+                JOIN warehouse.dim_date dd_debut ON dd_debut.full_date = s.period_from
+                JOIN warehouse.dim_date dd_fin   ON dd_fin.full_date   = s.period_to
+                JOIN warehouse.dim_agence a ON a.agence_id = s.agence_id AND a.is_current = TRUE
                 JOIN warehouse.dim_freelance_driver drv ON drv.livreur_id = s.livreur_id
+                LEFT JOIN warehouse.dim_employee emp_val
+                    ON emp_val.employee_id = s.validated_by_user_id AND emp_val.is_current = TRUE
 
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (paiement_id) DO UPDATE SET
+                    total_net  = EXCLUDED.total_net,
+                    updated_at = NOW()
             """)
             n = cur.rowcount
     context.log.info(f"Inserted {n} paiements livreurs")
@@ -286,44 +338,49 @@ def fact_bulletins_salaire(
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO warehouse.fact_bulletins_salaire (
-                    date_paiement_key, employee_key, agence_key, company_key, occupation_key,
-                    period_month, period_year,
+                    date_paiement_key, period_month, period_year,
+                    employee_key, agence_key, company_key, occupation_key,
+                    bulletin_id, contract_type, regime, mode_paiement,
+                    seniority_years, seniority_months,
                     base_salary, anciennete, prime_rendement, prime_panier,
-                    prime_transport, heures_sup_amount, total_brut,
-                    cotisation_securite_sociale, irg, total_deductions,
+                    prime_transport, heures_sup_amount, heures_sup_hours, autres_primes, total_brut,
+                    cotisation_securite_sociale, irg, autres_retenues, total_deductions,
                     cotisation_patronale_cnas, cotisation_retraite, accident_travail,
                     total_charges_patronales, net_a_payer,
                     jours_travailles, jours_absence, jours_conge, jours_maladie,
-                    contract_type, regime
+                    heures_normales, heures_sup
                 )
                 SELECT
                     dd.date_key,
+                    s.period_month, s.period_year,
                     emp.employee_key,
                     a.agence_key,
                     dc.company_key,
                     occ.occupation_key,
-                    s.period_month, s.period_year,
+                    s.bulletin_id,
+                    s.contract_type, s.regime, s.mode_paiement,
+                    s.seniority_years, s.seniority_months,
                     s.base_salary, s.anciennete, s.prime_rendement, s.prime_panier,
-                    s.prime_transport, s.heures_sup_amount, s.total_brut,
-                    s.cotisation_securite_sociale, s.irg, s.total_deductions,
+                    s.prime_transport, s.heures_sup_amount, s.heures_sup_hours, s.autres_primes, s.total_brut,
+                    s.cotisation_securite_sociale, s.irg, s.autres_retenues, s.total_deductions,
                     s.cotisation_patronale_cnas, s.cotisation_retraite, s.accident_travail,
                     s.total_charges_patronales, s.net_a_payer,
                     s.jours_travailles, s.jours_absence, s.jours_conge, s.jours_maladie,
-                    s.contract_type, s.regime
+                    s.heures_normales, s.heures_sup
                 FROM warehouse.stg_paie_bulletins s
                 JOIN warehouse.dim_date dd ON dd.full_date = s.payment_date
                 JOIN warehouse.dim_employee emp ON emp.employee_id = s.employee_id AND emp.is_current = TRUE
-                JOIN warehouse.dim_agence a ON a.agency_id = s.agency_id AND a.is_current = TRUE
+                JOIN warehouse.dim_agence a ON a.agence_id = s.agency_id AND a.is_current = TRUE
                 JOIN warehouse.dim_company dc ON dc.company_id = s.company_id
-                LEFT JOIN warehouse.dim_occupation occ ON occ.occupation_name = s.occupation
+                JOIN warehouse.dim_occupation occ ON occ.occupation_name = s.occupation
                 WHERE dc.company_id != 9
 
                 ON CONFLICT (employee_key, period_month, period_year) DO UPDATE SET
-                    net_a_payer            = EXCLUDED.net_a_payer,
-                    total_brut             = EXCLUDED.total_brut,
+                    net_a_payer              = EXCLUDED.net_a_payer,
+                    total_brut               = EXCLUDED.total_brut,
                     total_charges_patronales = EXCLUDED.total_charges_patronales,
-                    jours_absence          = EXCLUDED.jours_absence,
-                    updated_at             = NOW()
+                    jours_absence            = EXCLUDED.jours_absence,
+                    updated_at               = NOW()
             """)
             n = cur.rowcount
     context.log.info(f"Upserted {n} bulletins salaire")
@@ -438,19 +495,27 @@ def fact_transferts_caisse(
         with conn.cursor() as cur:
             cur.execute("""
                 INSERT INTO warehouse.fact_transferts_caisse (
-                    date_transfert_key, agence_source_key, agence_destination_key, montant
+                    date_transfert_key, agence_source_key, agence_destination_key,
+                    employee_validator_key, transfert_id, banque_name, montant
                 )
                 SELECT
                     dd.date_key,
                     asrc.agence_key,
                     adst.agence_key,
+                    emp.employee_key,
+                    s.transfert_id,
+                    s.banque_name,
                     s.montant
                 FROM warehouse.stg_cashbox_transferts s
                 JOIN warehouse.dim_date dd ON dd.full_date = s.date_transfert
-                JOIN warehouse.dim_agence asrc ON asrc.agency_id = s.agence_source_id AND asrc.is_current = TRUE
-                JOIN warehouse.dim_agence adst ON adst.agency_id = s.agence_dest_id AND adst.is_current = TRUE
+                JOIN warehouse.dim_agence asrc ON asrc.agence_id = s.agence_source_id AND asrc.is_current = TRUE
+                JOIN warehouse.dim_agence adst ON adst.agence_id = s.agence_dest_id AND adst.is_current = TRUE
+                LEFT JOIN warehouse.dim_employee emp
+                    ON emp.employee_id = s.validated_by_user_id AND emp.is_current = TRUE
 
-                ON CONFLICT DO NOTHING
+                ON CONFLICT (transfert_id) DO UPDATE SET
+                    montant    = EXCLUDED.montant,
+                    updated_at = NOW()
             """)
             n = cur.rowcount
     context.log.info(f"Inserted {n} transferts caisse")

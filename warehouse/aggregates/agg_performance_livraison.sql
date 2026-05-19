@@ -100,7 +100,7 @@ COMMENT ON MATERIALIZED VIEW warehouse.agg_performance_livraison IS
     'Monthly delivery performance rates (taux livraison, echec, retour) and revenue KPIs per agency.';
 
 CREATE UNIQUE INDEX IF NOT EXISTS idx_agg_perf_unique
-    ON warehouse.agg_performance_livraison (year, month_num, agence_id, delivery_type);
+    ON warehouse.agg_performance_livraison (year, month_num, agence_id, COALESCE(delivery_type, ''));
 
 CREATE INDEX IF NOT EXISTS idx_agg_perf_year_month ON warehouse.agg_performance_livraison (year, month_num);
 CREATE INDEX IF NOT EXISTS idx_agg_perf_agence     ON warehouse.agg_performance_livraison (agence_id);
