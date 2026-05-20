@@ -5,11 +5,15 @@ All views require JWT authentication. Queries run against the warehouse
 PostgreSQL database via the LogiqDBRouter / direct connections['warehouse'].
 """
 
+import logging
+
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .queries import transport as tq
+
+logger = logging.getLogger(__name__)
 
 
 # ─── Transport ────────────────────────────────────────────────────────────────
@@ -33,6 +37,7 @@ class TransportSummaryView(APIView):
             )
             return Response(data)
         except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
@@ -55,6 +60,7 @@ class TransportTrendsView(APIView):
             )
             return Response(data)
         except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
@@ -77,6 +83,7 @@ class TransportCostBreakdownView(APIView):
             )
             return Response(data)
         except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
@@ -98,6 +105,7 @@ class TransportByServiceView(APIView):
             )
             return Response(data)
         except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
@@ -118,6 +126,7 @@ class TransportByVehicleView(APIView):
             )
             return Response(data)
         except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
@@ -143,6 +152,7 @@ class TransportCorridorsView(APIView):
             )
             return Response(data)
         except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
@@ -163,6 +173,7 @@ class TransportODMatrixView(APIView):
             )
             return Response(data)
         except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
@@ -185,6 +196,7 @@ class TransportByAgencyView(APIView):
             )
             return Response(data)
         except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
@@ -207,4 +219,5 @@ class TransportDelayDistributionView(APIView):
             )
             return Response(data)
         except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)

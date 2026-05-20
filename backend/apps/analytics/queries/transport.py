@@ -466,7 +466,7 @@ def get_delay_distribution(year=None, month=None, service_type=None):
     if service_type and service_type != "all":
         conds.append("ft.service_type = %s")
         args.append(service_type)
-    w = "AND ".join(conds)
+    w = " AND ".join(conds)
 
     sql = f"""
         WITH bucketed AS (
