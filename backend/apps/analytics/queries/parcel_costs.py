@@ -466,7 +466,7 @@ def get_ecart_distribution(year, month, agence_id=None):
     args = [int(year), int(month)]
     if agence_id:
         # dim_agence.agency_id is the HRForce business key
-        conds.append("da.agency_id = %s")
+        conds.append("da.agence_id = %s")
         args.append(int(agence_id))
 
     agence_join = (
@@ -527,7 +527,7 @@ def get_pcc_by_wilaya(year, month, agence_id=None):
     conds = ["d.year = %s", "d.month_num = %s", "fl.wilaya_destination_key IS NOT NULL"]
     args = [int(year), int(month)]
     if agence_id:
-        conds.append("da.agency_id = %s")
+        conds.append("da.agence_id = %s")
         args.append(int(agence_id))
 
     agence_join = (
@@ -597,7 +597,7 @@ def get_cost_structure(year=None, month=None, company_id=None, agence_id=None):
         sin_conds.append("d.month_num = %s")
         sin_args.append(int(month))
     if agence_id:
-        sin_conds.append("da.agency_id = %s")
+        sin_conds.append("da.agence_id = %s")
         sin_args.append(int(agence_id))
     sin_w = "AND " + " AND ".join(sin_conds) if sin_conds else ""
 
@@ -835,7 +835,7 @@ def get_duration_distribution(year, month, agence_id=None, delivery_type=None):
              "fl.duree_livraison_minutes IS NOT NULL"]
     args = [int(year), int(month)]
     if agence_id:
-        conds.append("da.agency_id = %s")
+        conds.append("da.agence_id = %s")
         args.append(int(agence_id))
     if delivery_type and delivery_type in ("HD", "SD"):
         conds.append("fl.delivery_type = %s")
@@ -898,7 +898,7 @@ def get_sinistres(year=None, month=None, agence_id=None):
         conds.append("d.month_num = %s")
         args.append(int(month))
     if agence_id:
-        conds.append("da.agency_id = %s")
+        conds.append("da.agence_id = %s")
         args.append(int(agence_id))
     w = ("AND " + " AND ".join(conds)) if conds else ""
 
@@ -932,7 +932,7 @@ def get_sinistres(year=None, month=None, agence_id=None):
 
     by_agency_sql = f"""
         SELECT
-            da.agency_id                                                                AS agence_id,
+            da.agence_id                                                                AS agence_id,
             da.name                                                                     AS agence_nom,
             dw.wilaya_name,
             COUNT(*)                                                                    AS nbr_sinistres,
@@ -943,7 +943,7 @@ def get_sinistres(year=None, month=None, agence_id=None):
         JOIN warehouse.dim_agence da ON fr.agence_key = da.agence_key
         JOIN warehouse.dim_wilaya dw ON da.wilaya_key = dw.wilaya_key
         WHERE 1=1 {agency_w}
-        GROUP BY da.agency_id, da.name, dw.wilaya_name
+        GROUP BY da.agence_id, da.name, dw.wilaya_name
         ORDER BY sum_rembourse_dzd DESC
         LIMIT 20
     """
@@ -984,13 +984,13 @@ def get_freelance_efficiency(year=None, month=None, agence_id=None):
         conds.append("d.month_num = %s")
         args.append(int(month))
     if agence_id:
-        conds.append("da.agency_id = %s")
+        conds.append("da.agence_id = %s")
         args.append(int(agence_id))
     w = ("AND " + " AND ".join(conds)) if conds else ""
 
     sql = f"""
         SELECT
-            da.agency_id                                                                AS agence_id,
+            da.agence_id                                                                AS agence_id,
             da.name                                                                     AS agence_nom,
             dw.wilaya_name,
             COUNT(DISTINCT fp.driver_key)                                               AS nbr_livreurs,
@@ -1011,7 +1011,7 @@ def get_freelance_efficiency(year=None, month=None, agence_id=None):
         JOIN warehouse.dim_agence da ON fp.agence_key = da.agence_key
         JOIN warehouse.dim_wilaya dw ON da.wilaya_key = dw.wilaya_key
         WHERE 1=1 {w}
-        GROUP BY da.agency_id, da.name, dw.wilaya_name
+        GROUP BY da.agence_id, da.name, dw.wilaya_name
         ORDER BY total_paiements_dzd DESC
     """
     with connections["warehouse"].cursor() as cur:
@@ -1040,7 +1040,7 @@ def get_parcels(year, month, agence_id=None, delivery_type=None,
     base_args  = [int(year), int(month)]
 
     if agence_id:
-        base_conds.append("da.agency_id = %s")
+        base_conds.append("da.agence_id = %s")
         base_args.append(int(agence_id))
     if delivery_type and delivery_type in ("HD", "SD"):
         base_conds.append("fl.delivery_type = %s")
@@ -1073,7 +1073,7 @@ def get_parcels(year, month, agence_id=None, delivery_type=None,
         SELECT
             fl.tracking,
             dd.full_date                                AS date_creation,
-            da.agency_id                                AS agence_id,
+            da.agence_id                                AS agence_id,
             da.name                                     AS agence_nom,
             COALESCE(dw.wilaya_name, 'Inconnue')        AS wilaya_destination,
             fl.delivery_type,
