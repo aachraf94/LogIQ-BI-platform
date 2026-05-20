@@ -18,7 +18,6 @@ SELECT
     d.month_name_fr,
     d.year_month,
     d.quarter,
-    d.is_ramadan,
 
     -- Origin geography
     wd.wilaya_id                        AS wilaya_depart_id,
@@ -83,7 +82,7 @@ JOIN warehouse.dim_wilaya       wa  ON ft.wilaya_arrivee_key = wa.wilaya_key
 JOIN warehouse.dim_vehicle_type vt  ON ft.vehicle_type_key   = vt.vehicle_type_key
 
 GROUP BY
-    d.year, d.month_num, d.month_name_fr, d.year_month, d.quarter, d.is_ramadan,
+    d.year, d.month_num, d.month_name_fr, d.year_month, d.quarter,
     wd.wilaya_id, wd.wilaya_name, wd.region,
     wa.wilaya_id, wa.wilaya_name, wa.region,
     ft.service_type, ft.client_type,
