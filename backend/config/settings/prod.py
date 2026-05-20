@@ -10,3 +10,7 @@ CORS_ALLOWED_ORIGINS = [
     "http://frontend:3000",
     "http://localhost:3001",
 ]
+
+# Prod: console shows only WARNING+; files capture INFO+
+LOGGING["handlers"]["console"]["level"] = "WARNING"  # type: ignore[index]
+LOGGING["loggers"]["django"]["level"] = "WARNING"  # type: ignore[index]

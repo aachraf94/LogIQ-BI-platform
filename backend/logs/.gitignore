@@ -1,0 +1,3 @@
+# Ignore all log files; keep directory tracked via .gitkeep
+*.log
+*.log.*

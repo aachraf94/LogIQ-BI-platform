@@ -178,3 +178,96 @@ USE_TZ = True
 
 STATIC_URL = "/static/"
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# --- Logging ---
+LOGS_DIR = BASE_DIR / "logs"
+LOGS_DIR.mkdir(exist_ok=True)
+
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{asctime} [{levelname}] {name}: {message}",
+            "style": "{",
+            "datefmt": "%Y-%m-%d %H:%M:%S",
+        },
+        "simple": {
+            "format": "[{levelname}] {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+            "level": "INFO",
+        },
+        "file_django": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": LOGS_DIR / "django.log",
+            "maxBytes": 5 * 1024 * 1024,  # 5 MB
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": "INFO",
+            "encoding": "utf-8",
+        },
+        "file_api": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": LOGS_DIR / "api.log",
+            "maxBytes": 5 * 1024 * 1024,
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": "DEBUG",
+            "encoding": "utf-8",
+        },
+        "file_celery": {
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": LOGS_DIR / "celery.log",
+            "maxBytes": 5 * 1024 * 1024,
+            "backupCount": 5,
+            "formatter": "verbose",
+            "level": "INFO",
+            "encoding": "utf-8",
+        },
+    },
+    "loggers": {
+        # Django internals — request errors, security, DB queries
+        "django": {
+            "handlers": ["console", "file_django"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "django.request": {
+            "handlers": ["console", "file_django"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["console", "file_django"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        # All local apps — API views, serializers, business logic
+        "apps": {
+            "handlers": ["console", "file_api"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        # Celery tasks
+        "celery": {
+            "handlers": ["console", "file_celery"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "celery.task": {
+            "handlers": ["console", "file_celery"],
+            "level": "INFO",
+            "propagate": False,
+        },
+    },
+    "root": {
+        "handlers": ["console"],
+        "level": "WARNING",
+    },
+}

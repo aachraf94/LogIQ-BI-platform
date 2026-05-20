@@ -14,3 +14,7 @@ from .base import *  # noqa: F401, F403
 DEBUG = True
 
 ALLOWED_HOSTS = ["localhost", "127.0.0.1"]
+
+# Dev: verbose console output + DEBUG level for local app code
+LOGGING["handlers"]["console"]["level"] = "DEBUG"  # type: ignore[index]
+LOGGING["loggers"]["apps"]["level"] = "DEBUG"  # type: ignore[index]
