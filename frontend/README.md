@@ -33,7 +33,7 @@ npm run lint    # ESLint check via next lint
 |---|---|
 | `/login` | JWT login |
 | `/overview` | KPI cards, summary charts, notification feed |
-| `/transport` | Dedicated transport analytics |
+| `/transport` | Transport analytics — 9 live API endpoints, mock-data fallback |
 | `/parcel-costs` | PCC (parcel cost comparison) |
 | `/routes` | Route performance + logistics map |
 | `/alerts` | Alert rule management and acknowledgement |
@@ -65,6 +65,24 @@ NEXT_PUBLIC_API_URL=http://localhost:8000/api
 ```
 
 In Docker, this is injected by `docker-compose.yml` as `http://backend:8000/api`.
+
+## Transport analytics (`/transport`)
+
+All 9 endpoints under `/api/analytics/transport/` are called in parallel on filter change. On any backend error the page silently falls back to `src/lib/mock-data.ts` and shows an amber "demo data" banner.
+
+| Endpoint | Data shown |
+|---|---|
+| `transport/summary/` | 8 KPI cards (requests, completion, revenue, margin, on-time, cost/km) + MoM deltas |
+| `transport/trends/` | Monthly area chart (volume, revenue, margin %) |
+| `transport/cost-breakdown/` | Donut chart — 6 cost components |
+| `transport/by-service/` | Service-type breakdown cards + pie chart |
+| `transport/by-vehicle/` | Vehicle-type horizontal bar chart |
+| `transport/corridors/` | Top OD-pair table, sortable by revenue / requests / margin / distance |
+| `transport/od-matrix/` | 3×3 region heatmap (Nord / Hauts Plateaux / Sud) |
+| `transport/by-agency/` | Agency performance ranking table |
+| `transport/delay-distribution/` | Arrival-delay histogram (5 buckets) |
+
+API calls via `transportApi` in `src/lib/api.ts`. Types in `src/types/transport.ts`.
 
 ## Full documentation
 

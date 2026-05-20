@@ -358,6 +358,71 @@ export const adminUsersApi = {
   activity: () => request<AdminActivity>('/users/admin/activity/'),
 }
 
+// ─── Transport analytics ──────────────────────────────────────────────────────
+
+function _qs(params: Record<string, string | number | undefined | null>): string {
+  const entries = Object.entries(params).filter(([, v]) => v !== undefined && v !== null && v !== "")
+  return entries.length ? "?" + new URLSearchParams(entries.map(([k, v]) => [k, String(v)])).toString() : ""
+}
+
+export interface TransportFilters {
+  year?: number | null
+  month?: number | null
+  service_type?: string
+  company_id?: number | null
+}
+
+export const transportApi = {
+  summary: (f: TransportFilters = {}) =>
+    request<import("@/types/transport").TransportSummary>(
+      `/analytics/transport/summary/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  trends: (f: { service_type?: string; company_id?: number | null; from_year_month?: string; to_year_month?: string } = {}) =>
+    request<import("@/types/transport").TransportTrendPoint[]>(
+      `/analytics/transport/trends/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  costBreakdown: (f: { year?: number | null; month?: number | null; service_type?: string } = {}) =>
+    request<import("@/types/transport").TransportCostBreakdown>(
+      `/analytics/transport/cost-breakdown/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  byService: (f: { year?: number | null; month?: number | null } = {}) =>
+    request<import("@/types/transport").TransportServiceData[]>(
+      `/analytics/transport/by-service/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  byVehicle: (f: { year?: number | null; month?: number | null } = {}) =>
+    request<import("@/types/transport").TransportVehicleData[]>(
+      `/analytics/transport/by-vehicle/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  corridors: (f: {
+    year?: number | null; month?: number | null;
+    service_type?: string; client_type?: string;
+    limit?: number; sort_by?: string
+  } = {}) =>
+    request<import("@/types/transport").TransportCorridor[]>(
+      `/analytics/transport/corridors/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  odMatrix: (f: { year?: number | null; month?: number | null } = {}) =>
+    request<import("@/types/transport").ODMatrixCell[]>(
+      `/analytics/transport/od-matrix/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  byAgency: (f: { year?: number | null; month?: number | null; region?: string; service_type?: string } = {}) =>
+    request<import("@/types/transport").TransportAgencyData[]>(
+      `/analytics/transport/by-agency/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  delayDistribution: (f: { year?: number | null; month?: number | null; service_type?: string } = {}) =>
+    request<import("@/types/transport").DelayBucket[]>(
+      `/analytics/transport/delay-distribution/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+}
+
 // ─── Admin — roles ────────────────────────────────────────────────────────────
 
 export const adminRolesApi = {

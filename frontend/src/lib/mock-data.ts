@@ -342,6 +342,156 @@ export const mockUsers: User[] = [
   { id: "USR-005", name: "Sofiane Rahmani", email: "s.rahmani@yalidine.dz", role: "Viewer", department: "Operations", createdAt: "2024-05-12" },
 ];
 
+// ─── Transport analytics mock data (API fallback shapes) ─────────────────────
+
+import type {
+  TransportSummary,
+  TransportTrendPoint,
+  TransportCostBreakdown,
+  TransportServiceData,
+  TransportVehicleData,
+  TransportCorridor,
+  ODMatrixCell,
+  TransportAgencyData,
+  DelayBucket,
+} from "@/types/transport";
+
+export const mockTransportSummary: TransportSummary = {
+  current: {
+    total_requests: 412,
+    total_terminees: 348,
+    total_annulees: 28,
+    total_en_cours: 36,
+    total_revenue: 7_840_000,
+    total_marge: 1_960_000,
+    total_km: 148_200,
+    total_cost: 5_880_000,
+    total_poids_kg: 92_400,
+    total_payes: 318,
+    avg_ponctualite_pct: 87.4,
+    avg_note_client: 4.2,
+    avg_retard_arrivee_min: 18.6,
+  },
+  derived: {
+    completion_rate: 84.5,
+    gross_margin_pct: 25.0,
+    cancellation_rate: 6.8,
+    cost_per_km: 39.7,
+    collection_rate: 91.4,
+    mom_requests: 8.3,
+    mom_revenue: 12.1,
+    mom_margin: 1.8,
+    mom_on_time: 2.4,
+  },
+};
+
+const MONTHS_FR = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"];
+
+export const mockTransportTrends: TransportTrendPoint[] = Array.from({ length: 12 }, (_, i) => {
+  const year = i < 6 ? 2024 : 2025;
+  const month = i < 6 ? i + 7 : i - 5;
+  const base = 340 + i * 8 + Math.sin(i) * 15;
+  const rev = Math.round((5_200_000 + i * 220_000 + Math.sin(i * 0.7) * 180_000));
+  const cost = Math.round(rev * (0.72 + Math.sin(i) * 0.02));
+  return {
+    year_month: `${year}-${String(month).padStart(2, "0")}`,
+    year,
+    month_num: month,
+    month_name_fr: MONTHS_FR[month - 1],
+    nbr_requests: Math.round(base),
+    nbr_terminees: Math.round(base * 0.845),
+    nbr_annulees: Math.round(base * 0.068),
+    total_revenue: rev,
+    total_cost: cost,
+    total_marge: rev - cost,
+    total_km: Math.round(120_000 + i * 4_000),
+    taux_marge_pct: Math.round((1 - cost / rev) * 1000) / 10,
+    cout_par_km: Math.round((cost / (120_000 + i * 4_000)) * 10) / 10,
+    taux_ponctualite_pct: Math.round((84 + i * 0.3 + Math.sin(i) * 1.5) * 10) / 10,
+  };
+});
+
+export const mockTransportCostBreakdown: TransportCostBreakdown = {
+  total_cost: 5_880_000,
+  cout_base: 2_646_000,
+  cout_distance_supp: 529_200,
+  cout_assurance: 940_800,
+  cout_carburant: 823_200,
+  cout_manutention: 470_400,
+  cout_autres: 470_400,
+};
+
+export const mockTransportByService: TransportServiceData[] = [
+  {
+    service_type: "course_dediee", sub_service_type: "livraison",
+    nbr_requests: 210, nbr_terminees: 182,
+    total_revenue: 4_200_000, total_marge: 1_092_000, total_cost: 3_108_000,
+    taux_marge_pct: 26.0, taux_ponctualite_pct: 88.5, avg_note_client: 4.3,
+  },
+  {
+    service_type: "course_dediee", sub_service_type: "pickup",
+    nbr_requests: 85, nbr_terminees: 71,
+    total_revenue: 1_530_000, total_marge: 382_500, total_cost: 1_147_500,
+    taux_marge_pct: 25.0, taux_ponctualite_pct: 86.0, avg_note_client: 4.1,
+  },
+  {
+    service_type: "courrier", sub_service_type: "N/A",
+    nbr_requests: 72, nbr_terminees: 63,
+    total_revenue: 864_000, total_marge: 207_360, total_cost: 656_640,
+    taux_marge_pct: 24.0, taux_ponctualite_pct: 85.5, avg_note_client: 4.0,
+  },
+  {
+    service_type: "manutention", sub_service_type: "N/A",
+    nbr_requests: 45, nbr_terminees: 32,
+    total_revenue: 1_246_000, total_marge: 278_200, total_cost: 967_860,
+    taux_marge_pct: 22.3, taux_ponctualite_pct: 79.2, avg_note_client: 3.8,
+  },
+];
+
+export const mockTransportByVehicle: TransportVehicleData[] = [
+  { vehicle_type: "Camion 3.5T", payload_class: "light",    nbr_requests: 185, total_km: 62_000, total_cost: 2_170_000, cout_par_km: 35.0, taux_ponctualite_pct: 91.2, avg_note_client: 4.4 },
+  { vehicle_type: "Camion 10T",  payload_class: "medium",   nbr_requests: 124, total_km: 49_600, total_cost: 2_083_200, cout_par_km: 42.0, taux_ponctualite_pct: 86.3, avg_note_client: 4.2 },
+  { vehicle_type: "Camion 20T",  payload_class: "heavy",    nbr_requests: 68,  total_km: 27_200, total_cost: 1_496_000, cout_par_km: 55.0, taux_ponctualite_pct: 82.4, avg_note_client: 4.0 },
+  { vehicle_type: "Fourgon",     payload_class: "light",    nbr_requests: 35,  total_km: 9_400,  total_cost: 130_800,   cout_par_km: 13.9, taux_ponctualite_pct: 94.5, avg_note_client: 4.6 },
+];
+
+export const mockTransportCorridors: TransportCorridor[] = [
+  { wilaya_depart_name: "Alger",     wilaya_arrivee_name: "Oran",       region_depart: "Nord",          region_arrivee: "Nord",          meme_region: true,  nbr_requests: 78, nbr_terminees: 68, total_cost: 1_248_000, total_revenue: 1_638_000, total_marge: 390_000,  taux_marge_pct: 23.8, avg_distance_km: 362.5, cout_par_km: 44.4 },
+  { wilaya_depart_name: "Alger",     wilaya_arrivee_name: "Constantine",region_depart: "Nord",          region_arrivee: "Nord",          meme_region: true,  nbr_requests: 64, nbr_terminees: 55, total_cost: 1_100_800, total_revenue: 1_459_200, total_marge: 358_400,  taux_marge_pct: 24.6, avg_distance_km: 431.0, cout_par_km: 39.9 },
+  { wilaya_depart_name: "Oran",      wilaya_arrivee_name: "Tlemcen",    region_depart: "Nord",          region_arrivee: "Nord",          meme_region: true,  nbr_requests: 42, nbr_terminees: 39, total_cost: 378_000,   total_revenue: 508_200,   total_marge: 130_200,  taux_marge_pct: 25.6, avg_distance_km: 140.0, cout_par_km: 64.3 },
+  { wilaya_depart_name: "Alger",     wilaya_arrivee_name: "Sétif",      region_depart: "Nord",          region_arrivee: "Nord",          meme_region: true,  nbr_requests: 38, nbr_terminees: 32, total_cost: 602_000,   total_revenue: 812_700,   total_marge: 210_700,  taux_marge_pct: 25.9, avg_distance_km: 298.0, cout_par_km: 53.2 },
+  { wilaya_depart_name: "Alger",     wilaya_arrivee_name: "Djelfa",     region_depart: "Nord",          region_arrivee: "Hauts Plateaux", meme_region: false, nbr_requests: 34, nbr_terminees: 28, total_cost: 734_000,   total_revenue: 918_400,   total_marge: 184_400,  taux_marge_pct: 20.1, avg_distance_km: 296.0, cout_par_km: 72.8 },
+  { wilaya_depart_name: "Constantine",wilaya_arrivee_name: "Annaba",    region_depart: "Nord",          region_arrivee: "Nord",          meme_region: true,  nbr_requests: 28, nbr_terminees: 25, total_cost: 302_400,   total_revenue: 415_800,   total_marge: 113_400,  taux_marge_pct: 27.3, avg_distance_km: 168.0, cout_par_km: 64.3 },
+  { wilaya_depart_name: "Alger",     wilaya_arrivee_name: "Ouargla",    region_depart: "Nord",          region_arrivee: "Sud",            meme_region: false, nbr_requests: 18, nbr_terminees: 14, total_cost: 612_000,   total_revenue: 723_600,   total_marge: 111_600,  taux_marge_pct: 15.4, avg_distance_km: 785.0, cout_par_km: 43.3 },
+  { wilaya_depart_name: "Sétif",     wilaya_arrivee_name: "Batna",      region_depart: "Nord",          region_arrivee: "Hauts Plateaux", meme_region: false, nbr_requests: 16, nbr_terminees: 14, total_cost: 185_600,   total_revenue: 251_200,   total_marge: 65_600,   taux_marge_pct: 26.1, avg_distance_km: 131.0, cout_par_km: 88.7 },
+];
+
+export const mockODMatrix: ODMatrixCell[] = [
+  { origin: "Nord",          destination: "Nord",          nbr_requests: 285, taux_marge_pct: 25.3 },
+  { origin: "Nord",          destination: "Hauts Plateaux",nbr_requests: 74,  taux_marge_pct: 20.8 },
+  { origin: "Nord",          destination: "Sud",           nbr_requests: 28,  taux_marge_pct: 15.2 },
+  { origin: "Hauts Plateaux",destination: "Nord",          nbr_requests: 18,  taux_marge_pct: 21.4 },
+  { origin: "Hauts Plateaux",destination: "Hauts Plateaux",nbr_requests: 5,   taux_marge_pct: 22.0 },
+  { origin: "Hauts Plateaux",destination: "Sud",           nbr_requests: 2,   taux_marge_pct: 16.0 },
+];
+
+export const mockTransportByAgency: TransportAgencyData[] = [
+  { agence_id: 1,  agence_name: "Agence Alger Centre",   wilaya_dispatch_name: "Alger",     region: "Nord",          nbr_requests: 98, nbr_terminees: 86, total_revenue: 1_960_000, total_marge: 490_000,  total_km: 38_200, total_cost: 1_470_000, completion_rate: 87.8, taux_ponctualite_pct: 90.1, avg_note_client: 4.4, taux_marge_pct: 25.0, cout_par_km: 38.5 },
+  { agence_id: 2,  agence_name: "Agence Oran",           wilaya_dispatch_name: "Oran",      region: "Nord",          nbr_requests: 72, nbr_terminees: 61, total_revenue: 1_368_000, total_marge: 328_320, total_km: 27_000, total_cost: 1_039_680, completion_rate: 84.7, taux_ponctualite_pct: 87.2, avg_note_client: 4.2, taux_marge_pct: 24.0, cout_par_km: 38.5 },
+  { agence_id: 3,  agence_name: "Agence Constantine",    wilaya_dispatch_name: "Constantine",region: "Nord",          nbr_requests: 58, nbr_terminees: 49, total_revenue: 1_102_000, total_marge: 264_480, total_km: 22_100, total_cost: 837_520,   completion_rate: 84.5, taux_ponctualite_pct: 85.7, avg_note_client: 4.1, taux_marge_pct: 24.0, cout_par_km: 37.9 },
+  { agence_id: 4,  agence_name: "Agence Sétif",          wilaya_dispatch_name: "Sétif",     region: "Nord",          nbr_requests: 44, nbr_terminees: 36, total_revenue: 792_000,   total_marge: 182_160, total_km: 17_600, total_cost: 609_840,   completion_rate: 81.8, taux_ponctualite_pct: 83.4, avg_note_client: 4.0, taux_marge_pct: 23.0, cout_par_km: 34.7 },
+  { agence_id: 5,  agence_name: "Agence Djelfa",         wilaya_dispatch_name: "Djelfa",    region: "Hauts Plateaux",nbr_requests: 36, nbr_terminees: 28, total_revenue: 684_000,   total_marge: 136_800, total_km: 21_600, total_cost: 547_200,   completion_rate: 77.8, taux_ponctualite_pct: 79.8, avg_note_client: 3.8, taux_marge_pct: 20.0, cout_par_km: 25.3 },
+  { agence_id: 6,  agence_name: "Agence Annaba",         wilaya_dispatch_name: "Annaba",    region: "Nord",          nbr_requests: 28, nbr_terminees: 24, total_revenue: 532_000,   total_marge: 127_680, total_km: 10_080, total_cost: 404_320,   completion_rate: 85.7, taux_ponctualite_pct: 88.0, avg_note_client: 4.3, taux_marge_pct: 24.0, cout_par_km: 40.1 },
+];
+
+export const mockDelayDistribution: DelayBucket[] = [
+  { bucket: "À l'heure", count: 172 },
+  { bucket: "1-15 min",  count: 89  },
+  { bucket: "16-30 min", count: 52  },
+  { bucket: "31-60 min", count: 24  },
+  { bucket: "> 60 min",  count: 11  },
+];
+
 // ─── Alerts over time (for alerts page chart) ────────────────────────────────
 export const alertsOverTime = [
   { date: "Apr 2", critical: 1, warning: 2, info: 1 },
