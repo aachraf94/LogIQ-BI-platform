@@ -1,12 +1,20 @@
 -- =============================================================================
 -- AGGREGATE: agg_livraisons_journalieres
--- Grain   : One row per (date, agence, delivery_type, status_group)
+-- Grain   : One row per (date, agence, company, delivery_type, status_group)
 -- Source  : fact_livraisons + dim_date + dim_agence + dim_wilaya + dim_statut_colis
 -- Purpose : Daily delivery volume, revenue, and outcome KPIs — primary dashboard feed
--- Refresh : REFRESH MATERIALIZED VIEW CONCURRENTLY — safe for live dashboards
+--
+-- Notes:
+--   - dim_agence joined via is_current=TRUE (avoids SCD2 fan-out on name/type/hub_id)
+--   - company_id is part of the grain: multiple companies share agencies, so excluding
+--     it from the key produced duplicate rows for idx_agg_lj_unique
+--   - is_ramadan is safe here: grain is daily and each date has exactly one is_ramadan value
 -- =============================================================================
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS warehouse.agg_livraisons_journalieres AS
+WITH fact_agence AS (
+    SELECT agence_key, agence_id FROM warehouse.dim_agence
+)
 SELECT
     -- Date attributes
     d.full_date,
@@ -45,14 +53,14 @@ SELECT
 
     -- Volume KPIs
     COUNT(*)                        AS nbr_colis,
-    COUNT(*) FILTER (WHERE sc.is_success)              AS nbr_colis_livres,
-    COUNT(*) FILTER (WHERE sc.status_group = 'failed') AS nbr_colis_echoues,
-    COUNT(*) FILTER (WHERE sc.status_group IN ('return_transit','return_final')) AS nbr_colis_retours,
+    COUNT(*) FILTER (WHERE sc.is_success)                                           AS nbr_colis_livres,
+    COUNT(*) FILTER (WHERE sc.status_group = 'failed')                              AS nbr_colis_echoues,
+    COUNT(*) FILTER (WHERE sc.status_group IN ('return_transit','return_final'))     AS nbr_colis_retours,
 
-    -- Revenue KPIs (only for parcels with a delivery_fee)
+    -- Revenue KPIs
     SUM(fl.delivery_fee)            AS total_delivery_fee_dzd,
     AVG(fl.delivery_fee)            AS avg_delivery_fee_dzd,
-    COUNT(*) FILTER (WHERE fl.delivery_fee IS NOT NULL) AS nbr_colis_avec_fee,
+    COUNT(*) FILTER (WHERE fl.delivery_fee IS NOT NULL)                             AS nbr_colis_avec_fee,
 
     -- Pricing zone distribution
     AVG(fl.zone)                    AS avg_zone,
@@ -68,11 +76,12 @@ SELECT
     NOW()                           AS refreshed_at
 
 FROM warehouse.fact_livraisons fl
-JOIN warehouse.dim_date         d  ON fl.date_creation_key      = d.date_key
-JOIN warehouse.dim_agence       a  ON fl.agence_origine_key     = a.agence_key
-JOIN warehouse.dim_wilaya       w  ON a.wilaya_key              = w.wilaya_key
-JOIN warehouse.dim_company      c  ON fl.company_key            = c.company_key
-JOIN warehouse.dim_statut_colis sc ON fl.statut_final_key       = sc.statut_key
+JOIN fact_agence                fa ON fl.agence_origine_key  = fa.agence_key
+JOIN warehouse.dim_agence        a ON a.agence_id = fa.agence_id AND a.is_current = TRUE
+JOIN warehouse.dim_date          d ON fl.date_creation_key   = d.date_key
+JOIN warehouse.dim_wilaya        w ON a.wilaya_key           = w.wilaya_key
+JOIN warehouse.dim_company       c ON fl.company_key         = c.company_key
+JOIN warehouse.dim_statut_colis sc ON fl.statut_final_key    = sc.statut_key
 
 GROUP BY
     d.full_date, d.year, d.month_num, d.month_name_fr, d.year_month,
@@ -85,11 +94,13 @@ GROUP BY
 WITH DATA;
 
 COMMENT ON MATERIALIZED VIEW warehouse.agg_livraisons_journalieres IS
-    'Daily delivery KPIs by agence, wilaya, delivery type, and outcome status group. Primary dashboard feed.';
+    'Daily delivery KPIs by agence, company, wilaya, delivery type, and outcome status group. Primary dashboard feed.';
 
+-- company_id added to grain: agencies serve multiple companies so omitting it caused
+-- duplicate (full_date, agence_id, delivery_type, status_group) rows on refresh.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_agg_lj_unique
     ON warehouse.agg_livraisons_journalieres
-    (full_date, agence_id, COALESCE(delivery_type, ''), status_group);
+    (full_date, agence_id, company_id, COALESCE(delivery_type, ''), status_group);
 
 CREATE INDEX IF NOT EXISTS idx_agg_lj_date        ON warehouse.agg_livraisons_journalieres (full_date);
 CREATE INDEX IF NOT EXISTS idx_agg_lj_year_month  ON warehouse.agg_livraisons_journalieres (year, month_num);

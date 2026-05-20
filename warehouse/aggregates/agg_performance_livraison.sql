@@ -1,12 +1,20 @@
 -- =============================================================================
 -- AGGREGATE: agg_performance_livraison
--- Grain   : One row per (year, month, agence, delivery_type)
+-- Grain   : One row per (year, month, agence, company, delivery_type)
 -- Source  : fact_livraisons + dim_date + dim_agence + dim_wilaya + dim_statut_colis
 -- Purpose : Monthly delivery success/failure rates and revenue performance KPIs
 --           Used by dashboard widgets: taux de livraison, taux de retour, revenu livraison
+--
+-- Notes:
+--   - dim_agence joined via is_current=TRUE (avoids SCD2 fan-out on name/type/hub_id)
+--   - company_id is part of the grain: multiple companies share agencies, so excluding
+--     it from the key produced duplicate rows for idx_agg_perf_unique
 -- =============================================================================
 
 CREATE MATERIALIZED VIEW IF NOT EXISTS warehouse.agg_performance_livraison AS
+WITH fact_agence AS (
+    SELECT agence_key, agence_id FROM warehouse.dim_agence
+)
 SELECT
     -- Time
     d.year,
@@ -35,12 +43,12 @@ SELECT
 
     -- Volume counters
     COUNT(*)                        AS nbr_colis_total,
-    COUNT(*) FILTER (WHERE sc.is_success)                           AS nbr_livres,
-    COUNT(*) FILTER (WHERE sc.status_group = 'failed')              AS nbr_echecs,
-    COUNT(*) FILTER (WHERE sc.status_group IN ('return_transit','return_final')) AS nbr_retours,
-    COUNT(*) FILTER (WHERE NOT sc.is_terminal)                      AS nbr_en_cours,
+    COUNT(*) FILTER (WHERE sc.is_success)                                           AS nbr_livres,
+    COUNT(*) FILTER (WHERE sc.status_group = 'failed')                              AS nbr_echecs,
+    COUNT(*) FILTER (WHERE sc.status_group IN ('return_transit','return_final'))     AS nbr_retours,
+    COUNT(*) FILTER (WHERE NOT sc.is_terminal)                                      AS nbr_en_cours,
 
-    -- Rate KPIs (computed as NUMERIC to avoid integer division)
+    -- Rate KPIs
     ROUND(
         100.0 * COUNT(*) FILTER (WHERE sc.is_success)
         / NULLIF(COUNT(*), 0), 2
@@ -57,17 +65,17 @@ SELECT
     )                               AS taux_retour_pct,
 
     -- Revenue KPIs (DZD)
-    SUM(fl.delivery_fee)                                            AS total_fees_dzd,
-    AVG(fl.delivery_fee)                                            AS avg_fee_dzd,
-    SUM(fl.delivery_fee) FILTER (WHERE sc.is_success)              AS fees_livres_dzd,
+    SUM(fl.delivery_fee)                                                            AS total_fees_dzd,
+    AVG(fl.delivery_fee)                                                            AS avg_fee_dzd,
+    SUM(fl.delivery_fee) FILTER (WHERE sc.is_success)                               AS fees_livres_dzd,
 
     -- Speed KPIs
-    AVG(fl.duree_livraison_minutes) FILTER (WHERE sc.is_success)   AS avg_duree_livree_minutes,
+    AVG(fl.duree_livraison_minutes) FILTER (WHERE sc.is_success)                    AS avg_duree_livree_minutes,
     PERCENTILE_CONT(0.5) WITHIN GROUP (
         ORDER BY fl.duree_livraison_minutes
-    ) FILTER (WHERE sc.is_success)                                  AS median_duree_livree_minutes,
+    ) FILTER (WHERE sc.is_success)                                                  AS median_duree_livree_minutes,
 
-    -- Zone distribution (revenue analysis)
+    -- Zone distribution
     COUNT(*) FILTER (WHERE fl.zone = 0)    AS nbr_zone_0,
     COUNT(*) FILTER (WHERE fl.zone = 1)    AS nbr_zone_1,
     COUNT(*) FILTER (WHERE fl.zone = 2)    AS nbr_zone_2,
@@ -81,10 +89,11 @@ SELECT
     NOW()                           AS refreshed_at
 
 FROM warehouse.fact_livraisons fl
-JOIN warehouse.dim_date         d  ON fl.date_creation_key  = d.date_key
-JOIN warehouse.dim_agence       a  ON fl.agence_origine_key = a.agence_key
-JOIN warehouse.dim_wilaya       w  ON a.wilaya_key          = w.wilaya_key
-JOIN warehouse.dim_company      c  ON fl.company_key        = c.company_key
+JOIN fact_agence                fa ON fl.agence_origine_key = fa.agence_key
+JOIN warehouse.dim_agence        a ON a.agence_id = fa.agence_id AND a.is_current = TRUE
+JOIN warehouse.dim_date          d ON fl.date_creation_key  = d.date_key
+JOIN warehouse.dim_wilaya        w ON a.wilaya_key          = w.wilaya_key
+JOIN warehouse.dim_company       c ON fl.company_key        = c.company_key
 JOIN warehouse.dim_statut_colis sc ON fl.statut_final_key   = sc.statut_key
 
 GROUP BY
@@ -97,10 +106,13 @@ GROUP BY
 WITH DATA;
 
 COMMENT ON MATERIALIZED VIEW warehouse.agg_performance_livraison IS
-    'Monthly delivery performance rates (taux livraison, echec, retour) and revenue KPIs per agency.';
+    'Monthly delivery performance rates (taux livraison, echec, retour) and revenue KPIs per agency and company.';
 
+-- company_id added to grain: agencies serve multiple companies so omitting it caused
+-- duplicate (year, month, agence_id, delivery_type) rows and a UniqueViolation on refresh.
 CREATE UNIQUE INDEX IF NOT EXISTS idx_agg_perf_unique
-    ON warehouse.agg_performance_livraison (year, month_num, agence_id, COALESCE(delivery_type, ''));
+    ON warehouse.agg_performance_livraison
+    (year, month_num, agence_id, company_id, COALESCE(delivery_type, ''));
 
 CREATE INDEX IF NOT EXISTS idx_agg_perf_year_month ON warehouse.agg_performance_livraison (year, month_num);
 CREATE INDEX IF NOT EXISTS idx_agg_perf_agence     ON warehouse.agg_performance_livraison (agence_id);
