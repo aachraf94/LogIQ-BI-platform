@@ -423,6 +423,104 @@ export const transportApi = {
     ),
 }
 
+// ─── Parcel costs analytics ───────────────────────────────────────────────────
+
+export interface ParcelCostsFilters {
+  year?: number | null
+  month?: number | null
+  delivery_type?: string
+  agence_id?: number | null
+  region?: string
+  company_id?: number | null
+}
+
+export const parcelCostsApi = {
+  summary: (f: ParcelCostsFilters = {}) =>
+    request<import("@/types/parcel_costs").ParcelCostsSummaryData>(
+      `/analytics/parcel-costs/summary/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  trends: (f: {
+    from_year_month?: string; to_year_month?: string;
+    delivery_type?: string; agence_id?: number | null
+  } = {}) =>
+    request<import("@/types/parcel_costs").ParcelCostsTrendPoint[]>(
+      `/analytics/parcel-costs/trends/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  pccSummary: (f: ParcelCostsFilters = {}) =>
+    request<import("@/types/parcel_costs").ParcelPCCSummary>(
+      `/analytics/parcel-costs/pcc-summary/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  pccByAgency: (f: {
+    year?: number | null; month?: number | null;
+    region?: string; delivery_type?: string; sort_by?: string; limit?: number
+  } = {}) =>
+    request<import("@/types/parcel_costs").ParcelPCCAgency[]>(
+      `/analytics/parcel-costs/pcc-by-agency/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  ecartDistribution: (f: { year: number; month: number; agence_id?: number | null }) =>
+    request<import("@/types/parcel_costs").EcartBucketItem[]>(
+      `/analytics/parcel-costs/ecart-distribution/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  pccByWilaya: (f: { year: number; month: number; agence_id?: number | null }) =>
+    request<import("@/types/parcel_costs").PCCByWilayaItem[]>(
+      `/analytics/parcel-costs/pcc-by-wilaya/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  costStructure: (f: ParcelCostsFilters = {}) =>
+    request<import("@/types/parcel_costs").CostStructureData>(
+      `/analytics/parcel-costs/cost-structure/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  costByNature: (f: { year?: number | null; month?: number | null; agence_id?: number | null } = {}) =>
+    request<import("@/types/parcel_costs").CostByNatureItem[]>(
+      `/analytics/parcel-costs/cost-by-nature/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  byAgency: (f: { year?: number | null; month?: number | null; region?: string; delivery_type?: string } = {}) =>
+    request<import("@/types/parcel_costs").ParcelAgencyData[]>(
+      `/analytics/parcel-costs/by-agency/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  byDeliveryType: (f: { year?: number | null; month?: number | null; agence_id?: number | null } = {}) =>
+    request<import("@/types/parcel_costs").ParcelDeliveryTypeData[]>(
+      `/analytics/parcel-costs/by-delivery-type/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  dailyVolume: (f: { year?: number | null; month?: number | null; agence_id?: number | null } = {}) =>
+    request<import("@/types/parcel_costs").DailyVolumePoint[]>(
+      `/analytics/parcel-costs/daily-volume/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  durationDistribution: (f: { year: number; month: number; agence_id?: number | null; delivery_type?: string }) =>
+    request<import("@/types/parcel_costs").DurationBucket[]>(
+      `/analytics/parcel-costs/duration-distribution/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  sinistres: (f: { year?: number | null; month?: number | null; agence_id?: number | null } = {}) =>
+    request<import("@/types/parcel_costs").SinistresData>(
+      `/analytics/parcel-costs/sinistres/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  freelanceEfficiency: (f: { year?: number | null; month?: number | null; agence_id?: number | null } = {}) =>
+    request<import("@/types/parcel_costs").FreelanceEfficiencyItem[]>(
+      `/analytics/parcel-costs/freelance-efficiency/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  parcels: (f: {
+    year: number; month: number;
+    agence_id?: number | null; delivery_type?: string;
+    ecart_direction?: string; sort_by?: string; page?: number; page_size?: number
+  }) =>
+    request<import("@/types/parcel_costs").ParcelsPaginatedResponse>(
+      `/analytics/parcel-costs/parcels/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+}
+
 // ─── Admin — roles ────────────────────────────────────────────────────────────
 
 export const adminRolesApi = {

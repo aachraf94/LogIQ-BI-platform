@@ -504,3 +504,263 @@ export const alertsOverTime = [
   { date: "Apr 9", critical: 2, warning: 2, info: 1 },
   { date: "Apr 10", critical: 1, warning: 1, info: 2 },
 ];
+
+// ─── Parcel costs analytics mock data (API fallback shapes) ──────────────────
+
+import type {
+  ParcelCostsSummaryData,
+  ParcelCostsTrendPoint,
+  ParcelPCCSummary,
+  ParcelPCCAgency,
+  EcartBucketItem,
+  PCCByWilayaItem,
+  CostStructureData,
+  CostByNatureItem,
+  ParcelAgencyData,
+  ParcelDeliveryTypeData,
+  DailyVolumePoint,
+  DurationBucket,
+  SinistresData,
+  FreelanceEfficiencyItem,
+  ParcelsPaginatedResponse,
+} from "@/types/parcel_costs";
+
+export const mockParcelCostsSummary: ParcelCostsSummaryData = {
+  current: {
+    nbr_colis: 8420,
+    nbr_livres: 6231,
+    nbr_retours: 1516,
+    nbr_echecs: 673,
+    total_fees: 4_378_400,
+    fees_livres: 3_242_000,
+    avg_duree_min: 1820,
+  },
+  pcc: {
+    nbr_avec_tarif: 5180,
+    nbr_sous_tarif: 1191,
+    nbr_sur_tarif: 982,
+    total_fees_pcc: 3_192_000,
+    total_tarif_theorique: 3_312_000,
+    total_ecart: -284_400,
+    avg_ecart: -54.9,
+  },
+  costs: {
+    cout_total: 2_640_000,
+    total_depenses: 820_000,
+    total_salaires: 1_380_000,
+    total_freelance: 440_000,
+    nbr_employes: 186,
+    nbr_freelance: 48,
+  },
+  derived: {
+    taux_livraison_pct: 74.0,
+    taux_retour_pct: 18.0,
+    taux_sous_tarif_pct: 23.0,
+    avg_fee_par_colis: 520.0,
+    cout_par_colis_livre: 423.7,
+    mom_colis: 7.2,
+    mom_fees: 9.1,
+    mom_livraison: 1.8,
+    mom_compliance: -2.3,
+  },
+};
+
+const PC_MONTHS_FR = ["Jan", "Fév", "Mar", "Avr", "Mai", "Jun", "Jul", "Aoû", "Sep", "Oct", "Nov", "Déc"];
+
+export const mockParcelCostsTrends: ParcelCostsTrendPoint[] = Array.from({ length: 12 }, (_, i) => {
+  const year = i < 6 ? 2024 : 2025;
+  const month = i < 6 ? i + 7 : i - 5;
+  const nbr_colis = Math.round(7000 + i * 120 + Math.sin(i) * 400);
+  const nbr_livres = Math.round(nbr_colis * (0.70 + i * 0.003 + Math.sin(i * 0.5) * 0.02));
+  const nbr_retours = Math.round(nbr_colis * (0.185 - i * 0.001));
+  const total_fees = Math.round(nbr_colis * (500 + i * 4));
+  const cout_total = Math.round(2_100_000 + i * 40_000 + Math.sin(i * 0.8) * 80_000);
+  const nbr_sous_tarif = Math.round(nbr_livres * (0.245 - i * 0.003));
+  return {
+    year_month: `${year}-${String(month).padStart(2, "0")}`,
+    year,
+    month_num: month,
+    month_name_fr: PC_MONTHS_FR[month - 1],
+    nbr_colis,
+    nbr_livres,
+    nbr_retours,
+    total_fees,
+    taux_livraison_pct: Math.round((nbr_livres / nbr_colis) * 1000) / 10,
+    taux_retour_pct: Math.round((nbr_retours / nbr_colis) * 1000) / 10,
+    avg_duree_min: Math.round(1680 + Math.sin(i * 1.2) * 200),
+    nbr_sous_tarif,
+    total_ecart_dzd: Math.round(nbr_sous_tarif * -54.9),
+    taux_sous_tarif_pct: Math.round((nbr_sous_tarif / nbr_livres) * 1000) / 10,
+    cout_total,
+    total_depenses: Math.round(cout_total * 0.31),
+    total_freelance: Math.round(cout_total * 0.167),
+    cout_par_colis_livre: Math.round((cout_total / nbr_livres) * 10) / 10,
+  };
+});
+
+export const mockParcelPCCSummary: ParcelPCCSummary = {
+  nbr_colis: 8420,
+  nbr_avec_tarif: 5180,
+  nbr_sous_tarif: 1191,
+  nbr_sur_tarif: 982,
+  nbr_au_tarif: 3007,
+  total_fees: 3_192_000,
+  total_tarif_theorique: 3_312_000,
+  total_ecart_dzd: -284_400,
+  avg_ecart_dzd: -54.9,
+  avg_ecart_absolu_dzd: 82.4,
+  taux_sous_tarif_pct: 23.0,
+  taux_ecart_global_pct: -8.6,
+};
+
+export const mockParcelPCCByAgency: ParcelPCCAgency[] = [
+  { agence_id: 1, agence_name: "Alger Centre",   wilaya_name: "Alger",      region: "Nord",           nbr_colis_total: 1820, nbr_avec_tarif: 1260, nbr_sous_tarif: 328, nbr_sur_tarif: 248, total_fees: 910_000,  total_tarif_theorique: 956_000,  total_ecart_dzd: -54_200,  taux_sous_tarif_pct: 26.0, avg_ecart_dzd: -41.5 },
+  { agence_id: 2, agence_name: "Oran",           wilaya_name: "Oran",       region: "Nord",           nbr_colis_total: 1240, nbr_avec_tarif: 840,  nbr_sous_tarif: 210, nbr_sur_tarif: 176, total_fees: 648_000,  total_tarif_theorique: 674_000,  total_ecart_dzd: -42_100,  taux_sous_tarif_pct: 25.0, avg_ecart_dzd: -50.1 },
+  { agence_id: 3, agence_name: "Constantine",    wilaya_name: "Constantine",region: "Nord",           nbr_colis_total: 980,  nbr_avec_tarif: 620,  nbr_sous_tarif: 142, nbr_sur_tarif: 122, total_fees: 510_000,  total_tarif_theorique: 528_000,  total_ecart_dzd: -32_400,  taux_sous_tarif_pct: 22.9, avg_ecart_dzd: -52.3 },
+  { agence_id: 4, agence_name: "Sétif",          wilaya_name: "Sétif",      region: "Nord",           nbr_colis_total: 760,  nbr_avec_tarif: 480,  nbr_sous_tarif: 106, nbr_sur_tarif: 94,  total_fees: 394_000,  total_tarif_theorique: 408_000,  total_ecart_dzd: -21_800,  taux_sous_tarif_pct: 22.1, avg_ecart_dzd: -43.6 },
+  { agence_id: 5, agence_name: "Djelfa",         wilaya_name: "Djelfa",     region: "Hauts Plateaux", nbr_colis_total: 580,  nbr_avec_tarif: 360,  nbr_sous_tarif: 104, nbr_sur_tarif: 68,  total_fees: 306_000,  total_tarif_theorique: 320_000,  total_ecart_dzd: -28_600,  taux_sous_tarif_pct: 28.9, avg_ecart_dzd: -68.4 },
+  { agence_id: 6, agence_name: "Annaba",         wilaya_name: "Annaba",     region: "Nord",           nbr_colis_total: 440,  nbr_avec_tarif: 280,  nbr_sous_tarif: 56,  nbr_sur_tarif: 52,  total_fees: 228_000,  total_tarif_theorique: 238_000,  total_ecart_dzd: -12_800,  taux_sous_tarif_pct: 20.0, avg_ecart_dzd: -38.2 },
+];
+
+export const mockEcartDistribution: EcartBucketItem[] = [
+  { bucket: "< -500 DZD",          bucket_order: 0, nbr_colis: 248,  sum_ecart_dzd: -188_400 },
+  { bucket: "-500 à -100 DZD",     bucket_order: 1, nbr_colis: 612,  sum_ecart_dzd: -196_800 },
+  { bucket: "-100 à -1 DZD",       bucket_order: 2, nbr_colis: 331,  sum_ecart_dzd: -18_200  },
+  { bucket: "Au tarif exactement", bucket_order: 3, nbr_colis: 892,  sum_ecart_dzd: 0         },
+  { bucket: "+1 à +100 DZD",       bucket_order: 4, nbr_colis: 524,  sum_ecart_dzd: 28_600   },
+  { bucket: "Sans tarif théorique",bucket_order: 5, nbr_colis: 3240, sum_ecart_dzd: 0         },
+];
+
+export const mockPCCByWilaya: PCCByWilayaItem[] = [
+  { wilaya_name: "Alger",       region: "Nord",           nbr_colis: 1820, nbr_avec_tarif: 1260, nbr_sous_tarif: 328, sum_ecart_dzd: -54_200, avg_ecart_dzd: -43.0, taux_sous_tarif_pct: 26.0 },
+  { wilaya_name: "Oran",        region: "Nord",           nbr_colis: 1240, nbr_avec_tarif: 840,  nbr_sous_tarif: 210, sum_ecart_dzd: -42_100, avg_ecart_dzd: -50.1, taux_sous_tarif_pct: 25.0 },
+  { wilaya_name: "Constantine", region: "Nord",           nbr_colis: 980,  nbr_avec_tarif: 620,  nbr_sous_tarif: 142, sum_ecart_dzd: -32_400, avg_ecart_dzd: -52.3, taux_sous_tarif_pct: 22.9 },
+  { wilaya_name: "Sétif",       region: "Nord",           nbr_colis: 760,  nbr_avec_tarif: 480,  nbr_sous_tarif: 106, sum_ecart_dzd: -21_800, avg_ecart_dzd: -43.6, taux_sous_tarif_pct: 22.1 },
+  { wilaya_name: "Djelfa",      region: "Hauts Plateaux", nbr_colis: 580,  nbr_avec_tarif: 360,  nbr_sous_tarif: 104, sum_ecart_dzd: -28_600, avg_ecart_dzd: -68.4, taux_sous_tarif_pct: 28.9 },
+  { wilaya_name: "Annaba",      region: "Nord",           nbr_colis: 440,  nbr_avec_tarif: 280,  nbr_sous_tarif: 56,  sum_ecart_dzd: -12_800, avg_ecart_dzd: -38.2, taux_sous_tarif_pct: 20.0 },
+  { wilaya_name: "Blida",       region: "Nord",           nbr_colis: 310,  nbr_avec_tarif: 198,  nbr_sous_tarif: 36,  sum_ecart_dzd: -8_640,  avg_ecart_dzd: -44.1, taux_sous_tarif_pct: 18.2 },
+  { wilaya_name: "Batna",       region: "Hauts Plateaux", nbr_colis: 280,  nbr_avec_tarif: 174,  nbr_sous_tarif: 54,  sum_ecart_dzd: -14_200, avg_ecart_dzd: -81.6, taux_sous_tarif_pct: 31.0 },
+];
+
+export const mockParcelCostStructure: CostStructureData = {
+  cout_total: 2_640_000,
+  total_depenses: 820_000,
+  total_salaires: 1_380_000,
+  total_freelance: 440_000,
+  nbr_depenses: 142,
+  nbr_employes_payes: 186,
+  nbr_livreurs_freelance: 48,
+  nbr_colis_livres_freelance: 2840,
+  total_sinistres: 128_400,
+  nbr_sinistres: 34,
+  cout_total_avec_sinistres: 2_768_400,
+};
+
+export const mockParcelCostByNature: CostByNatureItem[] = [
+  { category_group: "Salaires",  nature_name: "Salaires livreurs",       total_dzd: 820_000,  nbr_depenses: 186, avg_depense_dzd: 4408.6 },
+  { category_group: "Salaires",  nature_name: "Charges sociales",        total_dzd: 320_000,  nbr_depenses: 186, avg_depense_dzd: 1720.4 },
+  { category_group: "Salaires",  nature_name: "Primes",                  total_dzd: 240_000,  nbr_depenses: 186, avg_depense_dzd: 1290.3 },
+  { category_group: "Freelance", nature_name: "Paiements livreurs",      total_dzd: 440_000,  nbr_depenses: 48,  avg_depense_dzd: 9166.7 },
+  { category_group: "Dépenses",  nature_name: "Carburant",               total_dzd: 280_000,  nbr_depenses: 62,  avg_depense_dzd: 4516.1 },
+  { category_group: "Dépenses",  nature_name: "Maintenance véhicules",   total_dzd: 180_000,  nbr_depenses: 28,  avg_depense_dzd: 6428.6 },
+  { category_group: "Dépenses",  nature_name: "Matériel emballage",      total_dzd: 220_000,  nbr_depenses: 34,  avg_depense_dzd: 6470.6 },
+  { category_group: "Dépenses",  nature_name: "Loyers agences",          total_dzd: 140_000,  nbr_depenses: 12,  avg_depense_dzd: 11666.7 },
+];
+
+export const mockParcelByAgency: ParcelAgencyData[] = [
+  { agence_id: 1, agence_name: "Alger Centre",   wilaya_name: "Alger",      region: "Nord",           nbr_colis: 1820, nbr_livres: 1383, nbr_retours: 328, total_fees: 910_000, taux_livraison: 76.0, taux_retour: 18.0, avg_duree_min: 1640, nbr_sous_tarif: 328, total_ecart_dzd: -54_200,  taux_sous_tarif_pct: 26.0, cout_total: 620_000, cout_par_colis_livre: 448.3 },
+  { agence_id: 2, agence_name: "Oran",           wilaya_name: "Oran",       region: "Nord",           nbr_colis: 1240, nbr_livres: 916,  nbr_retours: 236, total_fees: 648_000, taux_livraison: 73.9, taux_retour: 19.0, avg_duree_min: 1820, nbr_sous_tarif: 210, total_ecart_dzd: -42_100,  taux_sous_tarif_pct: 25.0, cout_total: 402_000, cout_par_colis_livre: 439.0 },
+  { agence_id: 3, agence_name: "Constantine",    wilaya_name: "Constantine",region: "Nord",           nbr_colis: 980,  nbr_livres: 744,  nbr_retours: 186, total_fees: 510_000, taux_livraison: 75.9, taux_retour: 19.0, avg_duree_min: 1760, nbr_sous_tarif: 142, total_ecart_dzd: -32_400,  taux_sous_tarif_pct: 22.9, cout_total: 318_000, cout_par_colis_livre: 427.4 },
+  { agence_id: 4, agence_name: "Sétif",          wilaya_name: "Sétif",      region: "Nord",           nbr_colis: 760,  nbr_livres: 554,  nbr_retours: 144, total_fees: 394_000, taux_livraison: 72.9, taux_retour: 18.9, avg_duree_min: 1950, nbr_sous_tarif: 106, total_ecart_dzd: -21_800,  taux_sous_tarif_pct: 22.1, cout_total: 248_000, cout_par_colis_livre: 447.6 },
+  { agence_id: 5, agence_name: "Djelfa",         wilaya_name: "Djelfa",     region: "Hauts Plateaux", nbr_colis: 580,  nbr_livres: 400,  nbr_retours: 120, total_fees: 306_000, taux_livraison: 69.0, taux_retour: 20.7, avg_duree_min: 2200, nbr_sous_tarif: 104, total_ecart_dzd: -28_600,  taux_sous_tarif_pct: 28.9, cout_total: 204_000, cout_par_colis_livre: 510.0 },
+  { agence_id: 6, agence_name: "Annaba",         wilaya_name: "Annaba",     region: "Nord",           nbr_colis: 440,  nbr_livres: 352,  nbr_retours: 79,  total_fees: 228_000, taux_livraison: 80.0, taux_retour: 18.0, avg_duree_min: 1580, nbr_sous_tarif: 56,  total_ecart_dzd: -12_800,  taux_sous_tarif_pct: 20.0, cout_total: 142_000, cout_par_colis_livre: 403.4 },
+  { agence_id: 7, agence_name: "Blida",          wilaya_name: "Blida",      region: "Nord",           nbr_colis: 310,  nbr_livres: 248,  nbr_retours: 56,  total_fees: 160_000, taux_livraison: 80.0, taux_retour: 18.1, avg_duree_min: 1540, nbr_sous_tarif: 36,  total_ecart_dzd: -8_640,   taux_sous_tarif_pct: 18.2, cout_total: 98_000,  cout_par_colis_livre: 395.2 },
+  { agence_id: 8, agence_name: "Batna",          wilaya_name: "Batna",      region: "Hauts Plateaux", nbr_colis: 280,  nbr_livres: 186,  nbr_retours: 66,  total_fees: 148_000, taux_livraison: 66.4, taux_retour: 23.6, avg_duree_min: 2480, nbr_sous_tarif: 54,  total_ecart_dzd: -14_200,  taux_sous_tarif_pct: 31.0, cout_total: 110_000, cout_par_colis_livre: 591.4 },
+];
+
+export const mockParcelByDeliveryType: ParcelDeliveryTypeData[] = [
+  { delivery_type: "HD", nbr_colis: 5840, nbr_livres: 4266, nbr_retours: 1052, total_fees: 3_026_000, avg_fee_dzd: 518.2, taux_livraison_pct: 73.0, taux_retour_pct: 18.0, avg_duree_livree_min: 1980 },
+  { delivery_type: "SD", nbr_colis: 2580, nbr_livres: 1965, nbr_retours: 464,  total_fees: 1_352_400, avg_fee_dzd: 524.2, taux_livraison_pct: 76.2, taux_retour_pct: 18.0, avg_duree_livree_min: 1540 },
+];
+
+export const mockDailyVolume: DailyVolumePoint[] = Array.from({ length: 30 }, (_, i) => {
+  const date = new Date(2025, 2, 1 + i);
+  const dow = date.getDay();
+  const isFriday = dow === 5;
+  const isWeekend = dow === 0 || dow === 6;
+  const base = isWeekend ? 180 : isFriday ? 310 : 280 + Math.sin(i * 0.8) * 40;
+  const nbr_colis = Math.round(base + Math.random() * 40);
+  const nbr_livres = Math.round(nbr_colis * (0.70 + Math.random() * 0.08));
+  const nbr_retours = Math.round(nbr_colis * (0.16 + Math.random() * 0.05));
+  return {
+    full_date: date.toISOString().split("T")[0],
+    day_of_week: ["Dim", "Lun", "Mar", "Mer", "Jeu", "Ven", "Sam"][dow],
+    is_weekend: isWeekend,
+    is_friday: isFriday,
+    nbr_colis,
+    nbr_livres,
+    nbr_retours,
+    nbr_echecs: Math.round(nbr_colis * 0.04),
+    total_fees: Math.round(nbr_colis * 520),
+    taux_livraison_pct: Math.round((nbr_livres / nbr_colis) * 1000) / 10,
+  };
+});
+
+export const mockDurationDistribution: DurationBucket[] = [
+  { bucket: "< 1h",       bucket_order: 0, nbr_colis: 142  },
+  { bucket: "1–4h",       bucket_order: 1, nbr_colis: 1840 },
+  { bucket: "4–24h",      bucket_order: 2, nbr_colis: 2860 },
+  { bucket: "1–2 jours",  bucket_order: 3, nbr_colis: 980  },
+  { bucket: "2–5 jours",  bucket_order: 4, nbr_colis: 340  },
+  { bucket: "> 5 jours",  bucket_order: 5, nbr_colis: 69   },
+];
+
+export const mockSinistres: SinistresData = {
+  summary: {
+    nbr_sinistres: 34,
+    sum_declared_dzd: 214_800,
+    sum_rembourse_dzd: 128_400,
+    taux_couverture_pct: 59.8,
+    avg_rembourse_dzd: 3776.5,
+  },
+  by_type: [
+    { sinistre_type: "Perte",         nbr_sinistres: 14, sum_declared_dzd: 98_200,  sum_rembourse_dzd: 68_400,  taux_couverture_pct: 69.7 },
+    { sinistre_type: "Dommage",       nbr_sinistres: 12, sum_declared_dzd: 72_400,  sum_rembourse_dzd: 40_200,  taux_couverture_pct: 55.5 },
+    { sinistre_type: "Vol",           nbr_sinistres: 5,  sum_declared_dzd: 32_000,  sum_rembourse_dzd: 16_800,  taux_couverture_pct: 52.5 },
+    { sinistre_type: "Retard excessif",nbr_sinistres: 3, sum_declared_dzd: 12_200,  sum_rembourse_dzd: 3_000,   taux_couverture_pct: 24.6 },
+  ],
+  by_agency: [
+    { agence_id: 1, agence_nom: "Alger Centre",  wilaya_name: "Alger",      nbr_sinistres: 12, sum_declared_dzd: 82_000,  sum_rembourse_dzd: 48_600 },
+    { agence_id: 2, agence_nom: "Oran",          wilaya_name: "Oran",       nbr_sinistres: 8,  sum_declared_dzd: 52_400,  sum_rembourse_dzd: 31_200 },
+    { agence_id: 5, agence_nom: "Djelfa",        wilaya_name: "Djelfa",     nbr_sinistres: 6,  sum_declared_dzd: 40_200,  sum_rembourse_dzd: 24_800 },
+    { agence_id: 3, agence_nom: "Constantine",   wilaya_name: "Constantine",nbr_sinistres: 5,  sum_declared_dzd: 26_400,  sum_rembourse_dzd: 15_800 },
+    { agence_id: 8, agence_nom: "Batna",         wilaya_name: "Batna",      nbr_sinistres: 3,  sum_declared_dzd: 13_800,  sum_rembourse_dzd: 8_000  },
+  ],
+};
+
+export const mockFreelanceEfficiency: FreelanceEfficiencyItem[] = [
+  { agence_id: 1, agence_nom: "Alger Centre",   wilaya_name: "Alger",      nbr_livreurs: 14, nbr_colis_livres: 820,  nbr_colis_echoues: 148, total_paiements_dzd: 128_000, cout_par_colis_livre: 156.1, taux_succes_freelance_pct: 84.7 },
+  { agence_id: 2, agence_nom: "Oran",           wilaya_name: "Oran",       nbr_livreurs: 10, nbr_colis_livres: 540,  nbr_colis_echoues: 112, total_paiements_dzd: 86_000,  cout_par_colis_livre: 159.3, taux_succes_freelance_pct: 82.8 },
+  { agence_id: 3, agence_nom: "Constantine",    wilaya_name: "Constantine",nbr_livreurs: 8,  nbr_colis_livres: 420,  nbr_colis_echoues: 84,  total_paiements_dzd: 64_000,  cout_par_colis_livre: 152.4, taux_succes_freelance_pct: 83.3 },
+  { agence_id: 5, agence_nom: "Djelfa",         wilaya_name: "Djelfa",     nbr_livreurs: 6,  nbr_colis_livres: 280,  nbr_colis_echoues: 72,  total_paiements_dzd: 48_000,  cout_par_colis_livre: 171.4, taux_succes_freelance_pct: 79.5 },
+  { agence_id: 4, agence_nom: "Sétif",          wilaya_name: "Sétif",      nbr_livreurs: 6,  nbr_colis_livres: 310,  nbr_colis_echoues: 60,  total_paiements_dzd: 48_800,  cout_par_colis_livre: 157.4, taux_succes_freelance_pct: 83.8 },
+  { agence_id: 6, agence_nom: "Annaba",         wilaya_name: "Annaba",     nbr_livreurs: 4,  nbr_colis_livres: 210,  nbr_colis_echoues: 38,  total_paiements_dzd: 32_000,  cout_par_colis_livre: 152.4, taux_succes_freelance_pct: 84.7 },
+];
+
+export const mockParcelsPaginated: ParcelsPaginatedResponse = {
+  results: [
+    { tracking: "YLI-2025-384291", date_creation: "2025-03-15", agence_id: 1, agence_nom: "Alger Centre",  wilaya_destination: "Alger",       delivery_type: "HD", statut_actuel: "Livré",        delivery_fee: 520,  tarif_theorique: 680,  ecart_tarif_dzd: -160,  duree_livraison_minutes: 980,  nbr_evenements: 4 },
+    { tracking: "YLI-2025-384292", date_creation: "2025-03-15", agence_id: 1, agence_nom: "Alger Centre",  wilaya_destination: "Blida",        delivery_type: "SD", statut_actuel: "Livré",        delivery_fee: 440,  tarif_theorique: 440,  ecart_tarif_dzd: 0,     duree_livraison_minutes: 1240, nbr_evenements: 3 },
+    { tracking: "YLI-2025-384293", date_creation: "2025-03-15", agence_id: 2, agence_nom: "Oran",          wilaya_destination: "Oran",        delivery_type: "HD", statut_actuel: "Retourné",     delivery_fee: 0,    tarif_theorique: 580,  ecart_tarif_dzd: -580,  duree_livraison_minutes: null, nbr_evenements: 6 },
+    { tracking: "YLI-2025-384294", date_creation: "2025-03-15", agence_id: 3, agence_nom: "Constantine",   wilaya_destination: "Constantine", delivery_type: "HD", statut_actuel: "Livré",        delivery_fee: 600,  tarif_theorique: 580,  ecart_tarif_dzd: 20,    duree_livraison_minutes: 1560, nbr_evenements: 4 },
+    { tracking: "YLI-2025-384295", date_creation: "2025-03-15", agence_id: 5, agence_nom: "Djelfa",        wilaya_destination: "Djelfa",      delivery_type: "HD", statut_actuel: "Livré",        delivery_fee: 650,  tarif_theorique: 820,  ecart_tarif_dzd: -170,  duree_livraison_minutes: 2180, nbr_evenements: 5 },
+    { tracking: "YLI-2025-384296", date_creation: "2025-03-15", agence_id: 1, agence_nom: "Alger Centre",  wilaya_destination: "Alger",       delivery_type: "SD", statut_actuel: "Livré",        delivery_fee: 480,  tarif_theorique: null, ecart_tarif_dzd: null,  duree_livraison_minutes: 740,  nbr_evenements: 2 },
+    { tracking: "YLI-2025-384297", date_creation: "2025-03-15", agence_id: 8, agence_nom: "Batna",         wilaya_destination: "Batna",       delivery_type: "HD", statut_actuel: "Livré",        delivery_fee: 720,  tarif_theorique: 1080, ecart_tarif_dzd: -360,  duree_livraison_minutes: 3240, nbr_evenements: 7 },
+    { tracking: "YLI-2025-384298", date_creation: "2025-03-15", agence_id: 2, agence_nom: "Oran",          wilaya_destination: "Oran",        delivery_type: "SD", statut_actuel: "Livré",        delivery_fee: 500,  tarif_theorique: 500,  ecart_tarif_dzd: 0,     duree_livraison_minutes: 1120, nbr_evenements: 3 },
+    { tracking: "YLI-2025-384299", date_creation: "2025-03-15", agence_id: 4, agence_nom: "Sétif",         wilaya_destination: "Sétif",       delivery_type: "HD", statut_actuel: "Livré",        delivery_fee: 560,  tarif_theorique: 640,  ecart_tarif_dzd: -80,   duree_livraison_minutes: 1820, nbr_evenements: 4 },
+    { tracking: "YLI-2025-384300", date_creation: "2025-03-15", agence_id: 6, agence_nom: "Annaba",         wilaya_destination: "Annaba",      delivery_type: "HD", statut_actuel: "En cours",     delivery_fee: 540,  tarif_theorique: 520,  ecart_tarif_dzd: 20,    duree_livraison_minutes: null, nbr_evenements: 2 },
+  ],
+  count: 8420,
+  page: 1,
+  pages: 337,
+};
