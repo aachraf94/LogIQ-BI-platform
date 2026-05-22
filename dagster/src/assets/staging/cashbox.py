@@ -5,6 +5,7 @@ natures and rubriques come from the same API endpoint but load into separate tab
 
 import json
 import uuid
+from datetime import timedelta
 
 from dagster import asset, AssetExecutionContext, MaterializeResult, MetadataValue
 
@@ -90,13 +91,32 @@ def stg_cashbox_rubriques(
     return MaterializeResult(metadata={"row_count": MetadataValue.int(len(records))})
 
 
-@asset(group_name="staging", description="Load /cashbox/depenses → stg_cashbox_depenses")
+@asset(
+    group_name="staging",
+    description=(
+        "Incremental load of /cashbox/depenses → stg_cashbox_depenses. "
+        "Resumes from MAX(date_depense) - 30 days to capture late status changes."
+    ),
+)
 def stg_cashbox_depenses(
     context: AssetExecutionContext,
     cashbox_api: CashBoxAPIClient,
     warehouse_db: WarehousePostgresResource,
 ) -> MaterializeResult:
-    depenses = cashbox_api.get_all_depenses()
+    row = warehouse_db.fetch_one(
+        "SELECT MAX(date_depense) FROM warehouse.stg_cashbox_depenses"
+    )
+    max_date = row[0] if row and row[0] else None
+
+    if max_date:
+        # 30-day lookback: expenses can be validated weeks after creation
+        date_from = (max_date - timedelta(days=30)).isoformat()
+        context.log.info(f"Incremental load from {date_from} (max date_depense={max_date})")
+    else:
+        date_from = None
+        context.log.info("Full load — no existing data in staging")
+
+    depenses = cashbox_api.get_all_depenses(date_from=date_from)
     batch_id = uuid.uuid4().hex[:8]
 
     records = [

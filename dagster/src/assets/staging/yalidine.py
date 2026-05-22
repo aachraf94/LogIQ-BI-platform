@@ -217,8 +217,23 @@ def _load_history_day(
     yalidine_api: YalidineAPIClient,
     warehouse_db: WarehousePostgresResource,
 ) -> tuple[str, int]:
-    """Load one day of parcel history (DELETE + paginate API + INSERT). Thread-safe."""
+    """Load one day of parcel history (DELETE + paginate API + INSERT). Thread-safe.
+
+    Collects all pages first, then commits DELETE + INSERT atomically in one connection.
+    """
     day_str = day.isoformat()
+
+    records = []
+    page = 1
+    while True:
+        resp = yalidine_api.get_histories_page(day_str, day_str, page=page, limit=1000)
+        results = resp.get("results", [])
+        if not results:
+            break
+        records.extend(_history_to_row(r) for r in results if r.get("tracking"))
+        if resp.get("pagination", {}).get("next_page") is None:
+            break
+        page += 1
 
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
@@ -226,34 +241,20 @@ def _load_history_day(
                 "DELETE FROM warehouse.stg_yalidine_parcel_history WHERE date_statut::DATE = %s",
                 (day,),
             )
-
-    page, day_count = 1, 0
-    while True:
-        resp = yalidine_api.get_histories_page(day_str, day_str, page=page, limit=1000)
-        results = resp.get("results", [])
-        if not results:
-            break
-
-        records = [_history_to_row(r) for r in results if r.get("tracking")]
         if records:
-            with warehouse_db.get_connection() as conn:
-                warehouse_db.bulk_insert(conn, """
-                    INSERT INTO warehouse.stg_yalidine_parcel_history (
-                        source_id, date_statut, tracking, statut, current_status,
-                        hub_id, hub_name, seller_id, seller_company_id, seller_company_name,
-                        store_name, depart_wilaya_id, whois, whois_company_id,
-                        forced, forced_by, firstname, familyname,
-                        destination_commune_id, destination_wilaya_id, destination_hub_id,
-                        delivery_type, zone, delivery_fee, parcel_type
-                    ) VALUES %s
-                """, records)
-            day_count += len(records)
+            warehouse_db.bulk_insert(conn, """
+                INSERT INTO warehouse.stg_yalidine_parcel_history (
+                    source_id, date_statut, tracking, statut, current_status,
+                    hub_id, hub_name, seller_id, seller_company_id, seller_company_name,
+                    store_name, depart_wilaya_id, whois, whois_company_id,
+                    forced, forced_by, firstname, familyname,
+                    destination_commune_id, destination_wilaya_id, destination_hub_id,
+                    delivery_type, zone, delivery_fee, parcel_type,
+                    parcel_sub_type, reason, note
+                ) VALUES %s
+            """, records)
 
-        if resp.get("pagination", {}).get("next_page") is None:
-            break
-        page += 1
-
-    return day_str, day_count
+    return day_str, len(records)
 
 
 def _history_to_row(r: dict) -> tuple:
@@ -284,4 +285,7 @@ def _history_to_row(r: dict) -> tuple:
         r.get("zone"),
         r.get("delivery_fee"),
         r.get("parcel_type"),
+        r.get("parcel_sub_type"),
+        r.get("reason"),
+        r.get("note"),
     )

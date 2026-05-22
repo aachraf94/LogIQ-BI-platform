@@ -183,8 +183,18 @@ class CashBoxAPIClient(ConfigurableResource):
         """Each nature contains its rubriques inline as a list."""
         return self._get("/cashbox/natures")
 
-    def get_all_depenses(self) -> list:
-        return self._paginate("/cashbox/depenses")
+    def get_all_depenses(
+        self,
+        date_from: str = None,
+        date_to: str = None,
+        page_size: int = 1000,
+    ) -> list:
+        params = {}
+        if date_from:
+            params["date_from"] = date_from
+        if date_to:
+            params["date_to"] = date_to
+        return self._paginate("/cashbox/depenses", extra_params=params, page_size=page_size)
 
     def get_all_paiements_livreurs(self) -> list:
         return self._paginate("/cashbox/paiements-livreurs")
