@@ -122,7 +122,7 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_transport_requests (
     total_cost                      NUMERIC(15,2)   NOT NULL,        -- exact sum of all cout_* fields
 
     -- Billing
-    amount_invoiced                 NUMERIC(15,2)   NOT NULL,
+    amount_invoiced                 NUMERIC(15,2),                           -- NULL for annulée requests
     amount_paid                     NUMERIC(15,2),
     payment_method                  VARCHAR(20),
     payment_status                  VARCHAR(20)     NOT NULL,        -- en_attente, payé, annulé
