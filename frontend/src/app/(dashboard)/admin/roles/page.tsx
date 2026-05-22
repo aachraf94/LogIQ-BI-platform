@@ -8,13 +8,7 @@ import type { Role } from '@/types/api'
 import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'next/navigation'
 import { cn } from '@/lib/utils'
-
-const DASHBOARD_OPTIONS = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'transport', label: 'Transport' },
-  { key: 'parcels', label: 'Parcel Costs' },
-  { key: 'routes', label: 'Route Analysis' },
-]
+import { useTranslation } from '@/lib/i18n'
 
 const PALETTE = [
   '#6366F1', '#22D3EE', '#10B981', '#F59E0B', '#EF4444',
@@ -37,6 +31,14 @@ function RoleForm({
   const [color, setColor] = useState(initial?.color ?? '#6366F1')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
+  const { t } = useTranslation()
+  const pr = t.pages.roles
+  const DASHBOARD_OPTIONS = [
+    { key: 'overview', label: pr.dashboardOptions.overview },
+    { key: 'transport', label: pr.dashboardOptions.transport },
+    { key: 'parcels', label: pr.dashboardOptions.parcels },
+    { key: 'routes', label: pr.dashboardOptions.routes },
+  ]
 
   const toggleDashboard = (key: string) =>
     setDashboards((d) => d.includes(key) ? d.filter((x) => x !== key) : [...d, key])
@@ -63,34 +65,34 @@ function RoleForm({
   return (
     <form onSubmit={handleSave} className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-white">{initial ? 'Edit Role' : 'New Role'}</h3>
+        <h3 className="text-sm font-semibold text-white">{initial ? pr.editRole : pr.newRole}</h3>
         <button type="button" onClick={onCancel} className="p-1 text-slate-500 hover:text-slate-300"><X size={15} /></button>
       </div>
 
       {!initial && (
         <div>
-          <label className="text-xs text-slate-400 block mb-1">Role Key (snake_case, unique)</label>
+          <label className="text-xs text-slate-400 block mb-1">{pr.roleKey}</label>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. responsable_finance"
             required pattern="[a-z_]+" className="w-full bg-[#252840] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary" />
         </div>
       )}
 
       <div>
-        <label className="text-xs text-slate-400 block mb-1">Display Name</label>
+        <label className="text-xs text-slate-400 block mb-1">{pr.displayName}</label>
         <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required
           placeholder="e.g. Responsable Finance"
           className="w-full bg-[#252840] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary" />
       </div>
 
       <div>
-        <label className="text-xs text-slate-400 block mb-1">Description</label>
+        <label className="text-xs text-slate-400 block mb-1">{pr.description}</label>
         <input value={description} onChange={(e) => setDescription(e.target.value)}
-          placeholder="Brief description of this role"
+          placeholder=""
           className="w-full bg-[#252840] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary" />
       </div>
 
       <div>
-        <label className="text-xs text-slate-400 block mb-2">Dashboard Access</label>
+        <label className="text-xs text-slate-400 block mb-2">{pr.dashboardAccess}</label>
         <div className="flex flex-wrap gap-2">
           {DASHBOARD_OPTIONS.map(({ key, label }) => (
             <button key={key} type="button" onClick={() => toggleDashboard(key)}
@@ -105,7 +107,7 @@ function RoleForm({
       </div>
 
       <div>
-        <label className="text-xs text-slate-400 block mb-2">Color</label>
+        <label className="text-xs text-slate-400 block mb-2">{pr.colorLabel}</label>
         <div className="flex gap-2 flex-wrap">
           {PALETTE.map((c) => (
             <button key={c} type="button" onClick={() => setColor(c)}
@@ -118,11 +120,11 @@ function RoleForm({
       {error && <p className="text-xs text-red-400">{error}</p>}
 
       <div className="flex gap-2 justify-end">
-        <button type="button" onClick={onCancel} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200">Cancel</button>
+        <button type="button" onClick={onCancel} className="px-4 py-2 text-xs text-slate-400 hover:text-slate-200">{pr.cancel}</button>
         <button type="submit" disabled={saving}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/80 disabled:opacity-60">
           {saving ? <span className="w-3 h-3 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save size={13} />}
-          {saving ? 'Saving…' : 'Save Role'}
+          {saving ? pr.saving : pr.save}
         </button>
       </div>
     </form>
@@ -132,6 +134,8 @@ function RoleForm({
 export default function AdminRolesPage() {
   const router = useRouter()
   const { user: me } = useAuthStore()
+  const { t } = useTranslation()
+  const pr = t.pages.roles
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -170,12 +174,12 @@ export default function AdminRolesPage() {
     <div className="space-y-5 max-w-3xl">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">Role Management</h2>
-          <p className="text-sm text-slate-400 mt-0.5">{roles.length} roles — system roles cannot be deleted</p>
+          <h2 className="text-xl font-bold text-white">{t.nav.roles}</h2>
+          <p className="text-sm text-slate-400 mt-0.5">{roles.length} — {pr.superadminProtected}</p>
         </div>
         <button onClick={() => { setCreating(true); setEditing(null) }}
           className="flex items-center gap-2 px-4 py-2 bg-primary text-white text-sm font-semibold rounded-xl hover:bg-primary/80 transition-colors">
-          <Plus size={15} /> New Role
+          <Plus size={15} /> {pr.newRole}
         </button>
       </div>
 
@@ -223,7 +227,7 @@ export default function AdminRolesPage() {
                         ))}
                       </div>
                       {role.user_count !== undefined && (
-                        <p className="text-xs text-slate-600 mt-1">{role.user_count} user{role.user_count !== 1 ? 's' : ''}</p>
+                        <p className="text-xs text-slate-600 mt-1">{role.user_count}</p>
                       )}
                     </div>
                     <div className="flex gap-1 shrink-0">

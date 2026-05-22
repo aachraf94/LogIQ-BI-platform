@@ -92,7 +92,7 @@ function ProfileTab() {
 // ─── Preferences ─────────────────────────────────────────────────────────────
 
 function PreferencesTab() {
-  const { updateUser } = useAuthStore()
+  const { updateUser, user } = useAuthStore()
   const { setTheme } = useTheme()
   const { t } = useTranslation()
   const [prefs, setPrefs] = useState<UserPreferences | null>(null)
@@ -170,9 +170,10 @@ function PreferencesTab() {
               onChange={(e) => {
                 const lang = e.target.value
                 setPrefs((p) => p ? { ...p, language: lang } : p)
-                // Immediate preview — applies before save
-                document.documentElement.lang = lang
-                document.documentElement.dir = lang === 'ar' ? 'rtl' : 'ltr'
+                // Immediately update authStore so all components using useTranslation() re-render
+                if (user?.preferences) {
+                  updateUser({ preferences: { ...user.preferences, language: lang } })
+                }
               }}
               className="w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary"
             >

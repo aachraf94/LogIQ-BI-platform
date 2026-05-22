@@ -15,6 +15,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'next/navigation'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/lib/i18n'
 
 // Re-export the types we need
 type UserType = User
@@ -25,9 +26,11 @@ type LoginSessionType = LoginSession
 function SyncBanner({
   result,
   onDismiss,
+  pu,
 }: {
   result: SyncResult
   onDismiss: () => void
+  pu: ReturnType<typeof useTranslation>['t']['pages']['users']
 }) {
   const hasErrors = result.errors > 0
   return (
@@ -45,11 +48,11 @@ function SyncBanner({
       {hasErrors ? <AlertTriangle size={16} className="mt-0.5 shrink-0" /> : <CheckCircle size={16} className="mt-0.5 shrink-0" />}
       <div className="flex-1 min-w-0">
         <p className="font-semibold">
-          HRForce sync complete — {result.total_fetched} users fetched
+          {pu.syncComplete} — {result.total_fetched} {pu.syncFetched}
         </p>
         <p className="text-xs mt-1 opacity-80">
-          {result.created} created · {result.updated} updated · {result.skipped} unchanged
-          {result.errors > 0 && ` · ${result.errors} errors`}
+          {result.created} {pu.syncCreated} · {result.updated} {pu.syncUpdated} · {result.skipped} {pu.syncSkipped}
+          {result.errors > 0 && ` · ${result.errors} ${pu.syncErrors}`}
         </p>
       </div>
       <button onClick={onDismiss} className="p-1 opacity-60 hover:opacity-100 transition-opacity">
@@ -66,11 +69,13 @@ function UserModal({
   roles,
   onClose,
   onUpdate,
+  pu,
 }: {
   user: UserType
   roles: RoleType[]
   onClose: () => void
   onUpdate: (updated: UserType) => void
+  pu: ReturnType<typeof useTranslation>['t']['pages']['users']
 }) {
   const [sessions, setSessions] = useState<LoginSessionType[]>([])
   const [sessionsLoading, setSessLoading] = useState(true)
@@ -157,7 +162,7 @@ function UserModal({
           <div className="flex flex-wrap items-center gap-2">
             <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full',
               localUser.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400')}>
-              {localUser.is_active ? 'Active' : 'Inactive'}
+              {localUser.is_active ? pu.active : pu.inactive}
             </span>
             {localUser.is_superuser && (
               <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary">Superadmin</span>
@@ -186,7 +191,7 @@ function UserModal({
                 )}
               >
                 <Power size={12} />
-                {toggling ? '…' : localUser.is_active ? 'Deactivate' : 'Activate'}
+                {toggling ? '…' : localUser.is_active ? pu.deactivate : pu.activate}
               </button>
             )}
           </div>
@@ -212,14 +217,14 @@ function UserModal({
 
           {/* Role assignment */}
           <div className="bg-[#252840] rounded-xl p-4">
-            <label className="text-xs font-semibold text-slate-400 block mb-2">Assign Role</label>
+            <label className="text-xs font-semibold text-slate-400 block mb-2">{pu.assignRole}</label>
             <div className="flex gap-2">
               <select
                 value={roleId}
                 onChange={(e) => setRoleId(e.target.value ? Number(e.target.value) : '')}
                 className="flex-1 bg-[#1E2030] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
               >
-                <option value="">— No role —</option>
+                <option value="">—</option>
                 {roles.map((r) => (
                   <option key={r.id} value={r.id}>{r.display_name}</option>
                 ))}
@@ -229,38 +234,37 @@ function UserModal({
                 disabled={saving}
                 className="px-4 py-2 bg-primary text-white text-xs font-semibold rounded-lg hover:bg-primary/80 transition-colors disabled:opacity-60"
               >
-                {saving ? '…' : 'Save'}
+                {saving ? '…' : pu.saveRole}
               </button>
             </div>
             {localUser.role && (
               <p className="text-xs text-slate-500 mt-2">
-                Current: <span style={{ color: localUser.role.color }} className="font-semibold">{localUser.role.display_name}</span>
+                <span style={{ color: localUser.role.color }} className="font-semibold">{localUser.role.display_name}</span>
               </p>
             )}
           </div>
 
           {/* Danger zone */}
           <div className="bg-red-500/5 border border-red-500/20 rounded-xl p-4">
-            <h4 className="text-xs font-semibold text-red-400 mb-3">Danger Zone</h4>
             <button
               onClick={handleForceLogout}
               disabled={loggingOut}
               className="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-red-400 border border-red-500/30 rounded-lg hover:bg-red-500/10 transition-colors disabled:opacity-60"
             >
               <LogOut size={13} />
-              {loggingOut ? 'Logging out…' : 'Force Logout All Sessions'}
+              {loggingOut ? '…' : pu.forceLogout}
             </button>
           </div>
 
           {/* Sessions */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-3">Recent Sessions</h4>
+            <h4 className="text-sm font-semibold text-white mb-3">{pu.sessions}</h4>
             {sessionsLoading ? (
               <div className="flex items-center justify-center h-16">
                 <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
               </div>
             ) : sessions.length === 0 ? (
-              <p className="text-xs text-slate-500">No sessions.</p>
+              <p className="text-xs text-slate-500">{pu.noSessions}</p>
             ) : (
               <div className="space-y-2">
                 {sessions.map((s) => (
@@ -276,7 +280,7 @@ function UserModal({
                     </div>
                     {s.is_active && (
                       <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/10 px-1.5 py-0.5 rounded-full">
-                        Active
+                        {pu.active}
                       </span>
                     )}
                   </div>
@@ -297,6 +301,8 @@ const PAGE_SIZE = 20
 export default function AdminUsersPage() {
   const router = useRouter()
   const { user: me } = useAuthStore()
+  const { t } = useTranslation()
+  const pu = t.pages.users
 
   const [users, setUsers] = useState<UserType[]>([])
   const [roles, setRoles] = useState<RoleType[]>([])
@@ -392,8 +398,8 @@ export default function AdminUsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-xl font-bold text-white">User Management</h2>
-          <p className="text-sm text-slate-400 mt-0.5">{count} users total</p>
+          <h2 className="text-xl font-bold text-white">{t.nav.users}</h2>
+          <p className="text-sm text-slate-400 mt-0.5">{count}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -411,7 +417,7 @@ export default function AdminUsersPage() {
             {syncing
               ? <span className="w-4 h-4 border-2 border-slate-500/30 border-t-slate-400 rounded-full animate-spin" />
               : <Download size={15} />}
-            {syncing ? 'Syncing…' : 'Import from HRForce'}
+            {pu.syncHrforce}
           </button>
         </div>
       </div>
@@ -419,7 +425,7 @@ export default function AdminUsersPage() {
       {/* Sync result banner */}
       <AnimatePresence>
         {syncResult && (
-          <SyncBanner result={syncResult} onDismiss={() => setSyncResult(null)} />
+          <SyncBanner result={syncResult} onDismiss={() => setSyncResult(null)} pu={pu} />
         )}
       </AnimatePresence>
 
@@ -430,7 +436,7 @@ export default function AdminUsersPage() {
           <input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Search users…"
+            placeholder={pu.searchPlaceholder}
             className="pl-9 pr-4 py-2 bg-[#1E2030] border border-[#2D3050] rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary w-56"
           />
         </div>
@@ -440,9 +446,9 @@ export default function AdminUsersPage() {
           onChange={(e) => setFilterActive(e.target.value === '' ? undefined : e.target.value === 'true')}
           className="bg-[#1E2030] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
         >
-          <option value="">All Status</option>
-          <option value="true">Active</option>
-          <option value="false">Inactive</option>
+          <option value="">—</option>
+          <option value="true">{pu.active}</option>
+          <option value="false">{pu.inactive}</option>
         </select>
 
         <select
@@ -450,7 +456,7 @@ export default function AdminUsersPage() {
           onChange={(e) => setFilterRole(e.target.value ? Number(e.target.value) : undefined)}
           className="bg-[#1E2030] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
         >
-          <option value="">All Roles</option>
+          <option value="">—</option>
           {roles.map((r) => <option key={r.id} value={r.id}>{r.display_name}</option>)}
         </select>
       </div>
@@ -462,21 +468,21 @@ export default function AdminUsersPage() {
             initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}
             className="flex items-center gap-3 p-3 bg-primary/10 border border-primary/30 rounded-xl flex-wrap"
           >
-            <span className="text-sm text-primary font-semibold">{selected.length} selected</span>
+            <span className="text-sm text-primary font-semibold">{selected.length}</span>
             <div className="flex gap-2 ml-auto flex-wrap">
               <button
                 onClick={() => bulkActivate(true)}
                 disabled={bulkLoading}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-lg hover:bg-emerald-500/20 transition-colors disabled:opacity-60"
               >
-                <UserCheck size={12} /> Activate
+                <UserCheck size={12} /> {pu.activate}
               </button>
               <button
                 onClick={() => bulkActivate(false)}
                 disabled={bulkLoading}
                 className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-red-500/10 text-red-400 border border-red-500/20 rounded-lg hover:bg-red-500/20 transition-colors disabled:opacity-60"
               >
-                <UserX size={12} /> Deactivate
+                <UserX size={12} /> {pu.deactivate}
               </button>
               <select
                 onChange={(e) => {
@@ -488,8 +494,8 @@ export default function AdminUsersPage() {
                 disabled={bulkLoading}
                 className="px-3 py-1.5 text-xs font-semibold bg-[#252840] text-slate-300 border border-[#2D3050] rounded-lg focus:outline-none focus:border-primary disabled:opacity-60"
               >
-                <option value="">Assign Role…</option>
-                <option value="null">— Remove role —</option>
+                <option value="">{pu.assignRole}…</option>
+                <option value="null">—</option>
                 {roles.map((r) => <option key={r.id} value={r.id}>{r.display_name}</option>)}
               </select>
               <button onClick={() => setSelected([])} className="px-2 text-slate-500 hover:text-slate-300">
@@ -514,12 +520,12 @@ export default function AdminUsersPage() {
                     className="accent-primary"
                   />
                 </th>
-                <th className="px-4 py-3 text-left">User</th>
-                <th className="px-4 py-3 text-left">Occupation</th>
-                <th className="px-4 py-3 text-left">Role</th>
-                <th className="px-4 py-3 text-left">Company</th>
-                <th className="px-4 py-3 text-left">Status</th>
-                <th className="px-4 py-3 text-left">Last Login</th>
+                <th className="px-4 py-3 text-left">{pu.colUser}</th>
+                <th className="px-4 py-3 text-left">{pu.colOccupation}</th>
+                <th className="px-4 py-3 text-left">{pu.colRole}</th>
+                <th className="px-4 py-3 text-left">{pu.colCompany}</th>
+                <th className="px-4 py-3 text-left">{pu.colStatus}</th>
+                <th className="px-4 py-3 text-left">{pu.colLastLogin}</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-[#2D3050]">
@@ -531,7 +537,7 @@ export default function AdminUsersPage() {
                 </tr>
               ) : users.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="text-center py-12 text-slate-500 text-sm">No users found</td>
+                  <td colSpan={7} className="text-center py-12 text-slate-500 text-sm">{pu.noUsers}</td>
                 </tr>
               ) : (
                 users.map((u) => (
@@ -593,7 +599,7 @@ export default function AdminUsersPage() {
                           u.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-red-500/10 text-red-400',
                         )}
                       >
-                        {u.is_active ? 'Active' : 'Inactive'}
+                        {u.is_active ? pu.active : pu.inactive}
                       </button>
                     </td>
                     <td className="px-4 py-3 text-xs text-slate-500">{u.last_login_display || '—'}</td>
@@ -607,7 +613,7 @@ export default function AdminUsersPage() {
         {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-[#2D3050]">
-            <span className="text-xs text-slate-500">Page {page} of {totalPages}</span>
+            <span className="text-xs text-slate-500">{page} / {totalPages}</span>
             <div className="flex gap-1">
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -636,6 +642,7 @@ export default function AdminUsersPage() {
             roles={roles}
             onClose={() => setSelectedUser(null)}
             onUpdate={handleUserUpdate}
+            pu={pu}
           />
         )}
       </AnimatePresence>

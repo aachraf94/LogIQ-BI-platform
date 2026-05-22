@@ -15,6 +15,7 @@ import { BarChart } from "@/components/charts/BarChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { AreaChart } from "@/components/charts/AreaChart";
 import type { Column } from "@/components/ui/DataTable";
+import { useTranslation } from "@/lib/i18n";
 
 import { transportApi } from "@/lib/api";
 import { formatDZD, formatNumber, formatPercent } from "@/lib/utils";
@@ -45,32 +46,7 @@ import type {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const YEARS = [2023, 2024, 2025];
-const SERVICE_TYPES = [
-  { label: "Tous les services", value: "all" },
-  { label: "Course dédiée",     value: "course_dediee" },
-  { label: "Courrier",          value: "courrier" },
-  { label: "Manutention",       value: "manutention" },
-];
-const MONTHS = [
-  { label: "Toute l'année", value: null },
-  { label: "Janvier",  value: 1  }, { label: "Février",   value: 2  },
-  { label: "Mars",     value: 3  }, { label: "Avril",     value: 4  },
-  { label: "Mai",      value: 5  }, { label: "Juin",      value: 6  },
-  { label: "Juillet",  value: 7  }, { label: "Août",      value: 8  },
-  { label: "Septembre",value: 9  }, { label: "Octobre",   value: 10 },
-  { label: "Novembre", value: 11 }, { label: "Décembre",  value: 12 },
-];
-
-const COST_LABELS: Record<string, string> = {
-  cout_base:          "Tarif de base",
-  cout_distance_supp: "Distance supp.",
-  cout_assurance:     "Assurance",
-  cout_carburant:     "Carburant",
-  cout_manutention:   "Manutention",
-  cout_autres:        "Autres",
-};
-
-const REGION_ORDER = ["Nord", "Hauts Plateaux", "Sud"];
+// MONTHS, SERVICE_TYPES, COST_LABELS, REGION_ORDER are built inside the component from translations
 
 // ─── Chart theme helpers ───────────────────────────────────────────────────────
 
@@ -157,8 +133,12 @@ function Skeleton({ h = "h-64" }: { h?: string }) {
 
 // ─── OD Matrix chart option ───────────────────────────────────────────────────
 
-function buildODOption(cells: ODMatrixCell[]) {
-  const regions = REGION_ORDER;
+function buildODOption(
+  cells: ODMatrixCell[],
+  regionOrder: string[],
+  labels: { requests: string; margin: string; destination: string; origin: string },
+) {
+  const regions = regionOrder;
   const data: [number, number, number][] = [];
   let max = 0;
 
@@ -180,7 +160,7 @@ function buildODOption(cells: ODMatrixCell[]) {
           (c) => regions.indexOf(c.destination) === p.data[0] && regions.indexOf(c.origin) === p.data[1]
         );
         return cell
-          ? `${cell.origin} → ${cell.destination}<br/>${cell.nbr_requests} demandes<br/>Marge: ${cell.taux_marge_pct ?? "—"}%`
+          ? `${cell.origin} → ${cell.destination}<br/>${cell.nbr_requests} ${labels.requests}<br/>${labels.margin}: ${cell.taux_marge_pct ?? "—"}%`
           : "";
       },
     },
@@ -188,7 +168,7 @@ function buildODOption(cells: ODMatrixCell[]) {
     xAxis: {
       type: "category" as const,
       data: regions,
-      name: "Destination",
+      name: labels.destination,
       nameLocation: "middle" as const,
       nameGap: 25,
       nameTextStyle: { color: "#64748B", fontSize: 11 },
@@ -199,7 +179,7 @@ function buildODOption(cells: ODMatrixCell[]) {
     yAxis: {
       type: "category" as const,
       data: regions,
-      name: "Origine",
+      name: labels.origin,
       nameLocation: "middle" as const,
       nameGap: 80,
       nameTextStyle: { color: "#64748B", fontSize: 11 },
@@ -231,8 +211,11 @@ function buildODOption(cells: ODMatrixCell[]) {
 
 // ─── Request status stacked bar ───────────────────────────────────────────────
 
-function buildStatusStackedOption(trends: TransportTrendPoint[]) {
-  const cats = trends.map((t) => `${t.month_name_fr.slice(0, 3)} ${String(t.year).slice(2)}`);
+function buildStatusStackedOption(
+  trends: TransportTrendPoint[],
+  cats: string[],
+  series: { completed: string; inProgress: string; cancelled: string },
+) {
   return {
     backgroundColor: "transparent",
     tooltip: { trigger: "axis" as const, ...CHART_TOOLTIP, axisPointer: { type: "shadow" as const } },
@@ -252,16 +235,16 @@ function buildStatusStackedOption(trends: TransportTrendPoint[]) {
       axisLabel: AXIS_LABEL,
     },
     series: [
-      { name: "Terminées",  type: "bar" as const, stack: "s", data: trends.map((t) => t.nbr_terminees), itemStyle: { color: "#10B981" } },
-      { name: "En cours",   type: "bar" as const, stack: "s", data: trends.map((t) => t.nbr_requests - t.nbr_terminees - t.nbr_annulees), itemStyle: { color: "#F59E0B" } },
-      { name: "Annulées",   type: "bar" as const, stack: "s", data: trends.map((t) => t.nbr_annulees), itemStyle: { color: "#EF4444", borderRadius: [4, 4, 0, 0] } },
+      { name: series.completed,  type: "bar" as const, stack: "s", data: trends.map((t) => t.nbr_terminees), itemStyle: { color: "#10B981" } },
+      { name: series.inProgress, type: "bar" as const, stack: "s", data: trends.map((t) => t.nbr_requests - t.nbr_terminees - t.nbr_annulees), itemStyle: { color: "#F59E0B" } },
+      { name: series.cancelled,  type: "bar" as const, stack: "s", data: trends.map((t) => t.nbr_annulees), itemStyle: { color: "#EF4444", borderRadius: [4, 4, 0, 0] } },
     ],
   };
 }
 
 // ─── On-time gauge ────────────────────────────────────────────────────────────
 
-function buildOnTimeGaugeOption(value: number) {
+function buildOnTimeGaugeOption(value: number, gaugeLabel: string) {
   return {
     backgroundColor: "transparent",
     series: [{
@@ -298,7 +281,7 @@ function buildOnTimeGaugeOption(value: number) {
         color: "#E2E8F0",
         formatter: "{value}%",
       },
-      data: [{ value: Math.round(value * 10) / 10, name: "Ponctualité" }],
+      data: [{ value: Math.round(value * 10) / 10, name: gaugeLabel }],
     }],
   };
 }
@@ -312,6 +295,23 @@ export default function TransportPage() {
   const [loading, setLoading] = useState(true);
   const [usingMock, setUsingMock] = useState(false);
   const [data, setData] = useState<PageData>(MOCK_DATA);
+
+  const { t } = useTranslation();
+  const p = t.pages.transport;
+  const pc = t.pages.common;
+
+  const MONTHS = [
+    { label: pc.monthAll, value: null },
+    ...pc.months.map((name, i) => ({ label: name, value: i + 1 })),
+  ];
+  const SERVICE_TYPES = [
+    { label: p.allServices, value: "all" },
+    { label: p.dedicatedTrip, value: "course_dediee" },
+    { label: p.courier, value: "courrier" },
+    { label: p.handling, value: "manutention" },
+  ];
+  const COST_LABELS = p.costLabels;
+  const REGION_ORDER = ["Nord", "Hauts Plateaux", "Sud"];
 
   const fetchAll = useCallback(async () => {
     setLoading(true);
@@ -346,10 +346,10 @@ export default function TransportPage() {
 
   // ── Derived chart data ──────────────────────────────────────────────────────
 
-  const areaData = trends.map((t) => ({
-    month: `${t.month_name_fr.slice(0, 3)} ${String(t.year).slice(2)}`,
-    revenue: t.total_revenue,
-    cost: t.total_cost,
+  const areaData = trends.map((tr) => ({
+    month: `${pc.monthsShort[tr.month_num - 1] ?? tr.month_name_fr.slice(0, 3)} ${String(tr.year).slice(2)}`,
+    revenue: tr.total_revenue,
+    cost: tr.total_cost,
   }));
 
   const costBreakdownMap = costBreakdown as unknown as Record<string, number>;
@@ -362,18 +362,20 @@ export default function TransportPage() {
     return acc;
   }, {});
   const servicePieData = Object.entries(serviceVolData).map(([k, v]) => ({
-    name: k === "course_dediee" ? "Course dédiée" : k.charAt(0).toUpperCase() + k.slice(1),
+    name: k === "course_dediee" ? p.dedicatedTrip : k.charAt(0).toUpperCase() + k.slice(1),
     value: v,
   }));
 
+  const trendCats = trends.map((tr) => `${pc.monthsShort[tr.month_num - 1] ?? tr.month_name_fr.slice(0, 3)} ${String(tr.year).slice(2)}`);
+
   const onTimeTrend = {
-    categories: trends.map((t) => `${t.month_name_fr.slice(0, 3)} ${String(t.year).slice(2)}`),
-    series: [{ name: "Ponctualité (%)", data: trends.map((t) => t.taux_ponctualite_pct), color: "#6366F1" }],
+    categories: trendCats,
+    series: [{ name: p.punctualitySeries, data: trends.map((tr) => tr.taux_ponctualite_pct), color: "#6366F1" }],
   };
 
   const costKmTrend = {
-    categories: trends.map((t) => `${t.month_name_fr.slice(0, 3)} ${String(t.year).slice(2)}`),
-    series: [{ name: "Coût/km (DZD)", data: trends.map((t) => t.cout_par_km), color: "#F59E0B" }],
+    categories: trendCats,
+    series: [{ name: p.costKmSeries, data: trends.map((tr) => tr.cout_par_km), color: "#F59E0B" }],
   };
 
   const vehicleBarData = byVehicle.map((v) => ({ name: v.vehicle_type, value: v.cout_par_km }));
@@ -382,53 +384,53 @@ export default function TransportPage() {
   // ── Column defs ─────────────────────────────────────────────────────────────
 
   const corridorCols: Column<TransportCorridor>[] = [
-    { key: "wilaya_depart_name",  header: "Origine",       sortable: true },
-    { key: "wilaya_arrivee_name", header: "Destination",   sortable: true },
+    { key: "wilaya_depart_name",  header: p.colOrigin,      sortable: true },
+    { key: "wilaya_arrivee_name", header: p.colDestination, sortable: true },
     {
-      key: "meme_region", header: "Région",
+      key: "meme_region", header: p.colRegion,
       render: (r) => (
         <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${r.meme_region ? "bg-emerald-500/10 text-emerald-400" : "bg-indigo-500/10 text-indigo-400"}`}>
           {r.meme_region ? "Intra" : "Inter"}
         </span>
       ),
     },
-    { key: "nbr_requests",    header: "Demandes",    sortable: true },
+    { key: "nbr_requests",    header: p.colRequests,   sortable: true },
     {
-      key: "taux_marge_pct", header: "Marge %", sortable: true,
+      key: "taux_marge_pct", header: p.colMarginPct, sortable: true,
       render: (r) => (
         <span className={`font-semibold ${r.taux_marge_pct >= 24 ? "text-emerald-400" : r.taux_marge_pct >= 20 ? "text-amber-400" : "text-red-400"}`}>
           {r.taux_marge_pct?.toFixed(1) ?? "—"}%
         </span>
       ),
     },
-    { key: "avg_distance_km", header: "Dist. moy. (km)", sortable: true, render: (r) => `${r.avg_distance_km ?? "—"} km` },
-    { key: "cout_par_km",     header: "DZD/km",       sortable: true, render: (r) => `${r.cout_par_km ?? "—"}` },
+    { key: "avg_distance_km", header: p.colAvgDist, sortable: true, render: (r) => `${r.avg_distance_km ?? "—"} km` },
+    { key: "cout_par_km",     header: p.colDzdKm,   sortable: true, render: (r) => `${r.cout_par_km ?? "—"}` },
     {
-      key: "total_revenue", header: "Revenu", sortable: true,
+      key: "total_revenue", header: p.colRevenue, sortable: true,
       render: (r) => <span className="font-mono text-sm">{formatDZD(r.total_revenue)}</span>,
     },
   ];
 
   const agencyCols: Column<TransportAgencyData>[] = [
-    { key: "agence_name",          header: "Agence",       sortable: true },
-    { key: "wilaya_dispatch_name", header: "Wilaya",       sortable: true },
-    { key: "region",               header: "Région",       sortable: true },
-    { key: "nbr_requests",         header: "Demandes",     sortable: true },
+    { key: "agence_name",          header: p.colAgency,     sortable: true },
+    { key: "wilaya_dispatch_name", header: p.colWilaya,     sortable: true },
+    { key: "region",               header: p.colRegion,     sortable: true },
+    { key: "nbr_requests",         header: p.colRequests,   sortable: true },
     {
-      key: "completion_rate", header: "Complétion", sortable: true,
+      key: "completion_rate", header: p.colCompletion, sortable: true,
       render: (r) => <span className={r.completion_rate >= 85 ? "text-emerald-400 font-semibold" : "text-amber-400 font-semibold"}>{r.completion_rate?.toFixed(1) ?? "—"}%</span>,
     },
     {
-      key: "taux_ponctualite_pct", header: "Ponctualité", sortable: true,
+      key: "taux_ponctualite_pct", header: p.colPunctuality, sortable: true,
       render: (r) => <span className={r.taux_ponctualite_pct >= 88 ? "text-emerald-400" : r.taux_ponctualite_pct >= 83 ? "text-amber-400" : "text-red-400"}>{r.taux_ponctualite_pct?.toFixed(1) ?? "—"}%</span>,
     },
     {
-      key: "taux_marge_pct", header: "Marge %", sortable: true,
+      key: "taux_marge_pct", header: p.colMarginPct, sortable: true,
       render: (r) => `${r.taux_marge_pct?.toFixed(1) ?? "—"}%`,
     },
-    { key: "cout_par_km", header: "DZD/km", sortable: true, render: (r) => `${r.cout_par_km?.toFixed(1) ?? "—"}` },
+    { key: "cout_par_km", header: p.colDzdKm, sortable: true, render: (r) => `${r.cout_par_km?.toFixed(1) ?? "—"}` },
     {
-      key: "avg_note_client", header: "Note", sortable: true,
+      key: "avg_note_client", header: p.colNote, sortable: true,
       render: (r) => (
         <span className="flex items-center gap-1">
           <Star size={12} className="text-amber-400" />
@@ -437,7 +439,7 @@ export default function TransportPage() {
       ),
     },
     {
-      key: "total_revenue", header: "Revenu", sortable: true,
+      key: "total_revenue", header: p.colRevenue, sortable: true,
       render: (r) => <span className="font-mono text-sm">{formatDZD(r.total_revenue)}</span>,
     },
   ];
@@ -454,39 +456,43 @@ export default function TransportPage() {
         <Select value={serviceType} onChange={(v) => setServiceType(v as string)} options={SERVICE_TYPES} />
         {usingMock && (
           <span className="ml-auto text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg">
-            Données de démonstration — backend indisponible
+            {p.demoData}
           </span>
         )}
         {loading && (
-          <span className="ml-auto text-xs text-slate-400 animate-pulse">Chargement…</span>
+          <span className="ml-auto text-xs text-slate-400 animate-pulse">{p.loading}</span>
         )}
       </div>
 
       {/* ── Primary KPI cards ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title="Demandes totales"  value={formatNumber(cur.total_requests)}       trend={d.mom_requests} trendLabel="vs mois précédent" icon={<Truck size={16} />}        index={0} />
-        <KpiCard title="Taux de complétion" value={formatPercent(d.completion_rate)}      trend={d.mom_on_time}  trendLabel="vs mois précédent" icon={<PackageCheck size={16} />}  index={1} />
-        <KpiCard title="Revenu total"       value={formatDZD(cur.total_revenue)}          trend={d.mom_revenue}  trendLabel="vs mois précédent" icon={<DollarSign size={16} />}    index={2} />
-        <KpiCard title="Marge brute"        value={formatPercent(d.gross_margin_pct)}     trend={d.mom_margin}   trendLabel="vs mois précédent" icon={<TrendingUp size={16} />}    index={3} />
+        <KpiCard title={p.kpiTotalRequests}    value={formatNumber(cur.total_requests)}       trend={d.mom_requests} trendLabel={p.vsPrevMonth} icon={<Truck size={16} />}        index={0} />
+        <KpiCard title={p.kpiCompletionRate}   value={formatPercent(d.completion_rate)}       trend={d.mom_on_time}  trendLabel={p.vsPrevMonth} icon={<PackageCheck size={16} />}  index={1} />
+        <KpiCard title={p.kpiTotalRevenue}     value={formatDZD(cur.total_revenue)}           trend={d.mom_revenue}  trendLabel={p.vsPrevMonth} icon={<DollarSign size={16} />}    index={2} />
+        <KpiCard title={p.kpiGrossMargin}      value={formatPercent(d.gross_margin_pct)}      trend={d.mom_margin}   trendLabel={p.vsPrevMonth} icon={<TrendingUp size={16} />}    index={3} />
       </div>
 
       {/* ── Secondary KPI cards ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title="Ponctualité"       value={formatPercent(cur.avg_ponctualite_pct)} trend={d.mom_on_time}  icon={<Gauge size={16} />}       index={4} />
-        <KpiCard title="Coût / km"         value={`${d.cost_per_km} DZD`}                trend={0}              icon={<Route size={16} />}       index={5} />
-        <KpiCard title="Taux annulation"   value={formatPercent(d.cancellation_rate)}     trend={-d.cancellation_rate} icon={<Ban size={16} />}   index={6} />
-        <KpiCard title="Note client moy."  value={cur.avg_note_client?.toFixed(1) ?? "—"} trend={0}             icon={<Star size={16} />}        index={7} />
+        <KpiCard title={p.kpiPunctuality}      value={formatPercent(cur.avg_ponctualite_pct)} trend={d.mom_on_time}        icon={<Gauge size={16} />}   index={4} />
+        <KpiCard title={p.kpiCostPerKm}        value={`${d.cost_per_km} DZD`}                trend={0}                    icon={<Route size={16} />}   index={5} />
+        <KpiCard title={p.kpiCancellationRate} value={formatPercent(d.cancellation_rate)}     trend={-d.cancellation_rate} icon={<Ban size={16} />}     index={6} />
+        <KpiCard title={p.kpiAvgNote}          value={cur.avg_note_client?.toFixed(1) ?? "—"} trend={0}                   icon={<Star size={16} />}    index={7} />
       </div>
 
       {/* ── Trends: Revenue vs Cost + Requests by Status ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title="Revenu vs Coût mensuel (DZD)">
+        <SectionCard title={p.sectionRevenueCost}>
           {loading ? <Skeleton /> : <AreaChart data={areaData} height={280} />}
         </SectionCard>
-        <SectionCard title="Volume des demandes par statut">
+        <SectionCard title={p.sectionRequestsByStatus}>
           {loading ? <Skeleton /> : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-              <ReactECharts option={buildStatusStackedOption(trends)} style={{ height: 280 }} notMerge />
+              <ReactECharts
+                option={buildStatusStackedOption(trends, trendCats, { completed: p.completedSeries, inProgress: p.inProgressSeries, cancelled: p.cancelledSeries })}
+                style={{ height: 280 }}
+                notMerge
+              />
             </motion.div>
           )}
         </SectionCard>
@@ -494,18 +500,18 @@ export default function TransportPage() {
 
       {/* ── Cost breakdown + On-time gauge ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title="Structure des coûts de transport">
+        <SectionCard title={p.sectionCostStructure}>
           {loading ? <Skeleton /> : <PieChart data={costDonutData} height={280} />}
         </SectionCard>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <SectionCard title="Ponctualité actuelle">
+          <SectionCard title={p.sectionCurrentPunctuality}>
             {loading ? <Skeleton h="h-full" /> : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
-                <ReactECharts option={buildOnTimeGaugeOption(cur.avg_ponctualite_pct)} style={{ height: 220 }} notMerge />
+                <ReactECharts option={buildOnTimeGaugeOption(cur.avg_ponctualite_pct, p.kpiPunctuality)} style={{ height: 220 }} notMerge />
               </motion.div>
             )}
           </SectionCard>
-          <SectionCard title="Évolution ponctualité (%)">
+          <SectionCard title={p.sectionPunctualityTrend}>
             {loading ? <Skeleton h="h-full" /> : (
               <LineChart
                 categories={onTimeTrend.categories}
@@ -520,7 +526,7 @@ export default function TransportPage() {
 
       {/* ── Unit cost trend + Delay histogram ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title="Coût par km (DZD) — évolution mensuelle">
+        <SectionCard title={p.sectionCostKmTrend}>
           {loading ? <Skeleton /> : (
             <LineChart
               categories={costKmTrend.categories}
@@ -530,13 +536,13 @@ export default function TransportPage() {
             />
           )}
         </SectionCard>
-        <SectionCard title="Distribution des retards à l'arrivée">
+        <SectionCard title={p.sectionDelayDistribution}>
           {loading ? <Skeleton /> : (
             <BarChart
               data={delayBarData}
               height={260}
               color="#6366F1"
-              label="Demandes"
+              label={p.colRequests}
             />
           )}
         </SectionCard>
@@ -544,10 +550,10 @@ export default function TransportPage() {
 
       {/* ── Service mix + Vehicle efficiency ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title="Répartition par type de service">
+        <SectionCard title={p.sectionServiceBreakdown}>
           {loading ? <Skeleton /> : <PieChart data={servicePieData} height={260} />}
         </SectionCard>
-        <SectionCard title="Coût/km par type de véhicule (DZD)">
+        <SectionCard title={p.sectionVehicleEfficiency}>
           {loading ? <Skeleton /> : (
             <BarChart
               data={vehicleBarData}
@@ -561,16 +567,20 @@ export default function TransportPage() {
       </div>
 
       {/* ── OD Matrix ── */}
-      <SectionCard title="Matrice Origine → Destination (demandes par région)">
+      <SectionCard title={p.sectionODMatrix}>
         <div className="flex items-start gap-8">
           {loading ? <div className="flex-1 h-64 bg-[#252840] animate-pulse rounded-lg" /> : (
             <motion.div className="flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-              <ReactECharts option={buildODOption(odMatrix)} style={{ height: 260 }} notMerge />
+              <ReactECharts
+                option={buildODOption(odMatrix, REGION_ORDER, { requests: p.colRequests, margin: p.colMarginPct, destination: p.colDestination, origin: p.colOrigin })}
+                style={{ height: 260 }}
+                notMerge
+              />
             </motion.div>
           )}
           {!loading && (
             <div className="shrink-0 space-y-2 pt-2">
-              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">Légende marge</p>
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">{p.marginLegend}</p>
               {odMatrix.slice(0, 6).map((cell) => (
                 <div key={`${cell.origin}-${cell.destination}`} className="flex items-center gap-2 text-xs text-slate-300">
                   <span className="w-20 text-right text-slate-500">{cell.origin.slice(0, 4)}</span>
@@ -587,14 +597,14 @@ export default function TransportPage() {
       </SectionCard>
 
       {/* ── Top corridors table ── */}
-      <SectionCard title="Top corridors (par volume)">
+      <SectionCard title={p.sectionCorridors}>
         {loading ? <Skeleton h="h-48" /> : (
           <DataTable columns={corridorCols} data={corridors} />
         )}
       </SectionCard>
 
       {/* ── Agency ranking ── */}
-      <SectionCard title="Performance par agence">
+      <SectionCard title={p.sectionAgencyPerformance}>
         {loading ? <Skeleton h="h-48" /> : (
           <DataTable columns={agencyCols} data={byAgency} />
         )}
@@ -602,7 +612,7 @@ export default function TransportPage() {
 
       {/* ── Service breakdown detail ── */}
       {!loading && byService.length > 0 && (
-        <SectionCard title="Détail par type de service">
+        <SectionCard title={p.sectionServiceBreakdown}>
           <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
             {byService.map((s, i) => (
               <motion.div
@@ -613,20 +623,20 @@ export default function TransportPage() {
                 className="bg-[#252840] rounded-lg p-4 space-y-2"
               >
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  {s.service_type === "course_dediee" ? "Course dédiée" : s.service_type.charAt(0).toUpperCase() + s.service_type.slice(1)}
+                  {s.service_type === "course_dediee" ? p.dedicatedTrip : s.service_type.charAt(0).toUpperCase() + s.service_type.slice(1)}
                   {s.sub_service_type !== "N/A" && ` — ${s.sub_service_type}`}
                 </p>
-                <p className="text-lg font-bold text-white">{formatNumber(s.nbr_requests)} <span className="text-xs text-slate-400 font-normal">demandes</span></p>
+                <p className="text-lg font-bold text-white">{formatNumber(s.nbr_requests)} <span className="text-xs text-slate-400 font-normal">{p.colRequests.toLowerCase()}</span></p>
                 <div className="flex justify-between text-xs text-slate-400">
-                  <span>Marge</span>
+                  <span>{p.colMarginPct}</span>
                   <span className={`font-semibold ${s.taux_marge_pct >= 24 ? "text-emerald-400" : "text-amber-400"}`}>{s.taux_marge_pct?.toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-400">
-                  <span>Ponctualité</span>
+                  <span>{p.colPunctuality}</span>
                   <span className="font-semibold text-slate-200">{s.taux_ponctualite_pct?.toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-400">
-                  <span>Note client</span>
+                  <span>{p.colNote}</span>
                   <span className="flex items-center gap-1 font-semibold text-amber-400">
                     <Star size={11} /> {s.avg_note_client?.toFixed(1)}
                   </span>

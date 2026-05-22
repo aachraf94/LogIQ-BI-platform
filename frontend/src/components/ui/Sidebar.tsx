@@ -80,7 +80,7 @@ function NavLink({ item, collapsed, label }: { item: NavItem; collapsed: boolean
 export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuthStore()
-  const { t } = useTranslation()
+  const { t, isRTL } = useTranslation()
 
   const accessibleDashboards = user?.accessible_dashboards ?? []
   const isSuperAdmin = user?.is_superuser ?? false
@@ -93,7 +93,12 @@ export function Sidebar() {
     <motion.aside
       animate={{ width: collapsed ? 64 : 240 }}
       transition={{ duration: 0.25, ease: 'easeInOut' }}
-      className="fixed left-0 top-0 h-full bg-white dark:bg-[#1E2030] border-r border-slate-200 dark:border-[#2D3050] flex flex-col z-40 overflow-hidden"
+      className={cn(
+        'fixed top-0 h-full bg-white dark:bg-[#1E2030] flex flex-col z-40 overflow-hidden',
+        isRTL
+          ? 'right-0 border-l border-slate-200 dark:border-[#2D3050]'
+          : 'left-0 border-r border-slate-200 dark:border-[#2D3050]'
+      )}
     >
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-slate-200 dark:border-[#2D3050] shrink-0">
@@ -140,7 +145,10 @@ export function Sidebar() {
         onClick={() => setCollapsed((c) => !c)}
         className="m-3 p-2 rounded-lg bg-slate-100 dark:bg-[#252840] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-[#2D3050] transition-colors flex items-center justify-center"
       >
-        {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
+        {isRTL
+          ? (collapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />)
+          : (collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />)
+        }
       </button>
     </motion.aside>
   )

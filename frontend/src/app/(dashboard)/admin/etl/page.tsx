@@ -8,6 +8,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'next/navigation'
 import { format, formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/lib/i18n'
 
 const STATUS_ICON: Record<ETLStatus, React.ReactNode> = {
   success: <CheckCircle size={15} className="text-emerald-400" />,
@@ -30,7 +31,7 @@ function formatDuration(seconds: number | null): string {
   return m > 0 ? `${m}m ${s}s` : `${s}s`
 }
 
-function RunRow({ run }: { run: ETLRun }) {
+function RunRow({ run, pe }: { run: ETLRun; pe: ReturnType<typeof useTranslation>['t']['pages']['etl'] }) {
   const [expanded, setExpanded] = useState(false)
   const assets = Object.entries(run.assets_materialized ?? {})
 
@@ -58,7 +59,7 @@ function RunRow({ run }: { run: ETLRun }) {
             {run.total_rows_loaded > 0 && (
               <span className="flex items-center gap-1">
                 <Database size={11} />
-                {run.total_rows_loaded.toLocaleString()} rows
+                {run.total_rows_loaded.toLocaleString()} {pe.rows}
               </span>
             )}
           </div>
@@ -77,7 +78,7 @@ function RunRow({ run }: { run: ETLRun }) {
           )}
           {assets.length > 0 && (
             <div>
-              <p className="text-xs text-slate-500 mb-2">Assets materialized ({assets.length})</p>
+              <p className="text-xs text-slate-500 mb-2">{pe.assetsMaterialized} ({assets.length})</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {assets.map(([asset, rows]) => (
                   <div key={asset} className="flex items-center justify-between p-2 bg-[#1E2030] rounded-lg">
@@ -100,6 +101,8 @@ function RunRow({ run }: { run: ETLRun }) {
 export default function AdminEtlPage() {
   const router = useRouter()
   const { user: me } = useAuthStore()
+  const { t } = useTranslation()
+  const pe = t.pages.etl
   const [runs, setRuns] = useState<ETLRun[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<ETLStatus | ''>('')
@@ -133,10 +136,10 @@ export default function AdminEtlPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">ETL Runs</h2>
-          <p className="text-sm text-slate-400 mt-0.5">Last 100 pipeline executions</p>
+          <h2 className="text-xl font-bold text-white">{pe.title}</h2>
+          <p className="text-sm text-slate-400 mt-0.5">{pe.subtitle}</p>
         </div>
-        <button onClick={load} disabled={loading} className="p-2 text-slate-500 hover:text-slate-300 transition-colors">
+        <button onClick={load} disabled={loading} title={pe.refresh} className="p-2 text-slate-500 hover:text-slate-300 transition-colors">
           <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
         </button>
       </div>
@@ -144,10 +147,10 @@ export default function AdminEtlPage() {
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total', value: runs.length, color: 'text-white' },
-          { label: 'Success', value: counts.success ?? 0, color: 'text-emerald-400' },
-          { label: 'Failed', value: counts.failure ?? 0, color: 'text-red-400' },
-          { label: 'Partial', value: counts.partial ?? 0, color: 'text-amber-400' },
+          { label: pe.labelTotal,   value: runs.length,           color: 'text-white' },
+          { label: pe.labelSuccess, value: counts.success ?? 0,   color: 'text-emerald-400' },
+          { label: pe.labelFailed,  value: counts.failure ?? 0,   color: 'text-red-400' },
+          { label: pe.labelPartial, value: counts.partial ?? 0,   color: 'text-amber-400' },
         ].map((s) => (
           <div key={s.label} className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-4">
             <p className="text-xs text-slate-400">{s.label}</p>
@@ -160,16 +163,16 @@ export default function AdminEtlPage() {
       <div className="flex gap-3 flex-wrap">
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as ETLStatus | '')}
           className="bg-[#1E2030] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary">
-          <option value="">All Statuses</option>
-          <option value="success">Success</option>
-          <option value="failure">Failure</option>
-          <option value="running">Running</option>
-          <option value="partial">Partial</option>
+          <option value="">{pe.statusAll}</option>
+          <option value="success">{pe.statusSuccess}</option>
+          <option value="failure">{pe.statusFailure}</option>
+          <option value="running">{pe.statusRunning}</option>
+          <option value="partial">{pe.statusPartial}</option>
         </select>
         {jobNames.length > 1 && (
           <select value={jobFilter} onChange={(e) => setJobFilter(e.target.value)}
             className="bg-[#1E2030] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary">
-            <option value="">All Jobs</option>
+            <option value="">{pe.labelAllJobs}</option>
             {jobNames.map((j) => <option key={j} value={j}>{j}</option>)}
           </select>
         )}
@@ -184,10 +187,10 @@ export default function AdminEtlPage() {
         ) : runs.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-40 text-slate-500">
             <Database size={28} className="mb-2 opacity-30" />
-            <p className="text-sm">No ETL runs found</p>
+            <p className="text-sm">{pe.noRuns}</p>
           </div>
         ) : (
-          runs.map((run) => <RunRow key={run.id} run={run} />)
+          runs.map((run) => <RunRow key={run.id} run={run} pe={pe} />)
         )}
       </div>
     </div>

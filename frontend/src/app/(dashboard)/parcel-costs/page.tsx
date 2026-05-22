@@ -15,6 +15,7 @@ import { BarChart } from "@/components/charts/BarChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { AreaChart } from "@/components/charts/AreaChart";
 import type { Column } from "@/components/ui/DataTable";
+import { useTranslation } from "@/lib/i18n";
 
 import { parcelCostsApi } from "@/lib/api";
 import { formatDZD, formatNumber, formatPercent } from "@/lib/utils";
@@ -55,20 +56,7 @@ import type {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const YEARS = [2023, 2024, 2025];
-const MONTHS = [
-  { label: "Toute l'année", value: null },
-  { label: "Janvier",  value: 1  }, { label: "Février",   value: 2  },
-  { label: "Mars",     value: 3  }, { label: "Avril",     value: 4  },
-  { label: "Mai",      value: 5  }, { label: "Juin",      value: 6  },
-  { label: "Juillet",  value: 7  }, { label: "Août",      value: 8  },
-  { label: "Septembre",value: 9  }, { label: "Octobre",   value: 10 },
-  { label: "Novembre", value: 11 }, { label: "Décembre",  value: 12 },
-];
-const DELIVERY_TYPES = [
-  { label: "HD + SD",            value: "all" },
-  { label: "Domicile (HD)",      value: "HD"  },
-  { label: "Point relais (SD)",  value: "SD"  },
-];
+// MONTHS and DELIVERY_TYPES are built inside the component from translations
 
 // ─── Chart theme helpers ───────────────────────────────────────────────────────
 
@@ -171,15 +159,19 @@ function Skeleton({ h = "h-64" }: { h?: string }) {
 
 // ─── Chart builders ───────────────────────────────────────────────────────────
 
-function buildQuadrantOption(agencies: ParcelAgencyData[]) {
+function buildQuadrantOption(
+  agencies: ParcelAgencyData[],
+  quadrantNames: { performant: string; tariffRisk: string; opRisk: string; doubleRisk: string },
+  axisLabels: { delivery: string; underTariff: string },
+) {
   const DELIVERY_THRESH = 73;
   const RISK_THRESH = 24;
 
   const quadrants = [
-    { name: "Performant",          color: "#10B981", check: (a: ParcelAgencyData) => a.taux_livraison >= DELIVERY_THRESH && a.taux_sous_tarif_pct < RISK_THRESH },
-    { name: "Risque tarifaire",    color: "#F59E0B", check: (a: ParcelAgencyData) => a.taux_livraison >= DELIVERY_THRESH && a.taux_sous_tarif_pct >= RISK_THRESH },
-    { name: "Risque opérationnel", color: "#6366F1", check: (a: ParcelAgencyData) => a.taux_livraison < DELIVERY_THRESH  && a.taux_sous_tarif_pct < RISK_THRESH },
-    { name: "Double risque",       color: "#EF4444", check: (a: ParcelAgencyData) => a.taux_livraison < DELIVERY_THRESH  && a.taux_sous_tarif_pct >= RISK_THRESH },
+    { name: quadrantNames.performant,  color: "#10B981", check: (a: ParcelAgencyData) => a.taux_livraison >= DELIVERY_THRESH && a.taux_sous_tarif_pct < RISK_THRESH },
+    { name: quadrantNames.tariffRisk,  color: "#F59E0B", check: (a: ParcelAgencyData) => a.taux_livraison >= DELIVERY_THRESH && a.taux_sous_tarif_pct >= RISK_THRESH },
+    { name: quadrantNames.opRisk,      color: "#6366F1", check: (a: ParcelAgencyData) => a.taux_livraison < DELIVERY_THRESH  && a.taux_sous_tarif_pct < RISK_THRESH },
+    { name: quadrantNames.doubleRisk,  color: "#EF4444", check: (a: ParcelAgencyData) => a.taux_livraison < DELIVERY_THRESH  && a.taux_sous_tarif_pct >= RISK_THRESH },
   ];
 
   const maxColis = Math.max(...agencies.map((a) => a.nbr_colis), 1);
@@ -219,7 +211,7 @@ function buildQuadrantOption(agencies: ParcelAgencyData[]) {
     grid: { left: 60, right: 20, top: 20, bottom: 50 },
     xAxis: {
       type: "value" as const,
-      name: "Taux de livraison (%)",
+      name: axisLabels.delivery,
       nameLocation: "middle" as const,
       nameGap: 30,
       nameTextStyle: { color: "#64748B", fontSize: 11 },
@@ -230,7 +222,7 @@ function buildQuadrantOption(agencies: ParcelAgencyData[]) {
     },
     yAxis: {
       type: "value" as const,
-      name: "Taux sous-tarif (%)",
+      name: axisLabels.underTariff,
       nameLocation: "middle" as const,
       nameGap: 48,
       nameTextStyle: { color: "#64748B", fontSize: 11 },
@@ -263,7 +255,7 @@ function buildQuadrantOption(agencies: ParcelAgencyData[]) {
   };
 }
 
-function buildDailyVolumeOption(daily: DailyVolumePoint[]) {
+function buildDailyVolumeOption(daily: DailyVolumePoint[], seriesNames: { delivered: string; returns: string }) {
   const cats = daily.map((d) => d.full_date.slice(5));
   return {
     backgroundColor: "transparent",
@@ -294,7 +286,7 @@ function buildDailyVolumeOption(daily: DailyVolumePoint[]) {
     },
     series: [
       {
-        name: "Livrés",
+        name: seriesNames.delivered,
         type: "bar" as const,
         stack: "s",
         data: daily.map((d) => ({
@@ -303,7 +295,7 @@ function buildDailyVolumeOption(daily: DailyVolumePoint[]) {
         })),
       },
       {
-        name: "Retours",
+        name: seriesNames.returns,
         type: "bar" as const,
         stack: "s",
         data: daily.map((d) => d.nbr_retours),
@@ -370,6 +362,20 @@ export default function ParcelCostsPage() {
   const [detail, setDetail] = useState<DetailData>(MOCK_DETAIL);
   const [parcelPage, setParcelPage] = useState(1);
 
+  const { t } = useTranslation();
+  const p = t.pages.parcelCosts;
+  const pc = t.pages.common;
+
+  const MONTHS = [
+    { label: pc.monthAll, value: null },
+    ...pc.months.map((name, i) => ({ label: name, value: i + 1 })),
+  ];
+  const DELIVERY_TYPES = [
+    { label: p.hdAndSd,       value: "all" },
+    { label: p.homeDelivery,  value: "HD"  },
+    { label: p.pickupPoint,   value: "SD"  },
+  ];
+
   const fetchMain = useCallback(async () => {
     setLoading(true);
     const f = { year, month: month ?? undefined, delivery_type: deliveryType !== "all" ? deliveryType : undefined };
@@ -427,25 +433,27 @@ export default function ParcelCostsPage() {
 
   // ── Derived chart data ──────────────────────────────────────────────────────
 
-  const areaData = trends.map((t) => ({
-    month: `${t.month_name_fr.slice(0, 3)} ${String(t.year).slice(2)}`,
-    revenue: t.total_fees,
-    cost: t.cout_total,
+  const trendCats = trends.map((tr) => `${pc.monthsShort[tr.month_num - 1] ?? tr.month_name_fr.slice(0, 3)} ${String(tr.year).slice(2)}`);
+
+  const areaData = trends.map((tr, i) => ({
+    month: trendCats[i],
+    revenue: tr.total_fees,
+    cost: tr.cout_total,
   }));
 
   const livTrend = {
-    categories: trends.map((t) => `${t.month_name_fr.slice(0, 3)} ${String(t.year).slice(2)}`),
+    categories: trendCats,
     series: [
-      { name: "Taux livraison (%)",  data: trends.map((t) => t.taux_livraison_pct),  color: "#10B981" },
-      { name: "Taux sous-tarif (%)", data: trends.map((t) => t.taux_sous_tarif_pct), color: "#EF4444" },
+      { name: p.colDeliveryRate, data: trends.map((tr) => tr.taux_livraison_pct),  color: "#10B981" },
+      { name: p.colUnderTariff,  data: trends.map((tr) => tr.taux_sous_tarif_pct), color: "#EF4444" },
     ],
   };
 
   const costDonutData = [
-    { name: "Salaires",    value: costStructure.total_salaires   },
-    { name: "Dépenses",    value: costStructure.total_depenses   },
-    { name: "Freelance",   value: costStructure.total_freelance  },
-    { name: "Sinistres",   value: costStructure.total_sinistres  },
+    { name: "Salaires",  value: costStructure.total_salaires  },
+    { name: "Dépenses",  value: costStructure.total_depenses  },
+    { name: "Freelance", value: costStructure.total_freelance },
+    { name: "Sinistres", value: costStructure.total_sinistres },
   ].filter((x) => x.value > 0);
 
   const natureBarData = costByNature.map((n) => ({ name: n.nature_name, value: Math.round(n.total_dzd) }));
@@ -455,15 +463,15 @@ export default function ParcelCostsPage() {
   // ── Column defs ─────────────────────────────────────────────────────────────
 
   const pccAgencyCols: Column<ParcelPCCAgency>[] = [
-    { key: "agence_name",        header: "Agence",       sortable: true },
-    { key: "wilaya_name",        header: "Wilaya",       sortable: true },
-    { key: "nbr_colis_total",    header: "Colis",        sortable: true, render: (r) => formatNumber(r.nbr_colis_total) },
+    { key: "agence_name",        header: p.colAgency,       sortable: true },
+    { key: "wilaya_name",        header: p.colWilaya,       sortable: true },
+    { key: "nbr_colis_total",    header: p.colParcels,      sortable: true, render: (r) => formatNumber(r.nbr_colis_total) },
     {
-      key: "nbr_sous_tarif", header: "Sous-tarif", sortable: true,
+      key: "nbr_sous_tarif", header: p.colUnderTariffN, sortable: true,
       render: (r) => <span className="text-red-400 font-semibold">{formatNumber(r.nbr_sous_tarif)}</span>,
     },
     {
-      key: "taux_sous_tarif_pct", header: "Taux %", sortable: true,
+      key: "taux_sous_tarif_pct", header: p.colUnderTariff, sortable: true,
       render: (r) => (
         <span className={`font-semibold ${r.taux_sous_tarif_pct >= 25 ? "text-red-400" : r.taux_sous_tarif_pct >= 20 ? "text-amber-400" : "text-emerald-400"}`}>
           {r.taux_sous_tarif_pct?.toFixed(1)}%
@@ -471,63 +479,63 @@ export default function ParcelCostsPage() {
       ),
     },
     {
-      key: "total_ecart_dzd", header: "Écart total", sortable: true,
+      key: "total_ecart_dzd", header: p.colGapTotal, sortable: true,
       render: (r) => <span className="font-mono text-red-400 text-sm">{formatDZD(r.total_ecart_dzd)}</span>,
     },
-    { key: "avg_ecart_dzd", header: "Écart moy.", sortable: true, render: (r) => `${r.avg_ecart_dzd?.toFixed(1)} DZD` },
+    { key: "avg_ecart_dzd", header: p.colGapAvg, sortable: true, render: (r) => `${r.avg_ecart_dzd?.toFixed(1)} DZD` },
   ];
 
   const agencyCols: Column<ParcelAgencyData>[] = [
-    { key: "agence_name",          header: "Agence",         sortable: true },
-    { key: "wilaya_name",          header: "Wilaya",         sortable: true },
-    { key: "nbr_colis",            header: "Colis",          sortable: true, render: (r) => formatNumber(r.nbr_colis) },
+    { key: "agence_name",          header: p.colAgency,         sortable: true },
+    { key: "wilaya_name",          header: p.colWilaya,         sortable: true },
+    { key: "nbr_colis",            header: p.colParcels,        sortable: true, render: (r) => formatNumber(r.nbr_colis) },
     {
-      key: "taux_livraison", header: "Livraison %", sortable: true,
+      key: "taux_livraison", header: p.colDeliveryRate, sortable: true,
       render: (r) => <span className={r.taux_livraison >= 75 ? "text-emerald-400 font-semibold" : r.taux_livraison >= 70 ? "text-amber-400 font-semibold" : "text-red-400 font-semibold"}>{r.taux_livraison?.toFixed(1)}%</span>,
     },
     {
-      key: "taux_sous_tarif_pct", header: "Sous-tarif %", sortable: true,
+      key: "taux_sous_tarif_pct", header: p.colUnderTariff, sortable: true,
       render: (r) => <span className={r.taux_sous_tarif_pct >= 25 ? "text-red-400" : r.taux_sous_tarif_pct >= 20 ? "text-amber-400" : "text-emerald-400"}>{r.taux_sous_tarif_pct?.toFixed(1)}%</span>,
     },
-    { key: "cout_par_colis_livre", header: "Coût/colis livré", sortable: true, render: (r) => `${r.cout_par_colis_livre?.toFixed(0)} DZD` },
+    { key: "cout_par_colis_livre", header: p.colCostPerParcel, sortable: true, render: (r) => `${r.cout_par_colis_livre?.toFixed(0)} DZD` },
     {
-      key: "total_ecart_dzd", header: "Écart PCC", sortable: true,
+      key: "total_ecart_dzd", header: p.colGapPCC, sortable: true,
       render: (r) => <span className="font-mono text-sm text-red-400">{formatDZD(r.total_ecart_dzd)}</span>,
     },
   ];
 
   const freelanceCols: Column<FreelanceEfficiencyItem>[] = [
-    { key: "agence_nom",              header: "Agence",           sortable: true },
-    { key: "wilaya_name",             header: "Wilaya",           sortable: true },
-    { key: "nbr_livreurs",            header: "Livreurs",         sortable: true },
-    { key: "nbr_colis_livres",        header: "Colis livrés",     sortable: true, render: (r) => formatNumber(r.nbr_colis_livres) },
+    { key: "agence_nom",              header: p.colAgency,          sortable: true },
+    { key: "wilaya_name",             header: p.colWilaya,          sortable: true },
+    { key: "nbr_livreurs",            header: p.colDrivers,         sortable: true },
+    { key: "nbr_colis_livres",        header: p.colDelivered,       sortable: true, render: (r) => formatNumber(r.nbr_colis_livres) },
     {
-      key: "taux_succes_freelance_pct", header: "Taux succès", sortable: true,
+      key: "taux_succes_freelance_pct", header: p.colSuccessRate, sortable: true,
       render: (r) => <span className={r.taux_succes_freelance_pct >= 83 ? "text-emerald-400 font-semibold" : "text-amber-400 font-semibold"}>{r.taux_succes_freelance_pct?.toFixed(1)}%</span>,
     },
-    { key: "cout_par_colis_livre", header: "Coût/colis",  sortable: true, render: (r) => `${r.cout_par_colis_livre?.toFixed(1)} DZD` },
-    { key: "total_paiements_dzd",  header: "Total payé",  sortable: true, render: (r) => <span className="font-mono text-sm">{formatDZD(r.total_paiements_dzd)}</span> },
+    { key: "cout_par_colis_livre", header: p.colCostParcel,  sortable: true, render: (r) => `${r.cout_par_colis_livre?.toFixed(1)} DZD` },
+    { key: "total_paiements_dzd",  header: p.colTotalPaid,   sortable: true, render: (r) => <span className="font-mono text-sm">{formatDZD(r.total_paiements_dzd)}</span> },
   ];
 
   const parcelCols: Column<(typeof parcels.results)[0]>[] = [
-    { key: "tracking",     header: "Tracking",  render: (r) => <span className="font-mono text-xs text-slate-300">{r.tracking}</span> },
-    { key: "agence_nom",   header: "Agence",    sortable: true },
-    { key: "wilaya_destination", header: "Wilaya dest.", sortable: true },
+    { key: "tracking",     header: p.colTracking,  render: (r) => <span className="font-mono text-xs text-slate-300">{r.tracking}</span> },
+    { key: "agence_nom",   header: p.colAgency,    sortable: true },
+    { key: "wilaya_destination", header: p.colWilayaDest, sortable: true },
     {
-      key: "delivery_type", header: "Type",
+      key: "delivery_type", header: p.colType,
       render: (r) => <span className={`text-xs font-semibold px-2 py-0.5 rounded-full ${r.delivery_type === "HD" ? "bg-indigo-500/10 text-indigo-400" : "bg-cyan-500/10 text-cyan-400"}`}>{r.delivery_type}</span>,
     },
     {
-      key: "statut_actuel", header: "Statut",
+      key: "statut_actuel", header: p.colStatus,
       render: (r) => {
         const color = r.statut_actuel === "Livré" ? "text-emerald-400" : r.statut_actuel === "Retourné" ? "text-red-400" : "text-amber-400";
         return <span className={`text-xs font-semibold ${color}`}>{r.statut_actuel}</span>;
       },
     },
-    { key: "delivery_fee",      header: "Frais perçus", sortable: true, render: (r) => `${r.delivery_fee} DZD` },
-    { key: "tarif_theorique",   header: "Tarif théo.",  render: (r) => r.tarif_theorique != null ? `${r.tarif_theorique} DZD` : "—" },
+    { key: "delivery_fee",      header: p.colFees,        sortable: true, render: (r) => `${r.delivery_fee} DZD` },
+    { key: "tarif_theorique",   header: p.colTariff,      render: (r) => r.tarif_theorique != null ? `${r.tarif_theorique} DZD` : "—" },
     {
-      key: "ecart_tarif_dzd", header: "Écart", sortable: true,
+      key: "ecart_tarif_dzd", header: p.colGap, sortable: true,
       render: (r) => {
         if (r.ecart_tarif_dzd == null) return <span className="text-slate-500">—</span>;
         const color = r.ecart_tarif_dzd < 0 ? "text-red-400" : r.ecart_tarif_dzd > 0 ? "text-emerald-400" : "text-slate-400";
@@ -535,7 +543,7 @@ export default function ParcelCostsPage() {
       },
     },
     {
-      key: "duree_livraison_minutes", header: "Durée", sortable: true,
+      key: "duree_livraison_minutes", header: p.colDuration, sortable: true,
       render: (r) => r.duree_livraison_minutes != null ? `${Math.round(r.duree_livraison_minutes / 60)} h` : "—",
     },
   ];
@@ -552,36 +560,36 @@ export default function ParcelCostsPage() {
         <Select value={deliveryType} onChange={(v) => setDeliveryType(v as string)} options={DELIVERY_TYPES} />
         {usingMock && (
           <span className="ml-auto text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg">
-            Données de démonstration — backend indisponible
+            {p.demoData}
           </span>
         )}
         {loading && (
-          <span className="ml-auto text-xs text-slate-400 animate-pulse">Chargement…</span>
+          <span className="ml-auto text-xs text-slate-400 animate-pulse">{p.loading}</span>
         )}
       </div>
 
       {/* ── Primary KPI cards ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title="Colis traités"        value={formatNumber(cur.nbr_colis)}            trend={d.mom_colis}      trendLabel="vs mois précédent" icon={<Package size={16} />}      index={0} />
-        <KpiCard title="Taux de livraison"    value={formatPercent(d.taux_livraison_pct)}    trend={d.mom_livraison}  trendLabel="vs mois précédent" icon={<Truck size={16} />}        index={1} />
-        <KpiCard title="Frais collectés"      value={formatDZD(cur.total_fees)}              trend={d.mom_fees}       trendLabel="vs mois précédent" icon={<DollarSign size={16} />}   index={2} />
-        <KpiCard title="Coût total"           value={formatDZD(summary.costs.cout_total)}    trend={0}                trendLabel=""                  icon={<BarChart2 size={16} />}    index={3} />
+        <KpiCard title={p.kpiParcels}         value={formatNumber(cur.nbr_colis)}               trend={d.mom_colis}      trendLabel={p.vsPrevMonth} icon={<Package size={16} />}      index={0} />
+        <KpiCard title={p.kpiDeliveryRate}    value={formatPercent(d.taux_livraison_pct)}        trend={d.mom_livraison}  trendLabel={p.vsPrevMonth} icon={<Truck size={16} />}        index={1} />
+        <KpiCard title={p.kpiFeesCollected}   value={formatDZD(cur.total_fees)}                  trend={d.mom_fees}       trendLabel={p.vsPrevMonth} icon={<DollarSign size={16} />}   index={2} />
+        <KpiCard title={p.kpiTotalCost}       value={formatDZD(summary.costs.cout_total)}        trend={0}                trendLabel=""              icon={<BarChart2 size={16} />}    index={3} />
       </div>
 
       {/* ── Secondary KPI cards ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title="Taux sous-tarif (PCC)"value={formatPercent(d.taux_sous_tarif_pct)}  trend={-d.taux_sous_tarif_pct}  icon={<AlertTriangle size={16} />} index={4} />
-        <KpiCard title="Frais moy. / colis"   value={`${d.avg_fee_par_colis.toFixed(0)} DZD`} trend={0}                    icon={<Package size={16} />}       index={5} />
-        <KpiCard title="Coût / colis livré"   value={`${d.cout_par_colis_livre.toFixed(0)} DZD`} trend={0}                icon={<TrendingDown size={16} />}  index={6} />
-        <KpiCard title="Conformité tarifaire" value={formatPercent(100 - d.taux_sous_tarif_pct)} trend={d.mom_compliance} icon={<DollarSign size={16} />}    index={7} />
+        <KpiCard title={p.kpiUnderTariff}     value={formatPercent(d.taux_sous_tarif_pct)}  trend={-d.taux_sous_tarif_pct}  icon={<AlertTriangle size={16} />} index={4} />
+        <KpiCard title={p.kpiAvgFee}          value={`${d.avg_fee_par_colis.toFixed(0)} DZD`}   trend={0}                    icon={<Package size={16} />}       index={5} />
+        <KpiCard title={p.kpiCostPerDelivery} value={`${d.cout_par_colis_livre.toFixed(0)} DZD`} trend={0}                   icon={<TrendingDown size={16} />}  index={6} />
+        <KpiCard title={p.kpiCompliance}      value={formatPercent(100 - d.taux_sous_tarif_pct)} trend={d.mom_compliance}    icon={<DollarSign size={16} />}    index={7} />
       </div>
 
       {/* ── Trends: Fees vs Costs + Delivery & compliance rates ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title="Frais collectés vs Coût total (DZD)">
+        <SectionCard title={p.sectionFeesVsCost}>
           {loading ? <Skeleton /> : <AreaChart data={areaData} height={280} />}
         </SectionCard>
-        <SectionCard title="Taux de livraison vs Taux sous-tarif (%)">
+        <SectionCard title={p.sectionDeliveryVsCompliance}>
           {loading ? <Skeleton /> : (
             <LineChart
               categories={livTrend.categories}
@@ -596,7 +604,7 @@ export default function ParcelCostsPage() {
       {/* ── PCC Analysis ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         {month ? (
-          <SectionCard title="Distribution des écarts tarifaires (PCC)">
+          <SectionCard title={p.sectionEcartDistribution}>
             {loading || loadingDetail ? <Skeleton /> : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
                 <ReactECharts option={buildEcartHistogramOption(ecartDistribution)} style={{ height: 280 }} notMerge />
@@ -604,22 +612,22 @@ export default function ParcelCostsPage() {
             )}
           </SectionCard>
         ) : (
-          <SectionCard title="Distribution des écarts tarifaires (PCC)">
+          <SectionCard title={p.sectionEcartDistribution}>
             <div className="h-64 flex items-center justify-center text-slate-500 text-sm">
-              Sélectionnez un mois pour afficher la distribution des écarts
+              {p.selectMonthPrompt}
             </div>
           </SectionCard>
         )}
 
-        <SectionCard title="PCC — Résumé de conformité">
+        <SectionCard title={p.sectionPCCSummary}>
           {loading ? <Skeleton /> : (
             <div className="space-y-3">
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Colis avec tarif théorique", value: formatNumber(pccSummary.nbr_avec_tarif), sub: `sur ${formatNumber(pccSummary.nbr_colis)} total` },
-                  { label: "Sous-tarif (pertes)",         value: formatNumber(pccSummary.nbr_sous_tarif), sub: `${pccSummary.taux_sous_tarif_pct?.toFixed(1)}% des tarifés`, warn: true },
-                  { label: "Écart total",                value: formatDZD(pccSummary.total_ecart_dzd),   sub: `${pccSummary.taux_ecart_global_pct?.toFixed(1)}% du tarif théo.`, warn: true },
-                  { label: "Écart moyen / colis",        value: `${pccSummary.avg_ecart_dzd?.toFixed(1)} DZD`, sub: `moy. absolu: ${pccSummary.avg_ecart_absolu_dzd?.toFixed(1)} DZD` },
+                  { label: p.pccWithTariff, value: formatNumber(pccSummary.nbr_avec_tarif), sub: `/ ${formatNumber(pccSummary.nbr_colis)}` },
+                  { label: p.pccUnderTariff, value: formatNumber(pccSummary.nbr_sous_tarif), sub: `${pccSummary.taux_sous_tarif_pct?.toFixed(1)}%`, warn: true },
+                  { label: p.pccTotalGap, value: formatDZD(pccSummary.total_ecart_dzd), sub: `${pccSummary.taux_ecart_global_pct?.toFixed(1)}%`, warn: true },
+                  { label: p.pccAvgGap, value: `${pccSummary.avg_ecart_dzd?.toFixed(1)} DZD`, sub: `~${pccSummary.avg_ecart_absolu_dzd?.toFixed(1)} DZD` },
                 ].map(({ label, value, sub, warn }) => (
                   <div key={label} className="bg-[#252840] rounded-lg p-3">
                     <p className="text-xs text-slate-400 mb-1">{label}</p>
@@ -634,7 +642,7 @@ export default function ParcelCostsPage() {
       </div>
 
       {/* ── PCC by Agency ranking ── */}
-      <SectionCard title="Classement des agences — Conformité PCC (pires en premier)">
+      <SectionCard title={p.sectionAgencyRanking}>
         {loading ? <Skeleton h="h-48" /> : (
           <DataTable columns={pccAgencyCols} data={pccByAgency} />
         )}
@@ -642,10 +650,10 @@ export default function ParcelCostsPage() {
 
       {/* ── Cost structure + Cost by nature ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title="Structure des coûts">
+        <SectionCard title={p.sectionCostStructure}>
           {loading ? <Skeleton /> : <PieChart data={costDonutData} height={280} />}
         </SectionCard>
-        <SectionCard title="Dépenses par nature (DZD)">
+        <SectionCard title={p.sectionCostByNature}>
           {loading ? <Skeleton /> : (
             <BarChart
               data={natureBarData.slice(0, 8)}
@@ -659,19 +667,25 @@ export default function ParcelCostsPage() {
       </div>
 
       {/* ── Agency quadrant scatter ── */}
-      <SectionCard title="Quadrant Agences — Livraison vs Conformité tarifaire">
-        <p className="text-xs text-slate-500 mb-4">
-          Bulle = volume de colis · Seuils: livraison 73%, sous-tarif 24%
-        </p>
+      <SectionCard title={p.sectionAgencyQuadrant}>
+        <p className="text-xs text-slate-500 mb-4">{p.bubbleDesc}</p>
         {loading ? <Skeleton h="h-72" /> : (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-            <ReactECharts option={buildQuadrantOption(byAgency)} style={{ height: 320 }} notMerge />
+            <ReactECharts
+              option={buildQuadrantOption(
+                byAgency,
+                { performant: p.quadrantPerformant, tariffRisk: p.quadrantTariffRisk, opRisk: p.quadrantOpRisk, doubleRisk: p.quadrantDoubleRisk },
+                { delivery: p.colDeliveryRate, underTariff: p.colUnderTariff },
+              )}
+              style={{ height: 320 }}
+              notMerge
+            />
           </motion.div>
         )}
       </SectionCard>
 
       {/* ── Agency table ── */}
-      <SectionCard title="Scorecard agences — Performance & coûts colis">
+      <SectionCard title={p.sectionAgencyScorecard}>
         {loading ? <Skeleton h="h-48" /> : (
           <DataTable columns={agencyCols} data={byAgency} />
         )}
@@ -679,7 +693,7 @@ export default function ParcelCostsPage() {
 
       {/* ── Delivery type comparison ── */}
       {!loading && byDeliveryType.length > 0 && (
-        <SectionCard title="Comparaison HD vs SD">
+        <SectionCard title={p.sectionHDvsSD}>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {byDeliveryType.map((dt, i) => (
               <motion.div
@@ -691,15 +705,15 @@ export default function ParcelCostsPage() {
               >
                 <div className="flex items-center justify-between">
                   <span className={`text-sm font-bold px-3 py-1 rounded-full ${dt.delivery_type === "HD" ? "bg-indigo-500/15 text-indigo-300" : "bg-cyan-500/15 text-cyan-300"}`}>
-                    {dt.delivery_type === "HD" ? "Livraison domicile (HD)" : "Point relais (SD)"}
+                    {dt.delivery_type === "HD" ? p.homeDelivery : p.pickupPoint}
                   </span>
                   <span className="text-lg font-bold text-white">{formatNumber(dt.nbr_colis)}</span>
                 </div>
                 {[
-                  { label: "Taux livraison",  value: `${dt.taux_livraison_pct?.toFixed(1)}%`,  color: dt.taux_livraison_pct >= 75 ? "text-emerald-400" : "text-amber-400" },
-                  { label: "Frais moy.",      value: `${dt.avg_fee_dzd?.toFixed(0)} DZD`,      color: "text-slate-200" },
-                  { label: "Durée moy. livr.",value: `${Math.round(dt.avg_duree_livree_min / 60)} h`, color: "text-slate-200" },
-                  { label: "Taux retour",     value: `${dt.taux_retour_pct?.toFixed(1)}%`,     color: "text-amber-400" },
+                  { label: p.hdDeliveryRate, value: `${dt.taux_livraison_pct?.toFixed(1)}%`, color: dt.taux_livraison_pct >= 75 ? "text-emerald-400" : "text-amber-400" },
+                  { label: p.hdAvgFee,       value: `${dt.avg_fee_dzd?.toFixed(0)} DZD`,      color: "text-slate-200" },
+                  { label: p.hdAvgDuration,  value: `${Math.round(dt.avg_duree_livree_min / 60)} h`, color: "text-slate-200" },
+                  { label: p.hdReturnRate,   value: `${dt.taux_retour_pct?.toFixed(1)}%`,     color: "text-amber-400" },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="flex justify-between text-xs">
                     <span className="text-slate-400">{label}</span>
@@ -714,15 +728,15 @@ export default function ParcelCostsPage() {
 
       {/* ── Daily volume (only when month selected) ── */}
       {month ? (
-        <SectionCard title={`Volume quotidien — ${MONTHS.find((m) => m.value === month)?.label ?? ""} ${year}`}>
+        <SectionCard title={`${p.sectionDailyVolume} — ${MONTHS.find((m) => m.value === month)?.label ?? ""} ${year}`}>
           {loading ? <Skeleton /> : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-              <ReactECharts option={buildDailyVolumeOption(dailyVolume)} style={{ height: 280 }} notMerge />
+              <ReactECharts option={buildDailyVolumeOption(dailyVolume, { delivered: p.deliveredSeries, returns: p.returnsSeries })} style={{ height: 280 }} notMerge />
               <div className="flex gap-4 mt-3 text-xs text-slate-500">
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#10B981]" /> Jour normal</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#22D3EE]" /> Vendredi</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#475569]" /> Weekend</span>
-                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#F59E0B]" /> Retours</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#10B981]" /> {p.normalDay}</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#22D3EE]" /> {p.friday}</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#475569]" /> {p.weekend}</span>
+                <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#F59E0B]" /> {p.returns}</span>
               </div>
             </motion.div>
           )}
@@ -731,13 +745,13 @@ export default function ParcelCostsPage() {
 
       {/* ── Duration distribution (only when month selected) ── */}
       {month ? (
-        <SectionCard title="Distribution des délais de livraison">
+        <SectionCard title={p.sectionDurationDistribution}>
           {loading || loadingDetail ? <Skeleton /> : (
             <BarChart
               data={durationBarData}
               height={260}
               color="#22D3EE"
-              label="Colis livrés"
+              label={p.colDelivered}
             />
           )}
         </SectionCard>
@@ -745,18 +759,18 @@ export default function ParcelCostsPage() {
 
       {/* ── Sinistres ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title="Sinistres — Répartition par type">
+        <SectionCard title={p.sectionSinistresType}>
           {loading ? <Skeleton /> : <PieChart data={sinPieData} height={260} />}
         </SectionCard>
-        <SectionCard title="Sinistres — KPIs">
+        <SectionCard title={p.sectionSinistresKPI}>
           {loading ? <Skeleton /> : (
             <div className="space-y-3">
               {[
-                { label: "Sinistres déclarés",   value: String(sinistres.summary.nbr_sinistres) },
-                { label: "Montant déclaré",       value: formatDZD(sinistres.summary.sum_declared_dzd) },
-                { label: "Montant remboursé",     value: formatDZD(sinistres.summary.sum_rembourse_dzd), warn: true },
-                { label: "Taux de couverture",    value: `${sinistres.summary.taux_couverture_pct?.toFixed(1)}%` },
-                { label: "Remboursement moyen",   value: `${sinistres.summary.avg_rembourse_dzd?.toFixed(0)} DZD` },
+                { label: p.sinDeclared,       value: String(sinistres.summary.nbr_sinistres) },
+                { label: p.sinAmountDeclared, value: formatDZD(sinistres.summary.sum_declared_dzd) },
+                { label: p.sinRefunded,       value: formatDZD(sinistres.summary.sum_rembourse_dzd), warn: true },
+                { label: p.sinCoverage,       value: `${sinistres.summary.taux_couverture_pct?.toFixed(1)}%` },
+                { label: p.sinAvgRefund,      value: `${sinistres.summary.avg_rembourse_dzd?.toFixed(0)} DZD` },
               ].map(({ label, value, warn }) => (
                 <div key={label} className="flex items-center justify-between py-2 border-b border-[#2D3050] last:border-0">
                   <span className="text-sm text-slate-400">{label}</span>
@@ -769,7 +783,7 @@ export default function ParcelCostsPage() {
       </div>
 
       {/* ── Freelance efficiency ── */}
-      <SectionCard title="Efficacité des livreurs freelance">
+      <SectionCard title={p.sectionFreelance}>
         {loading ? <Skeleton h="h-48" /> : (
           <DataTable columns={freelanceCols} data={freelance} />
         )}
@@ -777,28 +791,28 @@ export default function ParcelCostsPage() {
 
       {/* ── Parcel drill-down table (only when month selected) ── */}
       {month ? (
-        <SectionCard title={`Détail colis — ${MONTHS.find((m) => m.value === month)?.label ?? ""} ${year}`}>
+        <SectionCard title={`${p.sectionParcelDetail} — ${MONTHS.find((m) => m.value === month)?.label ?? ""} ${year}`}>
           {loadingDetail ? <Skeleton h="h-48" /> : (
             <>
               <p className="text-xs text-slate-500 mb-3">
-                {formatNumber(parcels.count)} colis · page {parcels.page}/{parcels.pages}
+                {formatNumber(parcels.count)} · {p.pageOf} {parcels.page}/{parcels.pages}
               </p>
               <DataTable columns={parcelCols} data={parcels.results} />
               <div className="flex items-center justify-between mt-4">
                 <button
                   disabled={parcelPage <= 1}
-                  onClick={() => { const p = parcelPage - 1; setParcelPage(p); fetchDetail(p); }}
+                  onClick={() => { const pg = parcelPage - 1; setParcelPage(pg); fetchDetail(pg); }}
                   className="flex items-center gap-1 text-sm text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  <ChevronLeft size={14} /> Précédent
+                  <ChevronLeft size={14} /> {p.prevPage}
                 </button>
-                <span className="text-xs text-slate-500">Page {parcelPage} sur {parcels.pages}</span>
+                <span className="text-xs text-slate-500">{p.pageOf} {parcelPage} / {parcels.pages}</span>
                 <button
                   disabled={parcelPage >= parcels.pages}
-                  onClick={() => { const p = parcelPage + 1; setParcelPage(p); fetchDetail(p); }}
+                  onClick={() => { const pg = parcelPage + 1; setParcelPage(pg); fetchDetail(pg); }}
                   className="flex items-center gap-1 text-sm text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                 >
-                  Suivant <ChevronRight size={14} />
+                  {p.nextPage} <ChevronRight size={14} />
                 </button>
               </div>
             </>
@@ -807,7 +821,7 @@ export default function ParcelCostsPage() {
       ) : (
         <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5 flex items-center justify-center h-24 text-slate-500 text-sm">
           <Package size={16} className="mr-2" />
-          Sélectionnez un mois pour afficher le détail des colis et les histogrammes
+          {p.selectMonthPrompt}
         </div>
       )}
 

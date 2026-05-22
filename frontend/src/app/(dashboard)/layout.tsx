@@ -65,7 +65,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
   const pathname = usePathname()
   const router = useRouter()
   const { isAuthenticated, isFirstLogin, user, updateUser } = useAuthStore()
-  const { t } = useTranslation()
+  const { t, isRTL } = useTranslation()
 
   const [hydrated, setHydrated] = useState(false)
   const [showOnboarding, setShowOnboarding] = useState(false)
@@ -107,7 +107,7 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <LanguageSync />
       <NotificationsInit />
       <Sidebar />
-      <div className="flex-1 flex flex-col" style={{ marginLeft: 240 }}>
+      <div className="flex-1 flex flex-col" style={isRTL ? { marginRight: 240 } : { marginLeft: 240 }}>
         <Topbar title={pageTitle(pathname, t)} />
         <AnimatePresence mode="wait">
           <motion.main

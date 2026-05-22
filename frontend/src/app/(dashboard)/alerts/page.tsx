@@ -8,6 +8,7 @@ import type { Alert, AlertRule, AlertSeverity } from '@/types/api'
 import ReactECharts from 'echarts-for-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/lib/i18n'
 
 type SeverityFilter = 'all' | AlertSeverity
 type StatusFilter = 'all' | 'acknowledged' | 'unacknowledged'
@@ -30,15 +31,6 @@ const SEV_BADGE: Record<AlertSeverity, string> = {
   info: 'bg-blue-500/10 text-blue-400',
 }
 
-const METRIC_LABELS: Record<string, string> = {
-  ecart_tarif_pct: 'Tariff Deviation (%)',
-  taux_livraison_pct: 'Delivery Success Rate (%)',
-  transport_cost_dzd: 'Transport Cost (DZD)',
-  nbr_sous_tarif: 'Under-Tariff Parcels',
-  marge_brute_transport_pct: 'Transport Gross Margin (%)',
-  nbr_livraisons_jour: 'Daily Deliveries',
-}
-
 const COND_LABEL: Record<string, string> = { gt: '>', lt: '<', gte: '≥', lte: '≤' }
 
 // ─── Alert card ───────────────────────────────────────────────────────────────
@@ -47,6 +39,8 @@ function AlertCard({ alert, onAcknowledge }: { alert: Alert; onAcknowledge: (id:
   const [acknowledging, setAcknowledging] = useState(false)
   const [note, setNote] = useState('')
   const [showNote, setShowNote] = useState(false)
+  const { t } = useTranslation()
+  const p = t.pages.alerts
 
   const handleAck = async () => {
     setAcknowledging(true)
@@ -77,7 +71,7 @@ function AlertCard({ alert, onAcknowledge }: { alert: Alert; onAcknowledge: (id:
             <div>
               <h4 className="font-semibold text-white text-sm">{alert.rule.name}</h4>
               <p className="text-xs text-slate-400 mt-0.5">
-                {METRIC_LABELS[alert.rule.metric] ?? alert.rule.metric}
+                {p.metricLabels[alert.rule.metric] ?? alert.rule.metric}
                 {' '}{COND_LABEL[alert.rule.condition]}{' '}{alert.rule.threshold}
               </p>
             </div>
@@ -88,11 +82,11 @@ function AlertCard({ alert, onAcknowledge }: { alert: Alert; onAcknowledge: (id:
 
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 mt-3 text-xs">
             <div>
-              <span className="text-slate-500">Triggered value</span>
+              <span className="text-slate-500">{p.triggeredValue}</span>
               <p className="text-red-400 font-bold">{alert.triggered_value.toFixed(2)}</p>
             </div>
             <div>
-              <span className="text-slate-500">Threshold</span>
+              <span className="text-slate-500">{p.threshold}</span>
               <p className="text-slate-300 font-medium">{alert.rule.threshold}</p>
             </div>
             <div className="flex items-center gap-1 text-slate-500">
@@ -104,12 +98,11 @@ function AlertCard({ alert, onAcknowledge }: { alert: Alert; onAcknowledge: (id:
           {alert.is_acknowledged && (
             <p className="mt-3 text-xs text-emerald-400 flex items-center gap-1.5">
               <CheckCircle size={12} />
-              Acknowledged by {alert.acknowledged_by}
+              {p.acknowledgedBy} {alert.acknowledged_by}
               {alert.note && <> — "{alert.note}"</>}
             </p>
           )}
 
-          {/* Acknowledge flow */}
           {!alert.is_acknowledged && (
             <div className="mt-3">
               {showNote ? (
@@ -117,19 +110,19 @@ function AlertCard({ alert, onAcknowledge }: { alert: Alert; onAcknowledge: (id:
                   <input
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
-                    placeholder="Optional note…"
+                    placeholder={p.optionalNote}
                     className="flex-1 bg-[#252840] border border-[#2D3050] rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary"
                   />
                   <button onClick={handleAck} disabled={acknowledging}
                     className="px-3 py-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition-colors disabled:opacity-60">
-                    {acknowledging ? '…' : 'Confirm'}
+                    {acknowledging ? '…' : p.confirm}
                   </button>
                   <button onClick={() => setShowNote(false)} className="px-2 text-xs text-slate-500 hover:text-slate-300">×</button>
                 </div>
               ) : (
                 <button onClick={() => setShowNote(true)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 transition-colors border border-emerald-500/20">
-                  <CheckCircle size={12} /> Acknowledge
+                  <CheckCircle size={12} /> {p.acknowledge}
                 </button>
               )}
             </div>
@@ -143,11 +136,13 @@ function AlertCard({ alert, onAcknowledge }: { alert: Alert; onAcknowledge: (id:
 // ─── Rules table ──────────────────────────────────────────────────────────────
 
 function RulesSection({ rules }: { rules: AlertRule[] }) {
+  const { t } = useTranslation()
+  const p = t.pages.alerts
   if (rules.length === 0) return null
   return (
     <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl overflow-hidden">
       <div className="px-5 py-3 border-b border-[#2D3050]">
-        <h3 className="text-sm font-semibold text-white">Alert Rules</h3>
+        <h3 className="text-sm font-semibold text-white">{p.alertRules}</h3>
       </div>
       <div className="divide-y divide-[#2D3050]">
         {rules.map((r) => (
@@ -155,8 +150,8 @@ function RulesSection({ rules }: { rules: AlertRule[] }) {
             <div className="flex-1 min-w-0">
               <p className="text-sm text-white font-medium">{r.name}</p>
               <p className="text-xs text-slate-500 mt-0.5">
-                {METRIC_LABELS[r.metric] ?? r.metric} {COND_LABEL[r.condition]} {r.threshold}
-                {' · cooldown '}{r.cooldown_minutes}m
+                {p.metricLabels[r.metric] ?? r.metric} {COND_LABEL[r.condition]} {r.threshold}
+                {' · '}{p.cooldown} {r.cooldown_minutes}m
               </p>
             </div>
             <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full capitalize', SEV_BADGE[r.severity])}>
@@ -164,10 +159,10 @@ function RulesSection({ rules }: { rules: AlertRule[] }) {
             </span>
             <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full',
               r.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400')}>
-              {r.is_active ? 'Active' : 'Paused'}
+              {r.is_active ? p.ruleActive : p.rulePaused}
             </span>
             <span className="text-xs text-slate-600">
-              {r.trigger_count}× fired
+              {r.trigger_count}{p.fired}
             </span>
           </div>
         ))}
@@ -184,6 +179,8 @@ export default function AlertsPage() {
   const [loading, setLoading] = useState(true)
   const [sevFilter, setSevFilter] = useState<SeverityFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('unacknowledged')
+  const { t } = useTranslation()
+  const p = t.pages.alerts
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -191,11 +188,7 @@ export default function AlertsPage() {
       const [a, r] = await Promise.all([alertsApi.list(), alertRulesApi.list()])
       setAlerts(a)
       setRules(r)
-    } catch {
-      /* silently degrade */
-    } finally {
-      setLoading(false)
-    }
+    } catch { /* silently degrade */ } finally { setLoading(false) }
   }, [])
 
   useEffect(() => { load() }, [load])
@@ -213,7 +206,6 @@ export default function AlertsPage() {
     return sev && status
   })
 
-  // Chart data from real alerts
   const sevCounts = { critical: 0, warning: 0, info: 0 }
   alerts.forEach((a) => { sevCounts[a.severity]++ })
 
@@ -232,15 +224,28 @@ export default function AlertsPage() {
     }],
   }
 
+  const SEV_FILTER_LABELS: Record<SeverityFilter, string> = {
+    all: p.allSeverity,
+    critical: 'Critical',
+    warning: 'Warning',
+    info: 'Info',
+  }
+
+  const STATUS_FILTER_LABELS: Record<StatusFilter, string> = {
+    all: p.allSeverity,
+    unacknowledged: p.unacknowledged,
+    acknowledged: p.acknowledged,
+  }
+
   return (
     <div className="space-y-6">
       {/* Summary row */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: 'Total', value: alerts.length, color: 'text-white' },
+          { label: p.allSeverity, value: alerts.length, color: 'text-white' },
           { label: 'Critical', value: sevCounts.critical, color: 'text-red-400' },
           { label: 'Warning', value: sevCounts.warning, color: 'text-amber-400' },
-          { label: 'Unacknowledged', value: alerts.filter((a) => !a.is_acknowledged).length, color: 'text-primary' },
+          { label: p.unacknowledged, value: alerts.filter((a) => !a.is_acknowledged).length, color: 'text-primary' },
         ].map((stat) => (
           <div key={stat.label} className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-4">
             <p className="text-xs text-slate-400">{stat.label}</p>
@@ -252,10 +257,10 @@ export default function AlertsPage() {
       {/* Chart + rules */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-3">By Severity</h3>
+          <h3 className="text-sm font-semibold text-white mb-3">{p.distribution}</h3>
           {alerts.length > 0
             ? <ReactECharts option={chartOption} style={{ height: 180 }} notMerge />
-            : <div className="h-[180px] flex items-center justify-center text-slate-600 text-sm">No data</div>}
+            : <div className="h-[180px] flex items-center justify-center text-slate-600 text-sm">{p.noAlerts}</div>}
         </div>
         <div className="lg:col-span-2">
           <RulesSection rules={rules} />
@@ -269,7 +274,7 @@ export default function AlertsPage() {
             <button key={s} onClick={() => setSevFilter(s)}
               className={cn('px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors',
                 sevFilter === s ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200')}>
-              {s}
+              {SEV_FILTER_LABELS[s]}
             </button>
           ))}
         </div>
@@ -278,11 +283,11 @@ export default function AlertsPage() {
             <button key={s} onClick={() => setStatusFilter(s)}
               className={cn('px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors',
                 statusFilter === s ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200')}>
-              {s}
+              {STATUS_FILTER_LABELS[s]}
             </button>
           ))}
         </div>
-        <span className="text-xs text-slate-500 ml-auto">{filtered.length} alert{filtered.length !== 1 ? 's' : ''}</span>
+        <span className="text-xs text-slate-500 ml-auto">{filtered.length}</span>
         <button onClick={load} disabled={loading} className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors">
           <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
         </button>
@@ -302,7 +307,7 @@ export default function AlertsPage() {
             {filtered.length === 0 && (
               <div className="text-center py-14 text-slate-500">
                 <Bell size={32} className="mx-auto mb-3 opacity-30" />
-                <p>No alerts match the selected filters</p>
+                <p>{p.noAlerts}</p>
               </div>
             )}
           </AnimatePresence>

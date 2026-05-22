@@ -9,6 +9,7 @@ import { useAuthStore } from '@/stores/authStore'
 import { useRouter } from 'next/navigation'
 import { format } from 'date-fns'
 import { cn } from '@/lib/utils'
+import { useTranslation } from '@/lib/i18n'
 
 function StatCard({
   icon: Icon, label, value, sub, color = 'text-primary',
@@ -32,6 +33,8 @@ function StatCard({
 export default function AdminPage() {
   const router = useRouter()
   const { user } = useAuthStore()
+  const { t } = useTranslation()
+  const p = t.pages.admin
   const [userStats, setUserStats] = useState<UserStats | null>(null)
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(null)
   const [freshness, setFreshness] = useState<DataFreshness | null>(null)
@@ -75,25 +78,25 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-white">Admin Overview</h2>
-        <p className="text-sm text-slate-400 mt-0.5">Platform health and operational summary</p>
+        <h2 className="text-xl font-bold text-white">{p.title}</h2>
+        <p className="text-sm text-slate-400 mt-0.5">{p.subtitle}</p>
       </div>
 
       {/* User stats */}
       <div>
-        <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">Users</h3>
+        <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">{p.sectionUsers}</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard icon={Users} label="Total Users" value={userStats?.total ?? '—'} color="text-primary" />
-          <StatCard icon={CheckCircle2} label="Active" value={userStats?.active ?? '—'} sub={`${userStats?.inactive ?? 0} inactive`} color="text-emerald-400" />
-          <StatCard icon={Activity} label="New This Month" value={userStats?.new_this_month ?? '—'} color="text-cyan-400" />
-          <StatCard icon={ShieldAlert} label="Without Role" value={userStats?.without_role ?? '—'} sub="Need role assignment" color="text-amber-400" />
+          <StatCard icon={Users} label={p.labelTotalUsers} value={userStats?.total ?? '—'} color="text-primary" />
+          <StatCard icon={CheckCircle2} label={p.labelActive} value={userStats?.active ?? '—'} sub={`${userStats?.inactive ?? 0} ${p.inactive}`} color="text-emerald-400" />
+          <StatCard icon={Activity} label={p.labelNewMonth} value={userStats?.new_this_month ?? '—'} color="text-cyan-400" />
+          <StatCard icon={ShieldAlert} label={p.labelWithoutRole} value={userStats?.without_role ?? '—'} sub={p.needRole} color="text-amber-400" />
         </div>
       </div>
 
       {/* Role breakdown */}
       {userStats && userStats.by_role.length > 0 && (
         <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">Users by Role</h3>
+          <h3 className="text-sm font-semibold text-white mb-4">{p.usersByRole}</h3>
           <div className="space-y-3">
             {userStats.by_role.map((r) => (
               <div key={r.role__display_name} className="flex items-center gap-3">
@@ -116,13 +119,13 @@ export default function AdminPage() {
       {/* Platform stats */}
       {platformStats && (
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">Platform</h3>
+          <h3 className="text-xs font-semibold uppercase tracking-widest text-slate-500 mb-3">{p.sectionPlatform}</h3>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard icon={Activity} label="Users Online Now" value={platformStats.users_online_now} color="text-emerald-400" />
-            <StatCard icon={ShieldAlert} label="Unacknowledged Alerts" value={platformStats.unacknowledged_alerts} color="text-red-400" />
-            <StatCard icon={Bell} label="Unread Notifications" value={platformStats.unread_notifications_total} color="text-amber-400" />
-            <StatCard icon={Database} label="ETL Runs Today" value={platformStats.etl_runs_today}
-              sub={platformStats.last_etl_status ? `Last: ${platformStats.last_etl_status}` : undefined}
+            <StatCard icon={Activity} label={p.labelOnline} value={platformStats.users_online_now} color="text-emerald-400" />
+            <StatCard icon={ShieldAlert} label={p.labelUnackAlerts} value={platformStats.unacknowledged_alerts} color="text-red-400" />
+            <StatCard icon={Bell} label={p.labelUnreadNotifs} value={platformStats.unread_notifications_total} color="text-amber-400" />
+            <StatCard icon={Database} label={p.labelEtlToday} value={platformStats.etl_runs_today}
+              sub={platformStats.last_etl_status ? `${p.labelLastEtl} ${platformStats.last_etl_status}` : undefined}
               color={etlStatusColor[platformStats.last_etl_status ?? ''] ?? 'text-slate-400'} />
           </div>
         </div>
@@ -132,27 +135,27 @@ export default function AdminPage() {
       {freshness && (
         <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-white">Data Freshness</h3>
+            <h3 className="text-sm font-semibold text-white">{p.dataFreshness}</h3>
             <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full',
               freshness.is_stale ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400')}>
-              {freshness.is_stale ? 'Stale' : 'Fresh'}
+              {freshness.is_stale ? p.stale : p.fresh}
             </span>
           </div>
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
-              <p className="text-xs text-slate-500">Last successful run</p>
+              <p className="text-xs text-slate-500">{p.lastSuccess}</p>
               <p className="text-white font-medium mt-0.5">{freshness.lag_display}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Runs (last 7 days)</p>
+              <p className="text-xs text-slate-500">{p.runs7Days}</p>
               <p className="text-white font-medium mt-0.5">{freshness.runs_last_7_days}</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Success rate</p>
+              <p className="text-xs text-slate-500">{p.successRate}</p>
               <p className="text-white font-medium mt-0.5">{freshness.success_rate_pct.toFixed(0)}%</p>
             </div>
             <div>
-              <p className="text-xs text-slate-500">Last job</p>
+              <p className="text-xs text-slate-500">{p.lastJob}</p>
               <p className="text-white font-medium mt-0.5">{freshness.last_run?.job_name ?? '—'}</p>
             </div>
           </div>
@@ -162,9 +165,9 @@ export default function AdminPage() {
       {/* Quick links */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         {[
-          { href: '/admin/users', label: 'Manage Users', desc: 'Activate, assign roles, force logout', icon: Users },
-          { href: '/admin/roles', label: 'Manage Roles', desc: 'Create and edit operational roles', icon: TrendingUp },
-          { href: '/admin/etl', label: 'ETL Runs', desc: 'View pipeline history and status', icon: Database },
+          { href: '/admin/users', label: p.manageUsers, desc: p.manageUsersDesc, icon: Users },
+          { href: '/admin/roles', label: p.manageRoles, desc: p.manageRolesDesc, icon: TrendingUp },
+          { href: '/admin/etl', label: p.etlRuns, desc: p.etlRunsDesc, icon: Database },
         ].map(({ href, label, desc, icon: Icon }) => (
           <a key={href} href={href}
             className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5 hover:border-primary/40 transition-colors group">
