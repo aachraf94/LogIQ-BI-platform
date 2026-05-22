@@ -1,5 +1,3 @@
-version: "3.9"
-
 services:
   platform-db:
     image: postgres:17-alpine
@@ -43,10 +41,14 @@ services:
       timeout: 5s
       retries: 5
 
-  dagster:
-    build: ./dagster
+  backend:
+    build: ./backend
     environment:
+      - DJANGO_SETTINGS_MODULE=config.settings.prod
+      - SECRET_KEY=${SECRET_KEY}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
       - PLATFORM_DB_HOST=platform-db
+      - PLATFORM_DB_PORT=5432
       - WAREHOUSE_DB_HOST=warehouse-db
       - WAREHOUSE_DB_PORT=5432
       - PLATFORM_DB_NAME=${PLATFORM_DB_NAME}
@@ -55,31 +57,13 @@ services:
       - WAREHOUSE_DB_NAME=${WAREHOUSE_DB_NAME}
       - WAREHOUSE_DB_USER=${WAREHOUSE_DB_USER}
       - WAREHOUSE_DB_PASSWORD=${WAREHOUSE_DB_PASSWORD}
-      # mock-datasources runs as a separate container; expose it on host port 8001
-      # and reference it here via host.docker.internal or a shared network
-      - API_BASE_URL=http://host.docker.internal:8001
-    ports:
-      - "3000:3000"
-    depends_on:
-      platform-db:
-        condition: service_healthy
-      warehouse-db:
-        condition: service_healthy
-
-  backend:
-    build: ./backend
-    environment:
-      - DJANGO_SETTINGS_MODULE=config.settings.prod
-      - SECRET_KEY=${SECRET_KEY}
-      - PLATFORM_DB_HOST=platform-db
-      - WAREHOUSE_DB_HOST=warehouse-db
-      - PLATFORM_DB_NAME=${PLATFORM_DB_NAME}
-      - PLATFORM_DB_USER=${PLATFORM_DB_USER}
-      - PLATFORM_DB_PASSWORD=${PLATFORM_DB_PASSWORD}
-      - WAREHOUSE_DB_NAME=${WAREHOUSE_DB_NAME}
-      - WAREHOUSE_DB_USER=${WAREHOUSE_DB_USER}
-      - WAREHOUSE_DB_PASSWORD=${WAREHOUSE_DB_PASSWORD}
       - REDIS_URL=redis://redis:6379/0
+      - API_BASE_URL=http://mock-datasources:8000
+      - HRFORCE_API_TOKEN=${HRFORCE_API_TOKEN}
+      - DAGSTER_WEBHOOK_TOKEN=${DAGSTER_WEBHOOK_TOKEN}
+      - SUPERADMIN_USERNAME=${SUPERADMIN_USERNAME}
+      - SUPERADMIN_EMAIL=${SUPERADMIN_EMAIL}
+      - SUPERADMIN_PASSWORD=${SUPERADMIN_PASSWORD}
     ports:
       - "8000:8000"
     depends_on:
@@ -90,14 +74,19 @@ services:
       redis:
         condition: service_healthy
 
+  # Single worker + beat scheduler (suitable for single-VPS deployment).
+  # For multi-worker setups, run beat as a separate service.
   celery:
     build: ./backend
-    command: celery -A config worker -l info
+    command: celery -A config worker --beat -l info
     environment:
       - DJANGO_SETTINGS_MODULE=config.settings.prod
       - SECRET_KEY=${SECRET_KEY}
+      - DJANGO_ALLOWED_HOSTS=${DJANGO_ALLOWED_HOSTS}
       - PLATFORM_DB_HOST=platform-db
+      - PLATFORM_DB_PORT=5432
       - WAREHOUSE_DB_HOST=warehouse-db
+      - WAREHOUSE_DB_PORT=5432
       - PLATFORM_DB_NAME=${PLATFORM_DB_NAME}
       - PLATFORM_DB_USER=${PLATFORM_DB_USER}
       - PLATFORM_DB_PASSWORD=${PLATFORM_DB_PASSWORD}
@@ -105,14 +94,55 @@ services:
       - WAREHOUSE_DB_USER=${WAREHOUSE_DB_USER}
       - WAREHOUSE_DB_PASSWORD=${WAREHOUSE_DB_PASSWORD}
       - REDIS_URL=redis://redis:6379/0
+      - API_BASE_URL=http://mock-datasources:8000
+      - HRFORCE_API_TOKEN=${HRFORCE_API_TOKEN}
+      - DAGSTER_WEBHOOK_TOKEN=${DAGSTER_WEBHOOK_TOKEN}
     depends_on:
-      - backend
-      - redis
+      platform-db:
+        condition: service_healthy
+      warehouse-db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
 
-  frontend:
-    build: ./frontend
+  dagster:
+    build: ./dagster
     environment:
-      - NEXT_PUBLIC_API_URL=http://backend:8000/api
+      - DAGSTER_HOME=/app/dagster_home
+      - PLATFORM_DB_HOST=platform-db
+      - PLATFORM_DB_PORT=5432
+      - WAREHOUSE_DB_HOST=warehouse-db
+      - WAREHOUSE_DB_PORT=5432
+      - PLATFORM_DB_NAME=${PLATFORM_DB_NAME}
+      - PLATFORM_DB_USER=${PLATFORM_DB_USER}
+      - PLATFORM_DB_PASSWORD=${PLATFORM_DB_PASSWORD}
+      - WAREHOUSE_DB_NAME=${WAREHOUSE_DB_NAME}
+      - WAREHOUSE_DB_USER=${WAREHOUSE_DB_USER}
+      - WAREHOUSE_DB_PASSWORD=${WAREHOUSE_DB_PASSWORD}
+      # Both Dagster and Backend reach mock-datasources via the shared Docker network.
+      - API_BASE_URL=http://mock-datasources:8000
+      - YALIDINE_API_ID=${YALIDINE_API_ID}
+      - YALIDINE_API_TOKEN=${YALIDINE_API_TOKEN}
+      - HRFORCE_API_TOKEN=${HRFORCE_API_TOKEN}
+      - CASHBOX_API_TOKEN=${CASHBOX_API_TOKEN}
+      - PAIE_API_TOKEN=${PAIE_API_TOKEN}
+      - TRANSPORT_API_TOKEN=${TRANSPORT_API_TOKEN}
+      - DAGSTER_WEBHOOK_TOKEN=${DAGSTER_WEBHOOK_TOKEN}
+    ports:
+      - "3000:3000"
+    depends_on:
+      platform-db:
+        condition: service_healthy
+      warehouse-db:
+        condition: service_healthy
+
+  # NEXT_PUBLIC_API_URL is baked into the JS bundle at build time by Next.js.
+  # Changing it requires rebuilding the image: docker compose up --build -d frontend
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        NEXT_PUBLIC_API_URL: ${NEXT_PUBLIC_API_URL}
     ports:
       - "3001:3000"
     depends_on:
@@ -121,3 +151,8 @@ services:
 volumes:
   platform_db_data:
   warehouse_db_data:
+
+networks:
+  default:
+    name: logiq-net
+    external: true

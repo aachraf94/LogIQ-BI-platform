@@ -11,3 +11,4 @@ drf-spectacular
 user-agents
 bcrypt
 requests
+gunicorn
