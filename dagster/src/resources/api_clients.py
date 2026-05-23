@@ -5,11 +5,21 @@ All clients handle auth, pagination, and retry with exponential backoff.
 
 import requests
 from dagster import ConfigurableResource
-from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
+from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception
+
+
+def _is_retryable(exc: BaseException) -> bool:
+    """Retry on connection errors, timeouts, and transient 5xx responses."""
+    if isinstance(exc, (requests.ConnectionError, requests.Timeout)):
+        return True
+    if isinstance(exc, requests.HTTPError):
+        resp = exc.response
+        return resp is not None and resp.status_code >= 500
+    return False
 
 
 _retry = retry(
-    retry=retry_if_exception_type((requests.ConnectionError, requests.Timeout)),
+    retry=retry_if_exception(_is_retryable),
     stop=stop_after_attempt(4),
     wait=wait_exponential(multiplier=1, min=2, max=30),
     reraise=True,
@@ -264,6 +274,18 @@ class TransportAPIClient(ConfigurableResource):
         page = 1
         while True:
             resp = self._get("/transport/requests", params={"page": page, "limit": page_size})
+            results = resp.get("results", [])
+            all_results.extend(results)
+            if resp.get("pagination", {}).get("next_page") is None:
+                break
+            page += 1
+        return all_results
+
+    def get_all_stops(self, page_size: int = 1000) -> list:
+        all_results = []
+        page = 1
+        while True:
+            resp = self._get("/transport/stops", params={"page": page, "limit": page_size})
             results = resp.get("results", [])
             all_results.extend(results)
             if resp.get("pagination", {}).get("next_page") is None:

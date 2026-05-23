@@ -95,7 +95,7 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_transport (
     total_cost                      NUMERIC(15,2)   NOT NULL,       -- exact sum of all cout_* fields
 
     -- Billing measures
-    amount_invoiced                 NUMERIC(15,2)   NOT NULL,
+    amount_invoiced                 NUMERIC(15,2),                  -- NULL for annulée requests
     amount_paid                     NUMERIC(15,2),                  -- NULL if unpaid
 
     -- Performance measures

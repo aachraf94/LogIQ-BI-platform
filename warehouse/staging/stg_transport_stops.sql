@@ -1,6 +1,6 @@
 -- =============================================================================
 -- STAGING: stg_transport_stops
--- Source : Dedicated Transport — GET /transport/requests (embedded stops array)
+-- Source : Dedicated Transport — GET /transport/stops (dedicated endpoint)
 -- Grain  : One row per stop within a transport request
 -- Notes  : Stops are embedded in the transport request API response and stored
 --          separately in transport.stops. They are unpacked and staged here.

@@ -199,26 +199,26 @@ def stg_transport_requests(
 @asset(
     group_name="staging",
     deps=["stg_transport_requests"],
-    description="Unpack stops embedded in /transport/requests → stg_transport_stops",
+    description="Load /transport/stops → stg_transport_stops (dedicated endpoint, no redundant requests fetch)",
 )
 def stg_transport_stops(
     context: AssetExecutionContext,
     transport_api: TransportAPIClient,
     warehouse_db: WarehousePostgresResource,
 ) -> MaterializeResult:
-    requests_data = transport_api.get_all_requests()
+    stops_data = transport_api.get_all_stops()
     batch_id = uuid.uuid4().hex[:8]
 
     records = [
         (
             s["stop_id"],
-            r["request_id"],
-            int(s.get("stop_order", 0)),
+            s["request_id"],
+            int(s.get("stop_order") or 0),
             s.get("stop_type", ""),
             s.get("location_type", ""),
             s.get("location_name", ""),
             s.get("address"),
-            int(s.get("wilaya_id", 0)),
+            int(s.get("wilaya_id") or 0),
             s.get("commune_id"),
             s.get("gps"),
             s.get("scheduled_datetime"),
@@ -227,9 +227,8 @@ def stg_transport_stops(
             s.get("distance_from_previous_km"),
             batch_id,
         )
-        for r in requests_data
-        for s in r.get("stops", [])
-        if s.get("stop_id") and r.get("request_id")
+        for s in stops_data
+        if s.get("stop_id") and s.get("request_id")
     ]
 
     with warehouse_db.get_connection() as conn:
