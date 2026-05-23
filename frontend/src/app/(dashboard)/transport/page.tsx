@@ -15,7 +15,8 @@ import { BarChart } from "@/components/charts/BarChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { AreaChart } from "@/components/charts/AreaChart";
 import type { Column } from "@/components/ui/DataTable";
-import { useTranslation } from "@/lib/i18n";
+import { useTranslation } from "@/lib/i18n"
+import { useChartTheme } from "@/lib/chartTheme";
 
 import { transportApi } from "@/lib/api";
 import { formatDZD, formatNumber, formatPercent } from "@/lib/utils";
@@ -48,15 +49,14 @@ import type {
 const YEARS = [2023, 2024, 2025];
 // MONTHS, SERVICE_TYPES, COST_LABELS, REGION_ORDER are built inside the component from translations
 
-// ─── Chart theme helpers ───────────────────────────────────────────────────────
+// ─── Chart theme type ─────────────────────────────────────────────────────────
 
-const CHART_TOOLTIP = {
-  backgroundColor: "#1E2030",
-  borderColor: "#2D3050",
-  textStyle: { color: "#E2E8F0", fontSize: 12 },
-};
-const SPLIT_LINE = { lineStyle: { color: "#2D3050", type: "dashed" as const } };
-const AXIS_LABEL = { color: "#64748B", fontSize: 11 };
+interface CT {
+  tooltip: { backgroundColor: string; borderColor: string; textStyle: { color: string; fontSize: number } }
+  splitLine: { lineStyle: { color: string; type: "dashed" } }
+  axisLabel: { color: string; fontSize: number }
+  axisColor: string; legendColor: string; labelColor: string; textColor: string; surface: string; bgColor: string;
+}
 
 // ─── Page state ───────────────────────────────────────────────────────────────
 
@@ -105,7 +105,7 @@ function Select({
           const num = Number(raw);
           onChange(isNaN(num) ? raw : num);
         }}
-        className="appearance-none bg-[#252840] border border-[#2D3050] text-slate-200 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:border-primary/60 cursor-pointer"
+        className="appearance-none bg-[var(--surface-secondary)] border border-[var(--border)] text-slate-200 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:border-primary/60 cursor-pointer"
       >
         {options.map((o) => (
           <option key={String(o.value)} value={o.value === null ? "" : String(o.value)}>
@@ -120,15 +120,15 @@ function Select({
 
 function SectionCard({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-[#1E2030] border border-[#2D3050] rounded-xl p-5 ${className}`}>
-      <h3 className="text-sm font-semibold text-white mb-4">{title}</h3>
+    <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 ${className}`}>
+      <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">{title}</h3>
       {children}
     </div>
   );
 }
 
 function Skeleton({ h = "h-64" }: { h?: string }) {
-  return <div className={`${h} bg-[#252840] animate-pulse rounded-lg`} />;
+  return <div className={`${h} bg-[var(--surface-secondary)] animate-pulse rounded-lg`} />;
 }
 
 // ─── OD Matrix chart option ───────────────────────────────────────────────────
@@ -137,6 +137,7 @@ function buildODOption(
   cells: ODMatrixCell[],
   regionOrder: string[],
   labels: { requests: string; margin: string; destination: string; origin: string },
+  ct: CT,
 ) {
   const regions = regionOrder;
   const data: [number, number, number][] = [];
@@ -153,7 +154,7 @@ function buildODOption(
   return {
     backgroundColor: "transparent",
     tooltip: {
-      ...CHART_TOOLTIP,
+      ...ct.tooltip,
       position: "top",
       formatter: (p: { data: [number, number, number] }) => {
         const cell = cells.find(
@@ -171,10 +172,10 @@ function buildODOption(
       name: labels.destination,
       nameLocation: "middle" as const,
       nameGap: 25,
-      nameTextStyle: { color: "#64748B", fontSize: 11 },
+      nameTextStyle: { color: ct.labelColor, fontSize: 11 },
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: "#94A3B8", fontSize: 11 },
+      axisLabel: { color: ct.legendColor, fontSize: 11 },
     },
     yAxis: {
       type: "category" as const,
@@ -182,16 +183,16 @@ function buildODOption(
       name: labels.origin,
       nameLocation: "middle" as const,
       nameGap: 80,
-      nameTextStyle: { color: "#64748B", fontSize: 11 },
+      nameTextStyle: { color: ct.labelColor, fontSize: 11 },
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: "#94A3B8", fontSize: 11 },
+      axisLabel: { color: ct.legendColor, fontSize: 11 },
     },
     visualMap: {
       min: 0,
       max: max || 1,
       show: false,
-      inRange: { color: ["#1E2030", "#6366F1"] },
+      inRange: { color: [ct.surface, "#6366F1"] },
     },
     series: [{
       type: "heatmap" as const,
@@ -199,12 +200,12 @@ function buildODOption(
       label: {
         show: true,
         formatter: (p: { data: [number, number, number] }) => p.data[2] > 0 ? String(p.data[2]) : "",
-        color: "#E2E8F0",
+        color: ct.textColor,
         fontSize: 13,
         fontWeight: "bold" as const,
       },
       emphasis: { itemStyle: { shadowBlur: 10, shadowColor: "rgba(99,102,241,0.5)" } },
-      itemStyle: { borderRadius: 6, borderColor: "#161829", borderWidth: 3 },
+      itemStyle: { borderRadius: 6, borderColor: ct.bgColor, borderWidth: 3 },
     }],
   };
 }
@@ -215,24 +216,25 @@ function buildStatusStackedOption(
   trends: TransportTrendPoint[],
   cats: string[],
   series: { completed: string; inProgress: string; cancelled: string },
+  ct: CT,
 ) {
   return {
     backgroundColor: "transparent",
-    tooltip: { trigger: "axis" as const, ...CHART_TOOLTIP, axisPointer: { type: "shadow" as const } },
-    legend: { top: 0, right: 0, textStyle: { color: "#94A3B8", fontSize: 11 }, itemWidth: 10, itemHeight: 10 },
+    tooltip: { trigger: "axis" as const, ...ct.tooltip, axisPointer: { type: "shadow" as const } },
+    legend: { top: 0, right: 0, textStyle: { color: ct.legendColor, fontSize: 11 }, itemWidth: 10, itemHeight: 10 },
     grid: { left: 16, right: 16, top: 40, bottom: 0, containLabel: true },
     xAxis: {
       type: "category" as const,
       data: cats,
-      axisLine: { lineStyle: { color: "#2D3050" } },
+      axisLine: { lineStyle: { color: ct.axisColor } },
       axisTick: { show: false },
-      axisLabel: { ...AXIS_LABEL, rotate: 30 },
+      axisLabel: { ...ct.axisLabel, rotate: 30 },
     },
     yAxis: {
       type: "value" as const,
       axisLine: { show: false },
-      splitLine: SPLIT_LINE,
-      axisLabel: AXIS_LABEL,
+      splitLine: ct.splitLine,
+      axisLabel: ct.axisLabel,
     },
     series: [
       { name: series.completed,  type: "bar" as const, stack: "s", data: trends.map((t) => t.nbr_terminees), itemStyle: { color: "#10B981" } },
@@ -244,7 +246,7 @@ function buildStatusStackedOption(
 
 // ─── On-time gauge ────────────────────────────────────────────────────────────
 
-function buildOnTimeGaugeOption(value: number, gaugeLabel: string) {
+function buildOnTimeGaugeOption(value: number, gaugeLabel: string, ct: CT) {
   return {
     backgroundColor: "transparent",
     series: [{
@@ -271,14 +273,14 @@ function buildOnTimeGaugeOption(value: number, gaugeLabel: string) {
       },
       axisTick: { length: 8, lineStyle: { color: "auto", width: 2 } },
       splitLine: { length: 14, lineStyle: { color: "auto", width: 3 } },
-      axisLabel: { color: "#94A3B8", fontSize: 11, distance: -48, formatter: (v: number) => `${v}%` },
-      title: { offsetCenter: [0, "30%"], fontSize: 12, color: "#94A3B8" },
+      axisLabel: { color: ct.legendColor, fontSize: 11, distance: -48, formatter: (v: number) => `${v}%` },
+      title: { offsetCenter: [0, "30%"], fontSize: 12, color: ct.legendColor },
       detail: {
         valueAnimation: true,
         fontSize: 30,
         fontWeight: "bold" as const,
         offsetCenter: [0, "5%"],
-        color: "#E2E8F0",
+        color: ct.textColor,
         formatter: "{value}%",
       },
       data: [{ value: Math.round(value * 10) / 10, name: gaugeLabel }],
@@ -299,6 +301,18 @@ export default function TransportPage() {
   const { t } = useTranslation();
   const p = t.pages.transport;
   const pc = t.pages.common;
+  const chartT = useChartTheme();
+  const ct: CT = {
+    tooltip: { backgroundColor: chartT.tooltipBg, borderColor: chartT.borderColor, textStyle: { color: chartT.textColor, fontSize: 12 } },
+    splitLine: { lineStyle: { color: chartT.splitColor, type: "dashed" } },
+    axisLabel: { color: chartT.labelColor, fontSize: 11 },
+    axisColor: chartT.axisColor,
+    legendColor: chartT.legendColor,
+    labelColor: chartT.labelColor,
+    textColor: chartT.textColor,
+    surface: chartT.surface,
+    bgColor: chartT.bgColor,
+  };
 
   const MONTHS = [
     { label: pc.monthAll, value: null },
@@ -489,7 +503,7 @@ export default function TransportPage() {
           {loading ? <Skeleton /> : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
               <ReactECharts
-                option={buildStatusStackedOption(trends, trendCats, { completed: p.completedSeries, inProgress: p.inProgressSeries, cancelled: p.cancelledSeries })}
+                option={buildStatusStackedOption(trends, trendCats, { completed: p.completedSeries, inProgress: p.inProgressSeries, cancelled: p.cancelledSeries }, ct)}
                 style={{ height: 280 }}
                 notMerge
               />
@@ -507,7 +521,7 @@ export default function TransportPage() {
           <SectionCard title={p.sectionCurrentPunctuality}>
             {loading ? <Skeleton h="h-full" /> : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
-                <ReactECharts option={buildOnTimeGaugeOption(cur.avg_ponctualite_pct, p.kpiPunctuality)} style={{ height: 220 }} notMerge />
+                <ReactECharts option={buildOnTimeGaugeOption(cur.avg_ponctualite_pct, p.kpiPunctuality, ct)} style={{ height: 220 }} notMerge />
               </motion.div>
             )}
           </SectionCard>
@@ -569,10 +583,10 @@ export default function TransportPage() {
       {/* ── OD Matrix ── */}
       <SectionCard title={p.sectionODMatrix}>
         <div className="flex items-start gap-8">
-          {loading ? <div className="flex-1 h-64 bg-[#252840] animate-pulse rounded-lg" /> : (
+          {loading ? <div className="flex-1 h-64 bg-[var(--surface-secondary)] animate-pulse rounded-lg" /> : (
             <motion.div className="flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
               <ReactECharts
-                option={buildODOption(odMatrix, REGION_ORDER, { requests: p.colRequests, margin: p.colMarginPct, destination: p.colDestination, origin: p.colOrigin })}
+                option={buildODOption(odMatrix, REGION_ORDER, { requests: p.colRequests, margin: p.colMarginPct, destination: p.colDestination, origin: p.colOrigin }, ct)}
                 style={{ height: 260 }}
                 notMerge
               />
@@ -620,13 +634,13 @@ export default function TransportPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.06 }}
-                className="bg-[#252840] rounded-lg p-4 space-y-2"
+                className="bg-[var(--surface-secondary)] rounded-lg p-4 space-y-2"
               >
                 <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
                   {s.service_type === "course_dediee" ? p.dedicatedTrip : s.service_type.charAt(0).toUpperCase() + s.service_type.slice(1)}
                   {s.sub_service_type !== "N/A" && ` — ${s.sub_service_type}`}
                 </p>
-                <p className="text-lg font-bold text-white">{formatNumber(s.nbr_requests)} <span className="text-xs text-slate-400 font-normal">{p.colRequests.toLowerCase()}</span></p>
+                <p className="text-lg font-bold text-[var(--text-primary)]">{formatNumber(s.nbr_requests)} <span className="text-xs text-slate-400 font-normal">{p.colRequests.toLowerCase()}</span></p>
                 <div className="flex justify-between text-xs text-slate-400">
                   <span>{p.colMarginPct}</span>
                   <span className={`font-semibold ${s.taux_marge_pct >= 24 ? "text-emerald-400" : "text-amber-400"}`}>{s.taux_marge_pct?.toFixed(1)}%</span>

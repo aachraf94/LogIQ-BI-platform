@@ -2,6 +2,7 @@
 
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
+import { useChartTheme } from "@/lib/chartTheme";
 
 interface GaugeChartProps {
   value: number;
@@ -10,6 +11,8 @@ interface GaugeChartProps {
 }
 
 export function GaugeChart({ value, title = "Profit Margin", height = 300 }: GaugeChartProps) {
+  const t = useChartTheme()
+
   const option = {
     backgroundColor: "transparent",
     series: [
@@ -42,7 +45,7 @@ export function GaugeChart({ value, title = "Profit Margin", height = 300 }: Gau
         axisTick: { length: 8, lineStyle: { color: "auto", width: 2 } },
         splitLine: { length: 15, lineStyle: { color: "auto", width: 3 } },
         axisLabel: {
-          color: "#94A3B8",
+          color: t.legendColor,
           fontSize: 12,
           distance: -50,
           formatter: (v: number) => `${v}%`,
@@ -50,7 +53,7 @@ export function GaugeChart({ value, title = "Profit Margin", height = 300 }: Gau
         title: {
           offsetCenter: [0, "30%"],
           fontSize: 13,
-          color: "#94A3B8",
+          color: t.legendColor,
           fontWeight: "normal",
         },
         detail: {
@@ -58,7 +61,7 @@ export function GaugeChart({ value, title = "Profit Margin", height = 300 }: Gau
           fontSize: 32,
           fontWeight: "bold",
           offsetCenter: [0, "5%"],
-          color: "#E2E8F0",
+          color: t.textColor,
           formatter: "{value}%",
         },
         data: [{ value, name: title }],

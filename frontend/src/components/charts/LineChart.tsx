@@ -2,6 +2,7 @@
 
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
+import { useChartTheme } from "@/lib/chartTheme";
 
 interface Series {
   name: string;
@@ -17,18 +18,20 @@ interface LineChartProps {
 }
 
 export function LineChart({ categories, series, height = 300, yFormatter }: LineChartProps) {
+  const t = useChartTheme()
+
   const option = {
     backgroundColor: "transparent",
     tooltip: {
       trigger: "axis",
-      backgroundColor: "#1E2030",
-      borderColor: "#2D3050",
-      textStyle: { color: "#E2E8F0", fontSize: 12 },
+      backgroundColor: t.tooltipBg,
+      borderColor: t.borderColor,
+      textStyle: { color: t.textColor, fontSize: 12 },
     },
     legend: {
       top: 0,
       right: 0,
-      textStyle: { color: "#94A3B8", fontSize: 12 },
+      textStyle: { color: t.legendColor, fontSize: 12 },
       itemWidth: 12,
       itemHeight: 8,
     },
@@ -36,17 +39,17 @@ export function LineChart({ categories, series, height = 300, yFormatter }: Line
     xAxis: {
       type: "category",
       data: categories,
-      axisLine: { lineStyle: { color: "#2D3050" } },
+      axisLine: { lineStyle: { color: t.axisColor } },
       axisTick: { show: false },
-      axisLabel: { color: "#64748B", fontSize: 11, rotate: 30 },
+      axisLabel: { color: t.labelColor, fontSize: 11, rotate: 30 },
     },
     yAxis: {
       type: "value",
       axisLine: { show: false },
       axisTick: { show: false },
-      splitLine: { lineStyle: { color: "#2D3050", type: "dashed" } },
+      splitLine: { lineStyle: { color: t.splitColor, type: "dashed" } },
       axisLabel: {
-        color: "#64748B",
+        color: t.labelColor,
         fontSize: 11,
         formatter: yFormatter ?? ((v: number) => String(v)),
       },

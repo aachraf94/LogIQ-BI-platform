@@ -69,7 +69,7 @@ export function RouteMap({ routes, height = 460 }: RouteMapProps) {
         ).addTo(leafletMap);
 
         polyline.bindPopup(
-          `<div style="color:#E2E8F0;background:#1E2030;padding:8px;border-radius:8px;min-width:180px;font-family:Inter,sans-serif">
+          `<div style="color:var(--text-primary);background:var(--surface);padding:8px;border-radius:8px;border:1px solid var(--border);min-width:180px;font-family:Inter,sans-serif">
             <b style="color:#6366F1">${route.origin} → ${route.destination}</b><br/>
             Volume: <b>${route.volume.toLocaleString()}</b> parcels<br/>
             Cost: <b>${route.actualCost.toLocaleString()} DZD</b><br/>
@@ -108,7 +108,7 @@ export function RouteMap({ routes, height = 460 }: RouteMapProps) {
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.6, delay: 0.3 }}
-      className="rounded-xl overflow-hidden border border-[#2D3050]"
+      className="rounded-xl overflow-hidden border border-[var(--border)]"
       style={{ height }}
     >
       <div ref={mapRef} style={{ height: "100%", width: "100%" }} />

@@ -2,6 +2,7 @@
 
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
+import { useChartTheme } from "@/lib/chartTheme";
 
 interface BarChartProps {
   data: { name: string; value: number }[];
@@ -12,13 +13,15 @@ interface BarChartProps {
 }
 
 export function BarChart({ data, height = 300, color = "#6366F1", horizontal = false, label }: BarChartProps) {
+  const t = useChartTheme()
+
   const option = {
     backgroundColor: "transparent",
     tooltip: {
       trigger: "axis",
-      backgroundColor: "#1E2030",
-      borderColor: "#2D3050",
-      textStyle: { color: "#E2E8F0", fontSize: 12 },
+      backgroundColor: t.tooltipBg,
+      borderColor: t.borderColor,
+      textStyle: { color: t.textColor, fontSize: 12 },
       axisPointer: { type: "shadow" },
     },
     grid: {
@@ -29,11 +32,11 @@ export function BarChart({ data, height = 300, color = "#6366F1", horizontal = f
       containLabel: true,
     },
     xAxis: horizontal
-      ? { type: "value", axisLine: { show: false }, splitLine: { lineStyle: { color: "#2D3050", type: "dashed" } }, axisLabel: { color: "#64748B", fontSize: 11 } }
-      : { type: "category", data: data.map((d) => d.name), axisLine: { lineStyle: { color: "#2D3050" } }, axisTick: { show: false }, axisLabel: { color: "#64748B", fontSize: 11 } },
+      ? { type: "value", axisLine: { show: false }, splitLine: { lineStyle: { color: t.splitColor, type: "dashed" } }, axisLabel: { color: t.labelColor, fontSize: 11 } }
+      : { type: "category", data: data.map((d) => d.name), axisLine: { lineStyle: { color: t.axisColor } }, axisTick: { show: false }, axisLabel: { color: t.labelColor, fontSize: 11 } },
     yAxis: horizontal
-      ? { type: "category", data: data.map((d) => d.name), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: "#94A3B8", fontSize: 11 } }
-      : { type: "value", axisLine: { show: false }, splitLine: { lineStyle: { color: "#2D3050", type: "dashed" } }, axisLabel: { color: "#64748B", fontSize: 11 } },
+      ? { type: "category", data: data.map((d) => d.name), axisLine: { show: false }, axisTick: { show: false }, axisLabel: { color: t.legendColor, fontSize: 11 } }
+      : { type: "value", axisLine: { show: false }, splitLine: { lineStyle: { color: t.splitColor, type: "dashed" } }, axisLabel: { color: t.labelColor, fontSize: 11 } },
     series: [
       {
         name: label,

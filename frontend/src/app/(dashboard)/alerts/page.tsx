@@ -9,6 +9,7 @@ import ReactECharts from 'echarts-for-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/lib/i18n'
+import { useChartTheme } from '@/lib/chartTheme'
 
 type SeverityFilter = 'all' | AlertSeverity
 type StatusFilter = 'all' | 'acknowledged' | 'unacknowledged'
@@ -62,14 +63,14 @@ function AlertCard({ alert, onAcknowledge }: { alert: Alert; onAcknowledge: (id:
       animate={{ opacity: 1, y: 0 }}
       exit={{ opacity: 0, x: -20 }}
       transition={{ duration: 0.22 }}
-      className={cn('bg-[#1E2030] border rounded-xl p-5', SEV_BORDER[alert.severity])}
+      className={cn('bg-[var(--surface)] border rounded-xl p-5', SEV_BORDER[alert.severity])}
     >
       <div className="flex items-start gap-4">
         <div className="mt-0.5">{SEV_ICON[alert.severity]}</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-3">
             <div>
-              <h4 className="font-semibold text-white text-sm">{alert.rule.name}</h4>
+              <h4 className="font-semibold text-[var(--text-primary)] text-sm">{alert.rule.name}</h4>
               <p className="text-xs text-slate-400 mt-0.5">
                 {p.metricLabels[alert.rule.metric] ?? alert.rule.metric}
                 {' '}{COND_LABEL[alert.rule.condition]}{' '}{alert.rule.threshold}
@@ -111,7 +112,7 @@ function AlertCard({ alert, onAcknowledge }: { alert: Alert; onAcknowledge: (id:
                     value={note}
                     onChange={(e) => setNote(e.target.value)}
                     placeholder={p.optionalNote}
-                    className="flex-1 bg-[#252840] border border-[#2D3050] rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary"
+                    className="flex-1 bg-[var(--surface-secondary)] border border-[var(--border)] rounded-lg px-3 py-1.5 text-xs text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary"
                   />
                   <button onClick={handleAck} disabled={acknowledging}
                     className="px-3 py-1.5 text-xs font-semibold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/20 rounded-lg transition-colors disabled:opacity-60">
@@ -140,15 +141,15 @@ function RulesSection({ rules }: { rules: AlertRule[] }) {
   const p = t.pages.alerts
   if (rules.length === 0) return null
   return (
-    <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl overflow-hidden">
-      <div className="px-5 py-3 border-b border-[#2D3050]">
-        <h3 className="text-sm font-semibold text-white">{p.alertRules}</h3>
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
+      <div className="px-5 py-3 border-b border-[var(--border)]">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">{p.alertRules}</h3>
       </div>
-      <div className="divide-y divide-[#2D3050]">
+      <div className="divide-y divide-[var(--border)]">
         {rules.map((r) => (
           <div key={r.id} className="flex items-center gap-4 px-5 py-3">
             <div className="flex-1 min-w-0">
-              <p className="text-sm text-white font-medium">{r.name}</p>
+              <p className="text-sm text-[var(--text-primary)] font-medium">{r.name}</p>
               <p className="text-xs text-slate-500 mt-0.5">
                 {p.metricLabels[r.metric] ?? r.metric} {COND_LABEL[r.condition]} {r.threshold}
                 {' · '}{p.cooldown} {r.cooldown_minutes}m
@@ -181,6 +182,7 @@ export default function AlertsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('unacknowledged')
   const { t } = useTranslation()
   const p = t.pages.alerts
+  const chartT = useChartTheme()
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -211,7 +213,7 @@ export default function AlertsPage() {
 
   const chartOption = {
     backgroundColor: 'transparent',
-    tooltip: { trigger: 'item', backgroundColor: '#1E2030', borderColor: '#2D3050', textStyle: { color: '#E2E8F0', fontSize: 12 } },
+    tooltip: { trigger: 'item', backgroundColor: chartT.tooltipBg, borderColor: chartT.borderColor, textStyle: { color: chartT.textColor, fontSize: 12 } },
     series: [{
       type: 'pie',
       radius: ['50%', '75%'],
@@ -220,7 +222,7 @@ export default function AlertsPage() {
         { value: sevCounts.warning, name: 'Warning', itemStyle: { color: '#F59E0B' } },
         { value: sevCounts.info, name: 'Info', itemStyle: { color: '#3B82F6' } },
       ],
-      label: { show: true, color: '#94A3B8', fontSize: 11 },
+      label: { show: true, color: chartT.legendColor, fontSize: 11 },
     }],
   }
 
@@ -247,7 +249,7 @@ export default function AlertsPage() {
           { label: 'Warning', value: sevCounts.warning, color: 'text-amber-400' },
           { label: p.unacknowledged, value: alerts.filter((a) => !a.is_acknowledged).length, color: 'text-primary' },
         ].map((stat) => (
-          <div key={stat.label} className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-4">
+          <div key={stat.label} className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
             <p className="text-xs text-slate-400">{stat.label}</p>
             <p className={cn('text-2xl font-bold mt-1', stat.color)}>{stat.value}</p>
           </div>
@@ -256,8 +258,8 @@ export default function AlertsPage() {
 
       {/* Chart + rules */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-3">{p.distribution}</h3>
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">{p.distribution}</h3>
           {alerts.length > 0
             ? <ReactECharts option={chartOption} style={{ height: 180 }} notMerge />
             : <div className="h-[180px] flex items-center justify-center text-slate-600 text-sm">{p.noAlerts}</div>}
@@ -269,7 +271,7 @@ export default function AlertsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap gap-3 items-center">
-        <div className="flex gap-0.5 bg-[#1E2030] border border-[#2D3050] rounded-lg p-1">
+        <div className="flex gap-0.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-1">
           {(['all', 'critical', 'warning', 'info'] as SeverityFilter[]).map((s) => (
             <button key={s} onClick={() => setSevFilter(s)}
               className={cn('px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors',
@@ -278,7 +280,7 @@ export default function AlertsPage() {
             </button>
           ))}
         </div>
-        <div className="flex gap-0.5 bg-[#1E2030] border border-[#2D3050] rounded-lg p-1">
+        <div className="flex gap-0.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-1">
           {(['all', 'unacknowledged', 'acknowledged'] as StatusFilter[]).map((s) => (
             <button key={s} onClick={() => setStatusFilter(s)}
               className={cn('px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors',

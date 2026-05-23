@@ -63,9 +63,9 @@ function RoleForm({
   }
 
   return (
-    <form onSubmit={handleSave} className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5 space-y-4">
+    <form onSubmit={handleSave} className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-sm font-semibold text-white">{initial ? pr.editRole : pr.newRole}</h3>
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">{initial ? pr.editRole : pr.newRole}</h3>
         <button type="button" onClick={onCancel} className="p-1 text-slate-500 hover:text-slate-300"><X size={15} /></button>
       </div>
 
@@ -73,7 +73,7 @@ function RoleForm({
         <div>
           <label className="text-xs text-slate-400 block mb-1">{pr.roleKey}</label>
           <input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. responsable_finance"
-            required pattern="[a-z_]+" className="w-full bg-[#252840] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary" />
+            required pattern="[a-z_]+" className="w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary" />
         </div>
       )}
 
@@ -81,14 +81,14 @@ function RoleForm({
         <label className="text-xs text-slate-400 block mb-1">{pr.displayName}</label>
         <input value={displayName} onChange={(e) => setDisplayName(e.target.value)} required
           placeholder="e.g. Responsable Finance"
-          className="w-full bg-[#252840] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary" />
+          className="w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary" />
       </div>
 
       <div>
         <label className="text-xs text-slate-400 block mb-1">{pr.description}</label>
         <input value={description} onChange={(e) => setDescription(e.target.value)}
           placeholder=""
-          className="w-full bg-[#252840] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary" />
+          className="w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary" />
       </div>
 
       <div>
@@ -99,7 +99,7 @@ function RoleForm({
               className={cn('px-3 py-1.5 text-xs font-medium rounded-lg border transition-colors',
                 dashboards.includes(key)
                   ? 'bg-primary border-primary text-white'
-                  : 'border-[#2D3050] text-slate-400 hover:text-slate-200')}>
+                  : 'border-[var(--border)] text-slate-400 hover:text-slate-200')}>
               {label}
             </button>
           ))}
@@ -112,7 +112,7 @@ function RoleForm({
           {PALETTE.map((c) => (
             <button key={c} type="button" onClick={() => setColor(c)}
               style={{ backgroundColor: c }}
-              className={cn('w-7 h-7 rounded-full transition-transform', color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-[#1E2030] scale-110' : 'hover:scale-105')} />
+              className={cn('w-7 h-7 rounded-full transition-transform', color === c ? 'ring-2 ring-white ring-offset-2 ring-offset-[var(--surface)] scale-110' : 'hover:scale-105')} />
           ))}
         </div>
       </div>
@@ -205,14 +205,14 @@ export default function AdminRolesPage() {
                     <RoleForm initial={role} onSave={handleSaved} onCancel={() => setEditing(null)} />
                   </motion.div>
                 ) : (
-                  <motion.div layout className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5 flex items-start gap-4">
+                  <motion.div layout className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 flex items-start gap-4">
                     <div className="w-10 h-10 rounded-xl flex items-center justify-center shrink-0"
                       style={{ backgroundColor: role.color + '20' }}>
                       <Shield size={18} style={{ color: role.color }} />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <h3 className="text-sm font-semibold text-white">{role.display_name}</h3>
+                        <h3 className="text-sm font-semibold text-[var(--text-primary)]">{role.display_name}</h3>
                         {role.is_system && (
                           <span className="flex items-center gap-1 text-[10px] font-bold px-1.5 py-0.5 bg-primary/10 text-primary rounded-full">
                             <Lock size={9} /> System
@@ -223,7 +223,7 @@ export default function AdminRolesPage() {
                       {role.description && <p className="text-xs text-slate-400 mt-1">{role.description}</p>}
                       <div className="flex flex-wrap gap-1.5 mt-2">
                         {role.dashboards.map((d) => (
-                          <span key={d} className="text-[10px] px-2 py-0.5 bg-[#252840] text-slate-400 rounded-full capitalize">{d}</span>
+                          <span key={d} className="text-[10px] px-2 py-0.5 bg-[var(--surface-secondary)] text-slate-400 rounded-full capitalize">{d}</span>
                         ))}
                       </div>
                       {role.user_count !== undefined && (

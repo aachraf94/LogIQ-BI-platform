@@ -15,7 +15,8 @@ import { BarChart } from "@/components/charts/BarChart";
 import { LineChart } from "@/components/charts/LineChart";
 import { AreaChart } from "@/components/charts/AreaChart";
 import type { Column } from "@/components/ui/DataTable";
-import { useTranslation } from "@/lib/i18n";
+import { useTranslation } from "@/lib/i18n"
+import { useChartTheme } from "@/lib/chartTheme";
 
 import { parcelCostsApi } from "@/lib/api";
 import { formatDZD, formatNumber, formatPercent } from "@/lib/utils";
@@ -58,15 +59,14 @@ import type {
 const YEARS = [2023, 2024, 2025];
 // MONTHS and DELIVERY_TYPES are built inside the component from translations
 
-// ─── Chart theme helpers ───────────────────────────────────────────────────────
+// ─── Chart theme type ─────────────────────────────────────────────────────────
 
-const CHART_TOOLTIP = {
-  backgroundColor: "#1E2030",
-  borderColor: "#2D3050",
-  textStyle: { color: "#E2E8F0", fontSize: 12 },
-};
-const SPLIT_LINE = { lineStyle: { color: "#2D3050", type: "dashed" as const } };
-const AXIS_LABEL = { color: "#64748B", fontSize: 11 };
+interface CT {
+  tooltip: { backgroundColor: string; borderColor: string; textStyle: { color: string; fontSize: number } }
+  splitLine: { lineStyle: { color: string; type: "dashed" } }
+  axisLabel: { color: string; fontSize: number }
+  axisColor: string; legendColor: string; labelColor: string; textColor: string; surface: string; bgColor: string;
+}
 
 // ─── Page state ───────────────────────────────────────────────────────────────
 
@@ -131,7 +131,7 @@ function Select({
           const num = Number(raw);
           onChange(isNaN(num) ? raw : num);
         }}
-        className="appearance-none bg-[#252840] border border-[#2D3050] text-slate-200 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:border-primary/60 cursor-pointer"
+        className="appearance-none bg-[var(--surface-secondary)] border border-[var(--border)] text-slate-200 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:border-primary/60 cursor-pointer"
       >
         {options.map((o) => (
           <option key={String(o.value)} value={o.value === null ? "" : String(o.value)}>
@@ -146,15 +146,15 @@ function Select({
 
 function SectionCard({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
   return (
-    <div className={`bg-[#1E2030] border border-[#2D3050] rounded-xl p-5 ${className}`}>
-      <h3 className="text-sm font-semibold text-white mb-4">{title}</h3>
+    <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 ${className}`}>
+      <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">{title}</h3>
       {children}
     </div>
   );
 }
 
 function Skeleton({ h = "h-64" }: { h?: string }) {
-  return <div className={`${h} bg-[#252840] animate-pulse rounded-lg`} />;
+  return <div className={`${h} bg-[var(--surface-secondary)] animate-pulse rounded-lg`} />;
 }
 
 // ─── Chart builders ───────────────────────────────────────────────────────────
@@ -163,6 +163,7 @@ function buildQuadrantOption(
   agencies: ParcelAgencyData[],
   quadrantNames: { performant: string; tariffRisk: string; opRisk: string; doubleRisk: string },
   axisLabels: { delivery: string; underTariff: string },
+  ct: CT,
 ) {
   const DELIVERY_THRESH = 73;
   const RISK_THRESH = 24;
@@ -189,7 +190,7 @@ function buildQuadrantOption(
       show: true,
       formatter: (p: { data: (number | string)[] }) => String(p.data[3]),
       position: "top" as const,
-      color: "#94A3B8",
+      color: ct.legendColor,
       fontSize: 10,
     },
   }));
@@ -197,7 +198,7 @@ function buildQuadrantOption(
   return {
     backgroundColor: "transparent",
     tooltip: {
-      ...CHART_TOOLTIP,
+      ...ct.tooltip,
       formatter: (p: { data: (number | string)[]; seriesName: string }) => {
         const [x, y, colis, name] = p.data;
         return `<b>${name}</b><br/>Livraison: ${x}%<br/>Sous-tarif: ${y}%<br/>Colis: ${formatNumber(colis as number)}`;
@@ -205,7 +206,7 @@ function buildQuadrantOption(
     },
     legend: {
       bottom: 0,
-      textStyle: { color: "#94A3B8", fontSize: 11 },
+      textStyle: { color: ct.legendColor, fontSize: 11 },
       itemWidth: 10, itemHeight: 10,
     },
     grid: { left: 60, right: 20, top: 20, bottom: 50 },
@@ -214,22 +215,22 @@ function buildQuadrantOption(
       name: axisLabels.delivery,
       nameLocation: "middle" as const,
       nameGap: 30,
-      nameTextStyle: { color: "#64748B", fontSize: 11 },
+      nameTextStyle: { color: ct.labelColor, fontSize: 11 },
       min: 55, max: 90,
-      axisLine: { lineStyle: { color: "#2D3050" } },
-      splitLine: SPLIT_LINE,
-      axisLabel: { ...AXIS_LABEL, formatter: (v: number) => `${v}%` },
+      axisLine: { lineStyle: { color: ct.axisColor } },
+      splitLine: ct.splitLine,
+      axisLabel: { ...ct.axisLabel, formatter: (v: number) => `${v}%` },
     },
     yAxis: {
       type: "value" as const,
       name: axisLabels.underTariff,
       nameLocation: "middle" as const,
       nameGap: 48,
-      nameTextStyle: { color: "#64748B", fontSize: 11 },
+      nameTextStyle: { color: ct.labelColor, fontSize: 11 },
       min: 0, max: 45,
       axisLine: { show: false },
-      splitLine: SPLIT_LINE,
-      axisLabel: { ...AXIS_LABEL, formatter: (v: number) => `${v}%` },
+      splitLine: ct.splitLine,
+      axisLabel: { ...ct.axisLabel, formatter: (v: number) => `${v}%` },
     },
     series: [
       ...series,
@@ -237,7 +238,7 @@ function buildQuadrantOption(
         name: "_vline",
         type: "line" as const,
         data: [[DELIVERY_THRESH, 0], [DELIVERY_THRESH, 45]],
-        lineStyle: { color: "#2D3050", type: "dashed" as const, width: 1 },
+        lineStyle: { color: ct.axisColor, type: "dashed" as const, width: 1 },
         symbol: "none",
         silent: true,
         legendHoverLink: false,
@@ -246,7 +247,7 @@ function buildQuadrantOption(
         name: "_hline",
         type: "line" as const,
         data: [[55, RISK_THRESH], [90, RISK_THRESH]],
-        lineStyle: { color: "#2D3050", type: "dashed" as const, width: 1 },
+        lineStyle: { color: ct.axisColor, type: "dashed" as const, width: 1 },
         symbol: "none",
         silent: true,
         legendHoverLink: false,
@@ -255,13 +256,13 @@ function buildQuadrantOption(
   };
 }
 
-function buildDailyVolumeOption(daily: DailyVolumePoint[], seriesNames: { delivered: string; returns: string }) {
+function buildDailyVolumeOption(daily: DailyVolumePoint[], seriesNames: { delivered: string; returns: string }, ct: CT) {
   const cats = daily.map((d) => d.full_date.slice(5));
   return {
     backgroundColor: "transparent",
     tooltip: {
       trigger: "axis" as const,
-      ...CHART_TOOLTIP,
+      ...ct.tooltip,
       axisPointer: { type: "shadow" as const },
       formatter: (params: { name: string; data: number; seriesName: string }[]) => {
         const day = daily.find((d) => d.full_date.slice(5) === params[0]?.name);
@@ -269,20 +270,20 @@ function buildDailyVolumeOption(daily: DailyVolumePoint[], seriesNames: { delive
         return params.map((p) => `${p.seriesName}: ${p.data}`).join("<br/>") + `<br/>${params[0]?.name}${label}`;
       },
     },
-    legend: { top: 0, right: 0, textStyle: { color: "#94A3B8", fontSize: 11 }, itemWidth: 10, itemHeight: 10 },
+    legend: { top: 0, right: 0, textStyle: { color: ct.legendColor, fontSize: 11 }, itemWidth: 10, itemHeight: 10 },
     grid: { left: 16, right: 16, top: 36, bottom: 0, containLabel: true },
     xAxis: {
       type: "category" as const,
       data: cats,
-      axisLine: { lineStyle: { color: "#2D3050" } },
+      axisLine: { lineStyle: { color: ct.axisColor } },
       axisTick: { show: false },
-      axisLabel: { ...AXIS_LABEL, rotate: 40, interval: 4 },
+      axisLabel: { ...ct.axisLabel, rotate: 40, interval: 4 },
     },
     yAxis: {
       type: "value" as const,
       axisLine: { show: false },
-      splitLine: SPLIT_LINE,
-      axisLabel: AXIS_LABEL,
+      splitLine: ct.splitLine,
+      axisLabel: ct.axisLabel,
     },
     series: [
       {
@@ -305,7 +306,7 @@ function buildDailyVolumeOption(daily: DailyVolumePoint[], seriesNames: { delive
   };
 }
 
-function buildEcartHistogramOption(buckets: EcartBucketItem[]) {
+function buildEcartHistogramOption(buckets: EcartBucketItem[], ct: CT) {
   const BUCKET_COLORS: Record<number, string> = {
     0: "#EF4444",
     1: "#F97316",
@@ -317,7 +318,7 @@ function buildEcartHistogramOption(buckets: EcartBucketItem[]) {
   return {
     backgroundColor: "transparent",
     tooltip: {
-      ...CHART_TOOLTIP,
+      ...ct.tooltip,
       formatter: (p: { name: string; value: number; dataIndex: number }) => {
         const b = buckets[p.dataIndex];
         const ecart = b ? `<br/>Σ écart: ${b.sum_ecart_dzd >= 0 ? "+" : ""}${formatDZD(b.sum_ecart_dzd)}` : "";
@@ -328,23 +329,23 @@ function buildEcartHistogramOption(buckets: EcartBucketItem[]) {
     xAxis: {
       type: "category" as const,
       data: buckets.map((b) => b.bucket),
-      axisLine: { lineStyle: { color: "#2D3050" } },
+      axisLine: { lineStyle: { color: ct.axisColor } },
       axisTick: { show: false },
-      axisLabel: { ...AXIS_LABEL, rotate: 20, interval: 0 },
+      axisLabel: { ...ct.axisLabel, rotate: 20, interval: 0 },
     },
     yAxis: {
       type: "value" as const,
       axisLine: { show: false },
-      splitLine: SPLIT_LINE,
-      axisLabel: AXIS_LABEL,
+      splitLine: ct.splitLine,
+      axisLabel: ct.axisLabel,
     },
     series: [{
       type: "bar" as const,
       data: buckets.map((b) => ({
         value: b.nbr_colis,
-        itemStyle: { color: BUCKET_COLORS[b.bucket_order] ?? "#64748B", borderRadius: [4, 4, 0, 0] },
+        itemStyle: { color: BUCKET_COLORS[b.bucket_order] ?? ct.labelColor, borderRadius: [4, 4, 0, 0] },
       })),
-      label: { show: true, position: "top" as const, color: "#94A3B8", fontSize: 11, formatter: (p: { value: number }) => formatNumber(p.value) },
+      label: { show: true, position: "top" as const, color: ct.legendColor, fontSize: 11, formatter: (p: { value: number }) => formatNumber(p.value) },
     }],
   };
 }
@@ -365,6 +366,18 @@ export default function ParcelCostsPage() {
   const { t } = useTranslation();
   const p = t.pages.parcelCosts;
   const pc = t.pages.common;
+  const chartT = useChartTheme();
+  const ct: CT = {
+    tooltip: { backgroundColor: chartT.tooltipBg, borderColor: chartT.borderColor, textStyle: { color: chartT.textColor, fontSize: 12 } },
+    splitLine: { lineStyle: { color: chartT.splitColor, type: "dashed" } },
+    axisLabel: { color: chartT.labelColor, fontSize: 11 },
+    axisColor: chartT.axisColor,
+    legendColor: chartT.legendColor,
+    labelColor: chartT.labelColor,
+    textColor: chartT.textColor,
+    surface: chartT.surface,
+    bgColor: chartT.bgColor,
+  };
 
   const MONTHS = [
     { label: pc.monthAll, value: null },
@@ -607,7 +620,7 @@ export default function ParcelCostsPage() {
           <SectionCard title={p.sectionEcartDistribution}>
             {loading || loadingDetail ? <Skeleton /> : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-                <ReactECharts option={buildEcartHistogramOption(ecartDistribution)} style={{ height: 280 }} notMerge />
+                <ReactECharts option={buildEcartHistogramOption(ecartDistribution, ct)} style={{ height: 280 }} notMerge />
               </motion.div>
             )}
           </SectionCard>
@@ -629,9 +642,9 @@ export default function ParcelCostsPage() {
                   { label: p.pccTotalGap, value: formatDZD(pccSummary.total_ecart_dzd), sub: `${pccSummary.taux_ecart_global_pct?.toFixed(1)}%`, warn: true },
                   { label: p.pccAvgGap, value: `${pccSummary.avg_ecart_dzd?.toFixed(1)} DZD`, sub: `~${pccSummary.avg_ecart_absolu_dzd?.toFixed(1)} DZD` },
                 ].map(({ label, value, sub, warn }) => (
-                  <div key={label} className="bg-[#252840] rounded-lg p-3">
+                  <div key={label} className="bg-[var(--surface-secondary)] rounded-lg p-3">
                     <p className="text-xs text-slate-400 mb-1">{label}</p>
-                    <p className={`text-lg font-bold ${warn ? "text-red-400" : "text-white"}`}>{value}</p>
+                    <p className={`text-lg font-bold ${warn ? "text-red-400" : "text-[var(--text-primary)]"}`}>{value}</p>
                     <p className="text-xs text-slate-500 mt-0.5">{sub}</p>
                   </div>
                 ))}
@@ -676,6 +689,7 @@ export default function ParcelCostsPage() {
                 byAgency,
                 { performant: p.quadrantPerformant, tariffRisk: p.quadrantTariffRisk, opRisk: p.quadrantOpRisk, doubleRisk: p.quadrantDoubleRisk },
                 { delivery: p.colDeliveryRate, underTariff: p.colUnderTariff },
+                ct,
               )}
               style={{ height: 320 }}
               notMerge
@@ -701,13 +715,13 @@ export default function ParcelCostsPage() {
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: i * 0.1 }}
-                className="bg-[#252840] rounded-lg p-4 space-y-3"
+                className="bg-[var(--surface-secondary)] rounded-lg p-4 space-y-3"
               >
                 <div className="flex items-center justify-between">
                   <span className={`text-sm font-bold px-3 py-1 rounded-full ${dt.delivery_type === "HD" ? "bg-indigo-500/15 text-indigo-300" : "bg-cyan-500/15 text-cyan-300"}`}>
                     {dt.delivery_type === "HD" ? p.homeDelivery : p.pickupPoint}
                   </span>
-                  <span className="text-lg font-bold text-white">{formatNumber(dt.nbr_colis)}</span>
+                  <span className="text-lg font-bold text-[var(--text-primary)]">{formatNumber(dt.nbr_colis)}</span>
                 </div>
                 {[
                   { label: p.hdDeliveryRate, value: `${dt.taux_livraison_pct?.toFixed(1)}%`, color: dt.taux_livraison_pct >= 75 ? "text-emerald-400" : "text-amber-400" },
@@ -731,7 +745,7 @@ export default function ParcelCostsPage() {
         <SectionCard title={`${p.sectionDailyVolume} — ${MONTHS.find((m) => m.value === month)?.label ?? ""} ${year}`}>
           {loading ? <Skeleton /> : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
-              <ReactECharts option={buildDailyVolumeOption(dailyVolume, { delivered: p.deliveredSeries, returns: p.returnsSeries })} style={{ height: 280 }} notMerge />
+              <ReactECharts option={buildDailyVolumeOption(dailyVolume, { delivered: p.deliveredSeries, returns: p.returnsSeries }, ct)} style={{ height: 280 }} notMerge />
               <div className="flex gap-4 mt-3 text-xs text-slate-500">
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#10B981]" /> {p.normalDay}</span>
                 <span className="flex items-center gap-1.5"><span className="w-3 h-3 rounded-sm bg-[#22D3EE]" /> {p.friday}</span>
@@ -772,9 +786,9 @@ export default function ParcelCostsPage() {
                 { label: p.sinCoverage,       value: `${sinistres.summary.taux_couverture_pct?.toFixed(1)}%` },
                 { label: p.sinAvgRefund,      value: `${sinistres.summary.avg_rembourse_dzd?.toFixed(0)} DZD` },
               ].map(({ label, value, warn }) => (
-                <div key={label} className="flex items-center justify-between py-2 border-b border-[#2D3050] last:border-0">
+                <div key={label} className="flex items-center justify-between py-2 border-b border-[var(--border)] last:border-0">
                   <span className="text-sm text-slate-400">{label}</span>
-                  <span className={`text-sm font-semibold ${warn ? "text-amber-400" : "text-white"}`}>{value}</span>
+                  <span className={`text-sm font-semibold ${warn ? "text-amber-400" : "text-[var(--text-primary)]"}`}>{value}</span>
                 </div>
               ))}
             </div>
@@ -802,7 +816,7 @@ export default function ParcelCostsPage() {
                 <button
                   disabled={parcelPage <= 1}
                   onClick={() => { const pg = parcelPage - 1; setParcelPage(pg); fetchDetail(pg); }}
-                  className="flex items-center gap-1 text-sm text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1 text-sm text-slate-400 hover:text-[var(--text-primary)] disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   <ChevronLeft size={14} /> {p.prevPage}
                 </button>
@@ -810,7 +824,7 @@ export default function ParcelCostsPage() {
                 <button
                   disabled={parcelPage >= parcels.pages}
                   onClick={() => { const pg = parcelPage + 1; setParcelPage(pg); fetchDetail(pg); }}
-                  className="flex items-center gap-1 text-sm text-slate-400 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
+                  className="flex items-center gap-1 text-sm text-slate-400 hover:text-[var(--text-primary)] disabled:opacity-30 disabled:cursor-not-allowed"
                 >
                   {p.nextPage} <ChevronRight size={14} />
                 </button>
@@ -819,7 +833,7 @@ export default function ParcelCostsPage() {
           )}
         </SectionCard>
       ) : (
-        <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5 flex items-center justify-center h-24 text-slate-500 text-sm">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 flex items-center justify-center h-24 text-slate-500 text-sm">
           <Package size={16} className="mr-2" />
           {p.selectMonthPrompt}
         </div>

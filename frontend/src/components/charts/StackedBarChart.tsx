@@ -3,6 +3,7 @@
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
 import type { MonthlyDemandData } from "@/types/transport";
+import { useChartTheme } from "@/lib/chartTheme";
 
 interface StackedBarChartProps {
   data: MonthlyDemandData[];
@@ -10,19 +11,21 @@ interface StackedBarChartProps {
 }
 
 export function StackedBarChart({ data, height = 320 }: StackedBarChartProps) {
+  const t = useChartTheme()
+
   const option = {
     backgroundColor: "transparent",
     tooltip: {
       trigger: "axis",
-      backgroundColor: "#1E2030",
-      borderColor: "#2D3050",
-      textStyle: { color: "#E2E8F0", fontSize: 12 },
+      backgroundColor: t.tooltipBg,
+      borderColor: t.borderColor,
+      textStyle: { color: t.textColor, fontSize: 12 },
       axisPointer: { type: "shadow" },
     },
     legend: {
       top: 0,
       right: 0,
-      textStyle: { color: "#94A3B8", fontSize: 12 },
+      textStyle: { color: t.legendColor, fontSize: 12 },
       itemWidth: 10,
       itemHeight: 10,
     },
@@ -30,15 +33,15 @@ export function StackedBarChart({ data, height = 320 }: StackedBarChartProps) {
     xAxis: {
       type: "category",
       data: data.map((d) => d.month),
-      axisLine: { lineStyle: { color: "#2D3050" } },
+      axisLine: { lineStyle: { color: t.axisColor } },
       axisTick: { show: false },
-      axisLabel: { color: "#64748B", fontSize: 10, rotate: 30 },
+      axisLabel: { color: t.labelColor, fontSize: 10, rotate: 30 },
     },
     yAxis: {
       type: "value",
       axisLine: { show: false },
-      splitLine: { lineStyle: { color: "#2D3050", type: "dashed" } },
-      axisLabel: { color: "#64748B", fontSize: 11 },
+      splitLine: { lineStyle: { color: t.splitColor, type: "dashed" } },
+      axisLabel: { color: t.labelColor, fontSize: 11 },
     },
     series: [
       {

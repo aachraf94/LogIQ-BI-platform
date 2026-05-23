@@ -50,13 +50,13 @@ export default function LoginPage() {
         <div className="absolute top-1/3 left-1/3 w-[400px] h-[400px] rounded-full bg-secondary/5 blur-3xl" />
       </div>
 
-      <div className="relative bg-[#1E2030] border border-[#2D3050] rounded-2xl p-8 shadow-2xl">
+      <div className="relative bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 shadow-2xl">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
           <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-lg shadow-primary/30">
             <span className="text-white font-black text-2xl">L</span>
           </div>
-          <h1 className="text-2xl font-bold text-white">LOGIQ</h1>
+          <h1 className="text-2xl font-bold text-[var(--text-primary)]">LOGIQ</h1>
           <p className="text-slate-400 text-sm mt-1">Logistics Intelligence Platform</p>
         </div>
 
@@ -72,7 +72,7 @@ export default function LoginPage() {
               placeholder="your.username"
               required
               autoComplete="username"
-              className="w-full bg-[#252840] border border-[#2D3050] rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary transition-colors"
+              className="w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl px-4 py-3 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary transition-colors"
             />
           </div>
 
@@ -88,7 +88,7 @@ export default function LoginPage() {
                 placeholder="••••••••"
                 required
                 autoComplete="current-password"
-                className="w-full bg-[#252840] border border-[#2D3050] rounded-xl px-4 py-3 pr-11 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary transition-colors"
+                className="w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-xl px-4 py-3 pr-11 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary transition-colors"
               />
               <button
                 type="button"

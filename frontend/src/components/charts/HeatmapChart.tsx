@@ -3,6 +3,7 @@
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
 import type { HeatmapCell } from "@/types/transport";
+import { useChartTheme } from "@/lib/chartTheme";
 
 interface HeatmapChartProps {
   data: HeatmapCell[];
@@ -10,6 +11,7 @@ interface HeatmapChartProps {
 }
 
 export function HeatmapChart({ data, height = 340 }: HeatmapChartProps) {
+  const t = useChartTheme()
   const cities = Array.from(new Set(data.map((d) => d.city)));
   const days = ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"];
   const maxVol = Math.max(...data.map((d) => d.volume));
@@ -24,9 +26,9 @@ export function HeatmapChart({ data, height = 340 }: HeatmapChartProps) {
     backgroundColor: "transparent",
     tooltip: {
       position: "top",
-      backgroundColor: "#1E2030",
-      borderColor: "#2D3050",
-      textStyle: { color: "#E2E8F0", fontSize: 12 },
+      backgroundColor: t.tooltipBg,
+      borderColor: t.borderColor,
+      textStyle: { color: t.textColor, fontSize: 12 },
       formatter: (p: { data: number[] }) =>
         `${cities[p.data[1]]} / ${days[p.data[0]]}: ${p.data[2]} demands`,
     },
@@ -37,7 +39,7 @@ export function HeatmapChart({ data, height = 340 }: HeatmapChartProps) {
       splitArea: { show: true, areaStyle: { color: ["transparent"] } },
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: "#64748B", fontSize: 11 },
+      axisLabel: { color: t.labelColor, fontSize: 11 },
     },
     yAxis: {
       type: "category",
@@ -45,7 +47,7 @@ export function HeatmapChart({ data, height = 340 }: HeatmapChartProps) {
       splitArea: { show: true, areaStyle: { color: ["transparent"] } },
       axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: "#94A3B8", fontSize: 11 },
+      axisLabel: { color: t.legendColor, fontSize: 11 },
     },
     visualMap: {
       min: 0,
@@ -54,7 +56,7 @@ export function HeatmapChart({ data, height = 340 }: HeatmapChartProps) {
       orient: "horizontal",
       show: false,
       inRange: {
-        color: ["#1E2030", "#6366F1"],
+        color: [t.surface, "#6366F1"],
       },
     },
     series: [
@@ -65,7 +67,7 @@ export function HeatmapChart({ data, height = 340 }: HeatmapChartProps) {
         emphasis: {
           itemStyle: { shadowBlur: 10, shadowColor: "rgba(99,102,241,0.5)" },
         },
-        itemStyle: { borderRadius: 4, borderColor: "#161829", borderWidth: 2 },
+        itemStyle: { borderRadius: 4, borderColor: t.bgColor, borderWidth: 2 },
       },
     ],
   };

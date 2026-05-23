@@ -36,15 +36,15 @@ function RunRow({ run, pe }: { run: ETLRun; pe: ReturnType<typeof useTranslation
   const assets = Object.entries(run.assets_materialized ?? {})
 
   return (
-    <div className="border-b border-[#2D3050] last:border-0">
+    <div className="border-b border-[var(--border)] last:border-0">
       <div
-        className="flex items-center gap-4 px-5 py-4 hover:bg-[#252840]/40 cursor-pointer transition-colors"
+        className="flex items-center gap-4 px-5 py-4 hover:bg-[var(--surface-secondary-40)] cursor-pointer transition-colors"
         onClick={() => setExpanded((e) => !e)}
       >
         <div>{STATUS_ICON[run.status]}</div>
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 flex-wrap">
-            <span className="text-sm font-medium text-white">{run.job_name}</span>
+            <span className="text-sm font-medium text-[var(--text-primary)]">{run.job_name}</span>
             <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full capitalize', STATUS_COLOR[run.status])}>
               {run.status}
             </span>
@@ -70,7 +70,7 @@ function RunRow({ run, pe }: { run: ETLRun; pe: ReturnType<typeof useTranslation
       </div>
 
       {expanded && (
-        <div className="px-5 pb-4 bg-[#252840]/20">
+        <div className="px-5 pb-4 bg-[var(--surface-secondary-20)]">
           {run.error_message && (
             <div className="mb-3 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-xs text-red-400">
               {run.error_message}
@@ -81,7 +81,7 @@ function RunRow({ run, pe }: { run: ETLRun; pe: ReturnType<typeof useTranslation
               <p className="text-xs text-slate-500 mb-2">{pe.assetsMaterialized} ({assets.length})</p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
                 {assets.map(([asset, rows]) => (
-                  <div key={asset} className="flex items-center justify-between p-2 bg-[#1E2030] rounded-lg">
+                  <div key={asset} className="flex items-center justify-between p-2 bg-[var(--surface)] rounded-lg">
                     <span className="text-xs text-slate-400 truncate">{asset}</span>
                     <span className="text-xs font-mono text-primary ml-2 shrink-0">
                       {rows.toLocaleString()}
@@ -136,7 +136,7 @@ export default function AdminEtlPage() {
     <div className="space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-xl font-bold text-white">{pe.title}</h2>
+          <h2 className="text-xl font-bold text-[var(--text-primary)]">{pe.title}</h2>
           <p className="text-sm text-slate-400 mt-0.5">{pe.subtitle}</p>
         </div>
         <button onClick={load} disabled={loading} title={pe.refresh} className="p-2 text-slate-500 hover:text-slate-300 transition-colors">
@@ -147,12 +147,12 @@ export default function AdminEtlPage() {
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: pe.labelTotal,   value: runs.length,           color: 'text-white' },
+          { label: pe.labelTotal,   value: runs.length,           color: 'text-[var(--text-primary)]' },
           { label: pe.labelSuccess, value: counts.success ?? 0,   color: 'text-emerald-400' },
           { label: pe.labelFailed,  value: counts.failure ?? 0,   color: 'text-red-400' },
           { label: pe.labelPartial, value: counts.partial ?? 0,   color: 'text-amber-400' },
         ].map((s) => (
-          <div key={s.label} className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-4">
+          <div key={s.label} className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
             <p className="text-xs text-slate-400">{s.label}</p>
             <p className={cn('text-2xl font-bold mt-1', s.color)}>{s.value}</p>
           </div>
@@ -162,7 +162,7 @@ export default function AdminEtlPage() {
       {/* Filters */}
       <div className="flex gap-3 flex-wrap">
         <select value={statusFilter} onChange={(e) => setStatusFilter(e.target.value as ETLStatus | '')}
-          className="bg-[#1E2030] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary">
+          className="bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary">
           <option value="">{pe.statusAll}</option>
           <option value="success">{pe.statusSuccess}</option>
           <option value="failure">{pe.statusFailure}</option>
@@ -171,7 +171,7 @@ export default function AdminEtlPage() {
         </select>
         {jobNames.length > 1 && (
           <select value={jobFilter} onChange={(e) => setJobFilter(e.target.value)}
-            className="bg-[#1E2030] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary">
+            className="bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary">
             <option value="">{pe.labelAllJobs}</option>
             {jobNames.map((j) => <option key={j} value={j}>{j}</option>)}
           </select>
@@ -179,7 +179,7 @@ export default function AdminEtlPage() {
       </div>
 
       {/* Runs list */}
-      <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl overflow-hidden">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
         {loading ? (
           <div className="flex items-center justify-center h-40">
             <span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />

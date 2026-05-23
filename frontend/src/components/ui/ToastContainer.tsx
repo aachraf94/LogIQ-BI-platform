@@ -39,18 +39,18 @@ function Toast({ id, notification }: { id: number; notification: import('@/types
       exit={{ opacity: 0, x: 60 }}
       transition={{ duration: 0.25 }}
       className={cn(
-        'flex items-start gap-3 bg-[#1E2030] border border-[#2D3050] border-l-4 rounded-xl p-4 shadow-2xl w-80 max-w-full',
+        'flex items-start gap-3 bg-[var(--surface)] border border-[var(--border)] border-l-4 rounded-xl p-4 shadow-2xl w-80 max-w-full',
         BORDERS[notification.type]
       )}
     >
       <div className="shrink-0 mt-0.5">{ICONS[notification.type]}</div>
       <div className="flex-1 min-w-0">
-        <p className="text-sm font-semibold text-white">{notification.title}</p>
-        <p className="text-xs text-slate-400 mt-0.5 line-clamp-2">{notification.body}</p>
+        <p className="text-sm font-semibold text-[var(--text-primary)]">{notification.title}</p>
+        <p className="text-xs text-[var(--text-secondary)] mt-0.5 line-clamp-2">{notification.body}</p>
       </div>
       <button
         onClick={() => dismissToast(id)}
-        className="shrink-0 text-slate-600 hover:text-slate-400 transition-colors"
+        className="shrink-0 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
       >
         <X size={14} />
       </button>

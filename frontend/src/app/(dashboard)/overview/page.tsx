@@ -151,20 +151,20 @@ export default function OverviewPage() {
 
       {/* Row 2: Area chart + Pie chart */}
       <div className="grid grid-cols-1 xl:grid-cols-5 gap-4">
-        <div className="xl:col-span-3 bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">{p.revenueCostTrends}</h3>
+        <div className="xl:col-span-3 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">{p.revenueCostTrends}</h3>
           <AreaChart data={areaData} height={300} />
         </div>
-        <div className="xl:col-span-2 bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">{p.demandsByRegion}</h3>
+        <div className="xl:col-span-2 bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">{p.demandsByRegion}</h3>
           <PieChart data={pieData} height={300} />
         </div>
       </div>
 
       {/* Row 3: Bar chart + Gauge */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">{p.topRoutesByVolume}</h3>
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">{p.topRoutesByVolume}</h3>
           <BarChart
             data={barData}
             height={280}
@@ -173,18 +173,18 @@ export default function OverviewPage() {
             label="Parcels"
           />
         </div>
-        <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-2">{p.profitMarginGauge}</h3>
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-2">{p.profitMarginGauge}</h3>
           <p className="text-xs text-slate-500 mb-2">{p.gaugeDesc}</p>
           <GaugeChart value={kpiData.profitMargin.value} height={280} />
         </div>
       </div>
 
       {/* Row 4: D3 Logistics Network Map */}
-      <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
           <div>
-            <h3 className="text-sm font-semibold text-white">{p.logisticsNetwork}</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">{p.logisticsNetwork}</h3>
             <p className="text-xs text-slate-500 mt-0.5">{p.networkSub}</p>
           </div>
           <div className="flex items-center gap-4 text-xs text-slate-400">
@@ -197,9 +197,9 @@ export default function OverviewPage() {
       </div>
 
       {/* Row 5: Recent Alerts table */}
-      <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-semibold text-white">{p.recentAlerts}</h3>
+          <h3 className="text-sm font-semibold text-[var(--text-primary)]">{p.recentAlerts}</h3>
           <a href="/alerts" className="text-xs text-primary hover:text-primary/80 transition-colors">
             {p.viewAllAlerts}
           </a>

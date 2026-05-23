@@ -149,7 +149,10 @@ function PreferencesTab() {
                   key={themeKey}
                   onClick={() => {
                     setPrefs((p) => p ? { ...p, theme: themeKey } : p)
-                    setTheme(themeKey)  // immediate visual feedback
+                    setTheme(themeKey)
+                    if (user?.preferences) {
+                      updateUser({ preferences: { ...user.preferences, theme: themeKey } })
+                    }
                   }}
                   className={cn(
                     'flex-1 py-2 text-xs font-medium rounded-lg border transition-colors',
@@ -198,7 +201,7 @@ function PreferencesTab() {
               </div>
               <button
                 onClick={() => toggle(key)}
-                className={cn('relative w-10 h-5 rounded-full transition-colors shrink-0 ml-4', prefs[key] ? 'bg-primary' : 'bg-slate-300 dark:bg-[#3D4267]')}
+                className={cn('relative w-10 h-5 rounded-full transition-colors shrink-0 ml-4', prefs[key] ? 'bg-primary' : 'bg-[var(--toggle-off)]')}
               >
                 <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform', prefs[key] ? 'translate-x-5' : 'translate-x-0.5')} />
               </button>

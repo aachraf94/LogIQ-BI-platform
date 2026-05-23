@@ -3,6 +3,7 @@
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
 import type { ParcelScatterPoint } from "@/types/parcel";
+import { useChartTheme } from "@/lib/chartTheme";
 
 interface ScatterChartProps {
   data: ParcelScatterPoint[];
@@ -10,13 +11,15 @@ interface ScatterChartProps {
 }
 
 export function ScatterChart({ data, height = 340 }: ScatterChartProps) {
+  const t = useChartTheme()
+
   const option = {
     backgroundColor: "transparent",
     tooltip: {
       trigger: "item",
-      backgroundColor: "#1E2030",
-      borderColor: "#2D3050",
-      textStyle: { color: "#E2E8F0", fontSize: 12 },
+      backgroundColor: t.tooltipBg,
+      borderColor: t.borderColor,
+      textStyle: { color: t.textColor, fontSize: 12 },
       formatter: (p: { data: [number, number, number, string] }) =>
         `Weight: ${p.data[0]}kg<br/>Cost: ${p.data[1]} DZD<br/>Distance: ${p.data[2]}km<br/>City: ${p.data[3]}`,
     },
@@ -24,21 +27,21 @@ export function ScatterChart({ data, height = 340 }: ScatterChartProps) {
       name: "Weight (kg)",
       nameLocation: "middle",
       nameGap: 28,
-      nameTextStyle: { color: "#64748B", fontSize: 11 },
-      axisLine: { lineStyle: { color: "#2D3050" } },
+      nameTextStyle: { color: t.labelColor, fontSize: 11 },
+      axisLine: { lineStyle: { color: t.axisColor } },
       axisTick: { show: false },
-      splitLine: { lineStyle: { color: "#2D3050", type: "dashed" } },
-      axisLabel: { color: "#64748B", fontSize: 11 },
+      splitLine: { lineStyle: { color: t.splitColor, type: "dashed" } },
+      axisLabel: { color: t.labelColor, fontSize: 11 },
     },
     yAxis: {
       name: "Cost (DZD)",
       nameLocation: "middle",
       nameGap: 45,
-      nameTextStyle: { color: "#64748B", fontSize: 11 },
+      nameTextStyle: { color: t.labelColor, fontSize: 11 },
       axisLine: { show: false },
       axisTick: { show: false },
-      splitLine: { lineStyle: { color: "#2D3050", type: "dashed" } },
-      axisLabel: { color: "#64748B", fontSize: 11 },
+      splitLine: { lineStyle: { color: t.splitColor, type: "dashed" } },
+      axisLabel: { color: t.labelColor, fontSize: 11 },
     },
     visualMap: {
       show: false,

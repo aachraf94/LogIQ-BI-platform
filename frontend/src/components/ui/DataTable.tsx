@@ -40,14 +40,14 @@ export function DataTable<T extends object>({ columns, data, className }: DataTa
   });
 
   return (
-    <div className={cn("overflow-x-auto rounded-xl border border-[#2D3050]", className)}>
+    <div className={cn("overflow-x-auto rounded-xl border border-[var(--border)]", className)}>
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-[#2D3050]">
+          <tr className="border-b border-[var(--border)]">
             {columns.map((col) => (
               <th
                 key={String(col.key)}
-                className="px-4 py-3 text-left text-xs font-semibold text-slate-400 uppercase tracking-wider bg-[#252840]"
+                className="px-4 py-3 text-left text-xs font-semibold text-[var(--text-secondary)] uppercase tracking-wider bg-[var(--surface-secondary)]"
                 onClick={() => col.sortable && handleSort(String(col.key))}
                 style={{ cursor: col.sortable ? "pointer" : "default" }}
               >
@@ -65,10 +65,10 @@ export function DataTable<T extends object>({ columns, data, className }: DataTa
           {sorted.map((row, ri) => (
             <tr
               key={ri}
-              className="border-b border-[#2D3050]/50 hover:bg-[#252840]/50 transition-colors"
+              className="border-b border-[var(--border-50)] hover:bg-[var(--surface-secondary-50)] transition-colors"
             >
               {columns.map((col) => (
-                <td key={String(col.key)} className="px-4 py-3 text-slate-300">
+                <td key={String(col.key)} className="px-4 py-3 text-[var(--text-primary)]">
                   {col.render
                     ? col.render(row)
                     : String((row as Record<string, unknown>)[String(col.key)] ?? "")}

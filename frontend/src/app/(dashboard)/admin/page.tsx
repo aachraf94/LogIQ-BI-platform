@@ -17,14 +17,14 @@ function StatCard({
   icon: React.ElementType; label: string; value: string | number; sub?: string; color?: string
 }) {
   return (
-    <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
+    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
       <div className="flex items-center gap-3 mb-3">
-        <div className={cn('p-2 rounded-lg bg-[#252840]', color)}>
+        <div className={cn('p-2 rounded-lg bg-[var(--surface-secondary)]', color)}>
           <Icon size={16} />
         </div>
         <p className="text-xs text-slate-400 font-medium">{label}</p>
       </div>
-      <p className="text-2xl font-bold text-white">{value}</p>
+      <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
       {sub && <p className="text-xs text-slate-500 mt-1">{sub}</p>}
     </div>
   )
@@ -78,7 +78,7 @@ export default function AdminPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-xl font-bold text-white">{p.title}</h2>
+        <h2 className="text-xl font-bold text-[var(--text-primary)]">{p.title}</h2>
         <p className="text-sm text-slate-400 mt-0.5">{p.subtitle}</p>
       </div>
 
@@ -95,13 +95,13 @@ export default function AdminPage() {
 
       {/* Role breakdown */}
       {userStats && userStats.by_role.length > 0 && (
-        <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-4">{p.usersByRole}</h3>
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">{p.usersByRole}</h3>
           <div className="space-y-3">
             {userStats.by_role.map((r) => (
               <div key={r.role__display_name} className="flex items-center gap-3">
-                <p className="text-sm text-slate-300 w-48 truncate">{r.role__display_name}</p>
-                <div className="flex-1 h-2 bg-[#252840] rounded-full overflow-hidden">
+                <p className="text-sm text-[var(--text-primary)] w-48 truncate">{r.role__display_name}</p>
+                <div className="flex-1 h-2 bg-[var(--surface-secondary)] rounded-full overflow-hidden">
                   <motion.div
                     initial={{ width: 0 }}
                     animate={{ width: `${(r.count / (userStats.total || 1)) * 100}%` }}
@@ -133,9 +133,9 @@ export default function AdminPage() {
 
       {/* ETL freshness */}
       {freshness && (
-        <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-semibold text-white">{p.dataFreshness}</h3>
+            <h3 className="text-sm font-semibold text-[var(--text-primary)]">{p.dataFreshness}</h3>
             <span className={cn('text-xs font-semibold px-2 py-0.5 rounded-full',
               freshness.is_stale ? 'bg-red-500/10 text-red-400' : 'bg-emerald-500/10 text-emerald-400')}>
               {freshness.is_stale ? p.stale : p.fresh}
@@ -144,19 +144,19 @@ export default function AdminPage() {
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
             <div>
               <p className="text-xs text-slate-500">{p.lastSuccess}</p>
-              <p className="text-white font-medium mt-0.5">{freshness.lag_display}</p>
+              <p className="text-[var(--text-primary)] font-medium mt-0.5">{freshness.lag_display}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500">{p.runs7Days}</p>
-              <p className="text-white font-medium mt-0.5">{freshness.runs_last_7_days}</p>
+              <p className="text-[var(--text-primary)] font-medium mt-0.5">{freshness.runs_last_7_days}</p>
             </div>
             <div>
               <p className="text-xs text-slate-500">{p.successRate}</p>
-              <p className="text-white font-medium mt-0.5">{freshness.success_rate_pct.toFixed(0)}%</p>
+              <p className="text-[var(--text-primary)] font-medium mt-0.5">{freshness.success_rate_pct.toFixed(0)}%</p>
             </div>
             <div>
               <p className="text-xs text-slate-500">{p.lastJob}</p>
-              <p className="text-white font-medium mt-0.5">{freshness.last_run?.job_name ?? '—'}</p>
+              <p className="text-[var(--text-primary)] font-medium mt-0.5">{freshness.last_run?.job_name ?? '—'}</p>
             </div>
           </div>
         </div>
@@ -170,9 +170,9 @@ export default function AdminPage() {
           { href: '/admin/etl', label: p.etlRuns, desc: p.etlRunsDesc, icon: Database },
         ].map(({ href, label, desc, icon: Icon }) => (
           <a key={href} href={href}
-            className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5 hover:border-primary/40 transition-colors group">
+            className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 hover:border-primary/40 transition-colors group">
             <Icon size={20} className="text-primary mb-3" />
-            <p className="text-sm font-semibold text-white group-hover:text-primary transition-colors">{label}</p>
+            <p className="text-sm font-semibold text-[var(--text-primary)] group-hover:text-primary transition-colors">{label}</p>
             <p className="text-xs text-slate-400 mt-1">{desc}</p>
           </a>
         ))}

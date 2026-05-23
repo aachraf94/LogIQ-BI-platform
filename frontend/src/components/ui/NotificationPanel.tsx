@@ -45,8 +45,8 @@ function NotifItem({ notif }: { notif: Notification }) {
     <div
       onClick={handleMarkRead}
       className={cn(
-        'px-4 py-3 border-b border-[#2D3050] last:border-0 cursor-pointer transition-colors hover:bg-[#252840]/60',
-        !notif.is_read && 'bg-[#252840]/40'
+        'px-4 py-3 border-b border-[var(--border)] last:border-0 cursor-pointer transition-colors hover:bg-[var(--surface-secondary-60)]',
+        !notif.is_read && 'bg-[var(--surface-secondary-40)]'
       )}
     >
       <div className="flex items-start gap-3">
@@ -55,15 +55,15 @@ function NotifItem({ notif }: { notif: Notification }) {
         </div>
         <div className="flex-1 min-w-0">
           <div className="flex items-start justify-between gap-2">
-            <p className={cn('text-sm', notif.is_read ? 'text-slate-400' : 'text-white font-medium')}>
+            <p className={cn('text-sm', notif.is_read ? 'text-[var(--text-secondary)]' : 'text-[var(--text-primary)] font-medium')}>
               {notif.title}
             </p>
             {!notif.is_read && (
               <span className="shrink-0 w-1.5 h-1.5 rounded-full bg-primary mt-1.5" />
             )}
           </div>
-          <p className="text-xs text-slate-500 mt-0.5 line-clamp-2">{notif.body}</p>
-          <p className="text-[11px] text-slate-600 mt-1">
+          <p className="text-xs text-[var(--text-muted)] mt-0.5 line-clamp-2">{notif.body}</p>
+          <p className="text-[11px] text-[var(--text-muted)] mt-1">
             {formatDistanceToNow(new Date(notif.created_at), { addSuffix: true })}
           </p>
         </div>
@@ -106,13 +106,13 @@ export function NotificationPanel({ open, onClose }: Props) {
           animate={{ opacity: 1, y: 0, scale: 1 }}
           exit={{ opacity: 0, y: 8, scale: 0.97 }}
           transition={{ duration: 0.18 }}
-          className="absolute right-0 top-full mt-2 w-96 bg-[#1E2030] border border-[#2D3050] rounded-xl shadow-2xl z-50 overflow-hidden"
+          className="absolute right-0 top-full mt-2 w-96 bg-[var(--surface)] border border-[var(--border)] rounded-xl shadow-2xl z-50 overflow-hidden"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-4 py-3 border-b border-[#2D3050]">
+          <div className="flex items-center justify-between px-4 py-3 border-b border-[var(--border)]">
             <div className="flex items-center gap-2">
               <Bell size={15} className="text-primary" />
-              <span className="text-sm font-semibold text-white">Notifications</span>
+              <span className="text-sm font-semibold text-[var(--text-primary)]">Notifications</span>
               {unreadCount > 0 && (
                 <span className="px-1.5 py-0.5 text-[10px] font-bold rounded-full bg-primary text-white">
                   {unreadCount}
@@ -123,7 +123,7 @@ export function NotificationPanel({ open, onClose }: Props) {
               {unreadCount > 0 && (
                 <button
                   onClick={handleMarkAll}
-                  className="flex items-center gap-1 text-xs text-slate-400 hover:text-primary transition-colors"
+                  className="flex items-center gap-1 text-xs text-[var(--text-secondary)] hover:text-primary transition-colors"
                 >
                   <CheckCheck size={13} />
                   Mark all read
@@ -131,7 +131,7 @@ export function NotificationPanel({ open, onClose }: Props) {
               )}
               <button
                 onClick={onClose}
-                className="p-1 text-slate-500 hover:text-slate-300 transition-colors"
+                className="p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors"
               >
                 <X size={15} />
               </button>
@@ -141,7 +141,7 @@ export function NotificationPanel({ open, onClose }: Props) {
           {/* List */}
           <div className="max-h-[420px] overflow-y-auto">
             {notifications.length === 0 ? (
-              <div className="flex flex-col items-center py-12 text-slate-600">
+              <div className="flex flex-col items-center py-12 text-[var(--text-muted)]">
                 <Bell size={28} className="mb-2 opacity-40" />
                 <p className="text-sm">No notifications yet</p>
               </div>

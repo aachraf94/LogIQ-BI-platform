@@ -137,16 +137,16 @@ function UserModal({
         animate={{ x: 0 }}
         exit={{ x: '100%' }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="h-full w-full max-w-lg bg-[#1E2030] border-l border-[#2D3050] overflow-y-auto flex flex-col"
+        className="h-full w-full max-w-lg bg-[var(--surface)] border-l border-[var(--border)] overflow-y-auto flex flex-col"
       >
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-[#2D3050] sticky top-0 bg-[#1E2030] z-10">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-[var(--border)] sticky top-0 bg-[var(--surface)] z-10">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-full bg-primary/20 text-primary flex items-center justify-center font-bold">
               {[localUser.first_name?.[0], localUser.last_name?.[0]].filter(Boolean).join('').toUpperCase() || localUser.username[0].toUpperCase()}
             </div>
             <div>
-              <p className="text-white font-semibold text-sm">
+              <p className="text-[var(--text-primary)] font-semibold text-sm">
                 {[localUser.first_name, localUser.last_name].filter(Boolean).join(' ') || localUser.username}
               </p>
               <p className="text-xs text-slate-400">@{localUser.username}</p>
@@ -216,13 +216,13 @@ function UserModal({
           </div>
 
           {/* Role assignment */}
-          <div className="bg-[#252840] rounded-xl p-4">
+          <div className="bg-[var(--surface-secondary)] rounded-xl p-4">
             <label className="text-xs font-semibold text-slate-400 block mb-2">{pu.assignRole}</label>
             <div className="flex gap-2">
               <select
                 value={roleId}
                 onChange={(e) => setRoleId(e.target.value ? Number(e.target.value) : '')}
-                className="flex-1 bg-[#1E2030] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
+                className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
               >
                 <option value="">—</option>
                 {roles.map((r) => (
@@ -258,7 +258,7 @@ function UserModal({
 
           {/* Sessions */}
           <div>
-            <h4 className="text-sm font-semibold text-white mb-3">{pu.sessions}</h4>
+            <h4 className="text-sm font-semibold text-[var(--text-primary)] mb-3">{pu.sessions}</h4>
             {sessionsLoading ? (
               <div className="flex items-center justify-center h-16">
                 <span className="w-4 h-4 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -268,7 +268,7 @@ function UserModal({
             ) : (
               <div className="space-y-2">
                 {sessions.map((s) => (
-                  <div key={s.id} className="flex items-center gap-3 p-3 bg-[#252840] rounded-lg">
+                  <div key={s.id} className="flex items-center gap-3 p-3 bg-[var(--surface-secondary)] rounded-lg">
                     <div className="text-slate-500">
                       {s.device_type === 'mobile' ? <Smartphone size={14} /> : <Laptop size={14} />}
                     </div>
@@ -398,7 +398,7 @@ export default function AdminUsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <h2 className="text-xl font-bold text-white">{t.nav.users}</h2>
+          <h2 className="text-xl font-bold text-[var(--text-primary)]">{t.nav.users}</h2>
           <p className="text-sm text-slate-400 mt-0.5">{count}</p>
         </div>
         <div className="flex items-center gap-2">
@@ -412,7 +412,7 @@ export default function AdminUsersPage() {
           <button
             onClick={handleSync}
             disabled={syncing}
-            className="flex items-center gap-2 px-4 py-2 bg-[#1E2030] border border-[#2D3050] text-slate-300 hover:text-white hover:border-primary text-sm font-medium rounded-xl transition-colors disabled:opacity-60"
+            className="flex items-center gap-2 px-4 py-2 bg-[var(--surface)] border border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:border-primary text-sm font-medium rounded-xl transition-colors disabled:opacity-60"
           >
             {syncing
               ? <span className="w-4 h-4 border-2 border-slate-500/30 border-t-slate-400 rounded-full animate-spin" />
@@ -437,14 +437,14 @@ export default function AdminUsersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={pu.searchPlaceholder}
-            className="pl-9 pr-4 py-2 bg-[#1E2030] border border-[#2D3050] rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary w-56"
+            className="pl-9 pr-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary w-56"
           />
         </div>
 
         <select
           value={filterActive === undefined ? '' : String(filterActive)}
           onChange={(e) => setFilterActive(e.target.value === '' ? undefined : e.target.value === 'true')}
-          className="bg-[#1E2030] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
+          className="bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
         >
           <option value="">—</option>
           <option value="true">{pu.active}</option>
@@ -454,7 +454,7 @@ export default function AdminUsersPage() {
         <select
           value={filterRole ?? ''}
           onChange={(e) => setFilterRole(e.target.value ? Number(e.target.value) : undefined)}
-          className="bg-[#1E2030] border border-[#2D3050] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
+          className="bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
         >
           <option value="">—</option>
           {roles.map((r) => <option key={r.id} value={r.id}>{r.display_name}</option>)}
@@ -492,7 +492,7 @@ export default function AdminUsersPage() {
                   }
                 }}
                 disabled={bulkLoading}
-                className="px-3 py-1.5 text-xs font-semibold bg-[#252840] text-slate-300 border border-[#2D3050] rounded-lg focus:outline-none focus:border-primary disabled:opacity-60"
+                className="px-3 py-1.5 text-xs font-semibold bg-[var(--surface-secondary)] text-slate-300 border border-[var(--border)] rounded-lg focus:outline-none focus:border-primary disabled:opacity-60"
               >
                 <option value="">{pu.assignRole}…</option>
                 <option value="null">—</option>
@@ -507,11 +507,11 @@ export default function AdminUsersPage() {
       </AnimatePresence>
 
       {/* Table */}
-      <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl overflow-hidden">
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-[#2D3050] text-xs text-slate-500 uppercase tracking-wide">
+              <tr className="border-b border-[var(--border)] text-xs text-slate-500 uppercase tracking-wide">
                 <th className="px-4 py-3 text-left">
                   <input
                     type="checkbox"
@@ -528,7 +528,7 @@ export default function AdminUsersPage() {
                 <th className="px-4 py-3 text-left">{pu.colLastLogin}</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-[#2D3050]">
+            <tbody className="divide-y divide-[var(--border)]">
               {loading ? (
                 <tr>
                   <td colSpan={7} className="text-center py-12 text-slate-500">
@@ -544,7 +544,7 @@ export default function AdminUsersPage() {
                   <tr
                     key={u.id}
                     onClick={() => setSelectedUser(u)}
-                    className="hover:bg-[#252840]/60 cursor-pointer transition-colors"
+                    className="hover:bg-[var(--surface-secondary-60)] cursor-pointer transition-colors"
                   >
                     <td className="px-4 py-3" onClick={(e) => e.stopPropagation()}>
                       <input
@@ -560,7 +560,7 @@ export default function AdminUsersPage() {
                           {[u.first_name?.[0], u.last_name?.[0]].filter(Boolean).join('').toUpperCase() || u.username[0].toUpperCase()}
                         </div>
                         <div>
-                          <p className="text-white font-medium">
+                          <p className="text-[var(--text-primary)] font-medium">
                             {[u.first_name, u.last_name].filter(Boolean).join(' ') || u.username}
                           </p>
                           <p className="text-xs text-slate-500">@{u.username}</p>
@@ -612,7 +612,7 @@ export default function AdminUsersPage() {
 
         {/* Pagination */}
         {totalPages > 1 && (
-          <div className="flex items-center justify-between px-4 py-3 border-t border-[#2D3050]">
+          <div className="flex items-center justify-between px-4 py-3 border-t border-[var(--border)]">
             <span className="text-xs text-slate-500">{page} / {totalPages}</span>
             <div className="flex gap-1">
               <button

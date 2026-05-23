@@ -3,6 +3,7 @@
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
 import type { SankeyData } from "@/types/parcel";
+import { useChartTheme } from "@/lib/chartTheme";
 
 interface SankeyChartProps {
   data: SankeyData;
@@ -10,13 +11,15 @@ interface SankeyChartProps {
 }
 
 export function SankeyChart({ data, height = 380 }: SankeyChartProps) {
+  const t = useChartTheme()
+
   const option = {
     backgroundColor: "transparent",
     tooltip: {
       trigger: "item",
-      backgroundColor: "#1E2030",
-      borderColor: "#2D3050",
-      textStyle: { color: "#E2E8F0", fontSize: 12 },
+      backgroundColor: t.tooltipBg,
+      borderColor: t.borderColor,
+      textStyle: { color: t.textColor, fontSize: 12 },
       formatter: (p: { dataType: string; name: string; data: { source: string; target: string; value: number } }) => {
         if (p.dataType === "edge") {
           return `${p.data.source} → ${p.data.target}: ${p.data.value}%`;
@@ -37,7 +40,7 @@ export function SankeyChart({ data, height = 380 }: SankeyChartProps) {
           opacity: 0.3,
         },
         itemStyle: { borderRadius: 4 },
-        label: { color: "#E2E8F0", fontSize: 11 },
+        label: { color: t.textColor, fontSize: 11 },
         levels: [
           { depth: 0, itemStyle: { color: "#6366F1" } },
           { depth: 1, itemStyle: { color: "#22D3EE" } },

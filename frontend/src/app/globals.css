@@ -25,6 +25,13 @@
   --scrollbar-track:       #F1F5F9;
   --scrollbar-thumb:       #CBD5E1;
   --scrollbar-thumb-hover: #94A3B8;
+
+  --surface-secondary-20: rgba(241, 245, 249, 0.2);
+  --surface-secondary-40: rgba(241, 245, 249, 0.4);
+  --surface-secondary-50: rgba(241, 245, 249, 0.5);
+  --surface-secondary-60: rgba(241, 245, 249, 0.6);
+  --border-50:            rgba(226, 232, 240, 0.5);
+  --toggle-off:           #CBD5E1;
 }
 
 /* ─── Design tokens — dark mode ──────────────────────────────────────────── */
@@ -42,6 +49,13 @@
   --scrollbar-track:       #1E2030;
   --scrollbar-thumb:       #3D4267;
   --scrollbar-thumb-hover: #6366F1;
+
+  --surface-secondary-20: rgba(37, 40, 64, 0.2);
+  --surface-secondary-40: rgba(37, 40, 64, 0.4);
+  --surface-secondary-50: rgba(37, 40, 64, 0.5);
+  --surface-secondary-60: rgba(37, 40, 64, 0.6);
+  --border-50:            rgba(45, 48, 80, 0.5);
+  --toggle-off:           #3D4267;
 }
 
 /* ─── Base ────────────────────────────────────────────────────────────────── */

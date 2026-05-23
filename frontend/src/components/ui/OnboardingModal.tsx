@@ -83,10 +83,10 @@ export function OnboardingModal({ open, onDone }: Props) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 12 }}
             transition={{ duration: 0.35, ease: 'easeOut' }}
-            className="w-full max-w-md bg-[#1E2030] border border-[#2D3050] rounded-2xl shadow-2xl overflow-hidden"
+            className="w-full max-w-md bg-[var(--surface)] border border-[var(--border)] rounded-2xl shadow-2xl overflow-hidden"
           >
             {/* Progress bar */}
-            <div className="h-1 bg-[#2D3050]">
+            <div className="h-1 bg-[var(--surface-tertiary)]">
               <motion.div
                 className="h-full bg-primary"
                 animate={{ width: `${((step + 1) / STEPS.length) * 100}%` }}
@@ -104,11 +104,11 @@ export function OnboardingModal({ open, onDone }: Props) {
                 transition={{ duration: 0.25 }}
                 className="p-8 flex flex-col items-center text-center"
               >
-                <div className="w-20 h-20 rounded-2xl bg-[#252840] flex items-center justify-center mb-6">
+                <div className="w-20 h-20 rounded-2xl bg-[var(--surface-secondary)] flex items-center justify-center mb-6">
                   {current.icon}
                 </div>
-                <h2 className="text-xl font-bold text-white mb-3">{current.title}</h2>
-                <p className="text-slate-400 text-sm leading-relaxed">{current.description}</p>
+                <h2 className="text-xl font-bold text-[var(--text-primary)] mb-3">{current.title}</h2>
+                <p className="text-[var(--text-secondary)] text-sm leading-relaxed">{current.description}</p>
               </motion.div>
             </AnimatePresence>
 
@@ -120,7 +120,7 @@ export function OnboardingModal({ open, onDone }: Props) {
                   <div
                     key={i}
                     className={`rounded-full transition-all duration-300 ${
-                      i === step ? 'w-4 h-1.5 bg-primary' : 'w-1.5 h-1.5 bg-[#3D4267]'
+                      i === step ? 'w-4 h-1.5 bg-primary' : 'w-1.5 h-1.5 bg-[var(--toggle-off)]'
                     }`}
                   />
                 ))}

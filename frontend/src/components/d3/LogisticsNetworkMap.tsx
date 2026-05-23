@@ -27,6 +27,11 @@ export function LogisticsNetworkMap({ nodes, links, height = 480 }: LogisticsNet
     const W = rect?.width ?? 800;
     const H = height;
 
+    const cssVars = getComputedStyle(document.documentElement)
+    const colorBorder = cssVars.getPropertyValue('--border').trim() || '#2D3050'
+    const colorSurface2 = cssVars.getPropertyValue('--surface-secondary').trim() || '#252840'
+    const colorTextPrimary = cssVars.getPropertyValue('--text-primary').trim() || '#E2E8F0'
+
     d3.select(el).selectAll("*").remove();
 
     const svg = d3
@@ -43,7 +48,7 @@ export function LogisticsNetworkMap({ nodes, links, height = 480 }: LogisticsNet
       .attr("width", 40)
       .attr("height", 40)
       .attr("patternUnits", "userSpaceOnUse");
-    pattern.append("path").attr("d", "M 40 0 L 0 0 0 40").attr("fill", "none").attr("stroke", "#2D3050").attr("stroke-width", 0.5);
+    pattern.append("path").attr("d", "M 40 0 L 0 0 0 40").attr("fill", "none").attr("stroke", colorBorder).attr("stroke-width", 0.5);
 
     svg.append("rect").attr("width", W).attr("height", H).attr("fill", "url(#grid)").attr("opacity", 0.4);
 
@@ -162,7 +167,7 @@ export function LogisticsNetworkMap({ nodes, links, height = 480 }: LogisticsNet
     nodeEls
       .append("circle")
       .attr("r", (d) => nodeRadiusScale(d.volume))
-      .attr("fill", "#252840")
+      .attr("fill", colorSurface2)
       .attr("stroke", "#6366F1")
       .attr("stroke-width", 2)
       .attr("filter", "url(#glow)");
@@ -183,7 +188,7 @@ export function LogisticsNetworkMap({ nodes, links, height = 480 }: LogisticsNet
       .attr("font-size", 11)
       .attr("font-family", "Inter, sans-serif")
       .attr("font-weight", "600")
-      .attr("fill", "#E2E8F0");
+      .attr("fill", colorTextPrimary);
 
     // Tooltip on hover
     nodeEls
@@ -243,7 +248,7 @@ export function LogisticsNetworkMap({ nodes, links, height = 480 }: LogisticsNet
       initial={{ opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.8, delay: 0.5 }}
-      className="w-full rounded-xl overflow-hidden bg-[#161829]"
+      className="w-full rounded-xl overflow-hidden bg-[var(--bg)]"
     >
       <svg ref={svgRef} className="w-full" style={{ height }} />
     </motion.div>

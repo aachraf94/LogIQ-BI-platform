@@ -2,6 +2,7 @@
 
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
+import { useChartTheme } from "@/lib/chartTheme";
 
 interface RadarChartProps {
   indicators: { name: string; max: number }[];
@@ -11,20 +12,22 @@ interface RadarChartProps {
 }
 
 export function RadarChart({ indicators, data, label = "Route", height = 340 }: RadarChartProps) {
+  const t = useChartTheme()
+
   const option = {
     backgroundColor: "transparent",
     tooltip: {
-      backgroundColor: "#1E2030",
-      borderColor: "#2D3050",
-      textStyle: { color: "#E2E8F0", fontSize: 12 },
+      backgroundColor: t.tooltipBg,
+      borderColor: t.borderColor,
+      textStyle: { color: t.textColor, fontSize: 12 },
     },
     radar: {
       indicator: indicators,
       radius: "65%",
-      axisName: { color: "#94A3B8", fontSize: 11 },
-      splitLine: { lineStyle: { color: "#2D3050" } },
+      axisName: { color: t.legendColor, fontSize: 11 },
+      splitLine: { lineStyle: { color: t.splitColor } },
       splitArea: { areaStyle: { color: ["rgba(99,102,241,0.03)", "transparent"] } },
-      axisLine: { lineStyle: { color: "#2D3050" } },
+      axisLine: { lineStyle: { color: t.axisColor } },
     },
     series: [
       {

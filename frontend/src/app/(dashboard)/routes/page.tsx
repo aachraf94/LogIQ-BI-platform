@@ -13,7 +13,7 @@ import { useTranslation } from "@/lib/i18n";
 
 const RouteMap = dynamic(
   () => import("@/components/maps/RouteMap").then((m) => m.RouteMap),
-  { ssr: false, loading: () => <div className="h-[460px] rounded-xl bg-[#252840] animate-pulse" /> }
+  { ssr: false, loading: () => <div className="h-[460px] rounded-xl bg-[var(--surface-secondary)] animate-pulse" /> }
 );
 
 const avgDistance = Math.round(routes.reduce((s, r) => s + r.distance, 0) / routes.length);
@@ -94,29 +94,29 @@ export default function RoutesPage() {
       </div>
 
       {/* Map */}
-      <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-white mb-3">{p.mapTitle}</h3>
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">{p.mapTitle}</h3>
         <p className="text-xs text-slate-500 mb-4">{p.mapDesc}</p>
         <RouteMap routes={routes} height={440} />
       </div>
 
       {/* Actual vs Radar */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-1">{p.chartActualCost}</h3>
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{p.chartActualCost}</h3>
           <p className="text-xs text-slate-500 mb-4">{p.chartActualCostSub}</p>
           <BarChart data={actualBars} height={280} color="#6366F1" label={p.chartActualLabel} />
         </div>
-        <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-white mb-1">{p.chartRadar}</h3>
+        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-1">{p.chartRadar}</h3>
           <p className="text-xs text-slate-500 mb-4">{p.chartRadarSub}</p>
           <RadarChart indicators={radarIndicators} data={radarData} label="Algiers → Oran" height={280} />
         </div>
       </div>
 
       {/* Route table */}
-      <div className="bg-[#1E2030] border border-[#2D3050] rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-white mb-4">{p.chartComparison}</h3>
+      <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">{p.chartComparison}</h3>
         <DataTable columns={routeColumns} data={routes} />
       </div>
     </div>

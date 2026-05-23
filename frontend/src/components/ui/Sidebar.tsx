@@ -59,7 +59,7 @@ function NavLink({ item, collapsed, label }: { item: NavItem; collapsed: boolean
         'flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-150',
         active
           ? 'bg-primary/20 text-primary'
-          : 'text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-[#252840] hover:text-slate-800 dark:hover:text-slate-200'
+          : 'text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] hover:text-[var(--text-primary)]'
       )}
       title={collapsed ? label : undefined}
     >
@@ -94,14 +94,14 @@ export function Sidebar() {
       animate={{ width: collapsed ? 64 : 240 }}
       transition={{ duration: 0.25, ease: 'easeInOut' }}
       className={cn(
-        'fixed top-0 h-full bg-white dark:bg-[#1E2030] flex flex-col z-40 overflow-hidden',
+        'fixed top-0 h-full bg-[var(--surface)] flex flex-col z-40 overflow-hidden',
         isRTL
-          ? 'right-0 border-l border-slate-200 dark:border-[#2D3050]'
-          : 'left-0 border-r border-slate-200 dark:border-[#2D3050]'
+          ? 'right-0 border-l border-[var(--border)]'
+          : 'left-0 border-r border-[var(--border)]'
       )}
     >
       {/* Logo */}
-      <div className="h-16 flex items-center px-4 border-b border-slate-200 dark:border-[#2D3050] shrink-0">
+      <div className="h-16 flex items-center px-4 border-b border-[var(--border)] shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
             <span className="text-white font-bold text-sm">L</span>
@@ -110,7 +110,7 @@ export function Sidebar() {
             <motion.span
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
-              className="text-slate-900 dark:text-white font-bold text-lg tracking-tight"
+              className="text-[var(--text-primary)] font-bold text-lg tracking-tight"
             >
               LOGIQ
             </motion.span>
@@ -128,11 +128,11 @@ export function Sidebar() {
         {isSuperAdmin && (
           <>
             <div className={cn('pt-4 pb-1', collapsed ? 'hidden' : 'block')}>
-              <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-600">
+              <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-[var(--text-muted)]">
                 {t.nav.adminSection}
               </p>
             </div>
-            {collapsed && <div className="my-2 mx-3 h-px bg-slate-200 dark:bg-[#2D3050]" />}
+            {collapsed && <div className="my-2 mx-3 h-px bg-[var(--surface-tertiary)]" />}
             {ADMIN_NAV.map((item) => (
               <NavLink key={item.href} item={item} collapsed={collapsed} label={t.nav[item.labelKey]} />
             ))}
@@ -143,7 +143,7 @@ export function Sidebar() {
       {/* Collapse toggle */}
       <button
         onClick={() => setCollapsed((c) => !c)}
-        className="m-3 p-2 rounded-lg bg-slate-100 dark:bg-[#252840] text-slate-500 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white hover:bg-slate-200 dark:hover:bg-[#2D3050] transition-colors flex items-center justify-center"
+        className="m-3 p-2 rounded-lg bg-[var(--surface-secondary)] text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-tertiary)] transition-colors flex items-center justify-center"
       >
         {isRTL
           ? (collapsed ? <ChevronLeft size={16} /> : <ChevronRight size={16} />)
