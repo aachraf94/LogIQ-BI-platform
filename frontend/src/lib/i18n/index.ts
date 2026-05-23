@@ -139,6 +139,10 @@ export interface Translations {
       kpiCostPerKm: string
       kpiCancellationRate: string
       kpiAvgNote: string
+      kpiAvgCostPerRequest: string
+      kpiInsuranceRatio: string
+      kpiAvgStops: string
+      kpiAvgCostPerPiece: string
       vsPrevMonth: string
       vsLastYear: string
       demoData: string
@@ -545,6 +549,10 @@ const fr: Translations = {
       kpiCostPerKm: 'Coût / km',
       kpiCancellationRate: 'Taux annulation',
       kpiAvgNote: 'Note client moy.',
+      kpiAvgCostPerRequest: 'Coût moy. / demande',
+      kpiInsuranceRatio: 'Ratio assurance',
+      kpiAvgStops: 'Arrêts moy. / demande',
+      kpiAvgCostPerPiece: 'Coût moy. / pièce',
       vsPrevMonth: 'vs mois précédent',
       vsLastYear: 'vs année précédente',
       demoData: 'Données de démonstration — backend indisponible',
@@ -965,6 +973,10 @@ const en: Translations = {
       kpiCostPerKm: 'Cost / km',
       kpiCancellationRate: 'Cancellation Rate',
       kpiAvgNote: 'Avg. Rating',
+      kpiAvgCostPerRequest: 'Avg Cost / Request',
+      kpiInsuranceRatio: 'Insurance Ratio',
+      kpiAvgStops: 'Avg Stops / Request',
+      kpiAvgCostPerPiece: 'Avg Cost / Piece',
       vsPrevMonth: 'vs previous month',
       vsLastYear: 'vs previous year',
       demoData: 'Demo data — backend unavailable',
@@ -1385,6 +1397,10 @@ const ar: Translations = {
       kpiCostPerKm: 'التكلفة / كم',
       kpiCancellationRate: 'معدل الإلغاء',
       kpiAvgNote: 'متوسط التقييم',
+      kpiAvgCostPerRequest: 'متوسط التكلفة / طلب',
+      kpiInsuranceRatio: 'نسبة التأمين',
+      kpiAvgStops: 'متوسط التوقفات / طلب',
+      kpiAvgCostPerPiece: 'متوسط التكلفة / قطعة',
       vsPrevMonth: 'مقابل الشهر الماضي',
       vsLastYear: 'مقابل العام الماضي',
       demoData: 'بيانات تجريبية — الخادم غير متوفر',

@@ -85,6 +85,15 @@ def get_summary(year=None, month=None, service_type=None, company_id=None):
             COALESCE(SUM(total_cout_dzd), 0)                                            AS total_cost,
             COALESCE(SUM(total_poids_kg), 0)                                            AS total_poids_kg,
             COALESCE(SUM(nbr_payes), 0)                                                 AS total_payes,
+            COALESCE(SUM(total_pieces), 0)                                              AS total_pieces,
+            COALESCE(
+                SUM(total_cout_dzd) / NULLIF(SUM(nbr_terminees), 0),
+                0
+            )                                                                           AS avg_cout_par_demande,
+            COALESCE(
+                SUM(total_cout_dzd) / NULLIF(SUM(total_pieces), 0),
+                0
+            )                                                                           AS avg_cout_par_piece,
             COALESCE(
                 SUM(taux_ponctualite_pct * nbr_terminees) / NULLIF(SUM(nbr_terminees), 0),
                 0
@@ -162,6 +171,28 @@ def get_summary(year=None, month=None, service_type=None, company_id=None):
     derived["mom_completion_rate"]   = _mom(derived["completion_rate"], prev_completion_rate)
     # Negated: a decrease in cancellation rate is a positive signal → show green
     derived["mom_cancellation_rate"] = -_mom(derived["cancellation_rate"], prev_cancellation_rate)
+
+    # Avg stops per completed request — not in aggregate, query fact_transport directly
+    stop_conds = ["ft.status = 'terminée'"]
+    stop_args  = []
+    if year:
+        stop_conds.append("d.year = %s");       stop_args.append(int(year))
+    if month:
+        stop_conds.append("d.month_num = %s");  stop_args.append(int(month))
+    if service_type and service_type != "all":
+        stop_conds.append("ft.service_type = %s"); stop_args.append(service_type)
+    with connections["warehouse"].cursor() as cur:
+        cur.execute(
+            "SELECT ROUND(COALESCE(AVG(ft.nbr_stops_total), 0)::numeric, 1) AS avg_arrets_par_demande"
+            " FROM warehouse.fact_transport ft"
+            " JOIN warehouse.dim_date d ON ft.date_creation_key = d.date_key"
+            " WHERE " + " AND ".join(stop_conds),
+            stop_args,
+        )
+        stop_rows = _rows(cur)
+    c["avg_arrets_par_demande"] = float(
+        _coerce(stop_rows[0]).get("avg_arrets_par_demande", 0) or 0
+    )
 
     return {"current": c, "derived": derived}
 

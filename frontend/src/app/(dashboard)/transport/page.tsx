@@ -24,6 +24,7 @@ import {
   mockTransportSummary,
   mockTransportTrends,
   mockTransportCostBreakdown,
+  mockTransportByService,
   mockTransportByVehicle,
   mockTransportCorridors,
   mockODMatrix,
@@ -34,6 +35,7 @@ import type {
   TransportSummary,
   TransportTrendPoint,
   TransportCostBreakdown,
+  TransportServiceData,
   TransportVehicleData,
   TransportCorridor,
   ODMatrixCell,
@@ -60,6 +62,7 @@ interface PageData {
   summary: TransportSummary;
   trends: TransportTrendPoint[];
   costBreakdown: TransportCostBreakdown;
+  byService: TransportServiceData[];
   byVehicle: TransportVehicleData[];
   corridors: TransportCorridor[];
   odMatrix: ODMatrixCell[];
@@ -70,6 +73,7 @@ const MOCK_DATA: PageData = {
   summary: mockTransportSummary,
   trends: mockTransportTrends,
   costBreakdown: mockTransportCostBreakdown,
+  byService: mockTransportByService,
   byVehicle: mockTransportByVehicle,
   corridors: mockTransportCorridors,
   odMatrix: mockODMatrix,
@@ -323,7 +327,7 @@ export default function TransportPage() {
     setLoading(true);
     const f = { year, month: month ?? undefined, service_type: serviceType !== "all" ? serviceType : undefined };
     try {
-      const [summary, trends, costBreakdown, byVehicle, corridors, odMatrix, delays] =
+      const [summary, trends, costBreakdown, byService, byVehicle, corridors, odMatrix, delays] =
         await Promise.all([
           transportApi.summary(f),
           transportApi.trends({
@@ -332,12 +336,13 @@ export default function TransportPage() {
             to_year_month: `${year}-12`,
           }),
           transportApi.costBreakdown(f),
+          transportApi.byService({ year, month: f.month }),
           transportApi.byVehicle({ year, month: f.month, service_type: f.service_type }),
           transportApi.corridors({ ...f, limit: 10 }),
           transportApi.odMatrix({ year, month: f.month }),
           transportApi.delayDistribution(f),
         ]);
-      setData({ summary, trends, costBreakdown, byVehicle, corridors, odMatrix, delays });
+      setData({ summary, trends, costBreakdown, byService, byVehicle, corridors, odMatrix, delays });
       setUsingMock(false);
     } catch {
       setData(MOCK_DATA);
@@ -349,10 +354,20 @@ export default function TransportPage() {
 
   useEffect(() => { fetchAll(); }, [fetchAll]);
 
-  const { summary, trends, costBreakdown, byVehicle, corridors, odMatrix, delays } = data;
+  const { summary, trends, costBreakdown, byService, byVehicle, corridors, odMatrix, delays } = data;
   const { current: cur, derived: d } = summary;
 
   const trendLabel = month !== null ? p.vsPrevMonth : p.vsLastYear;
+
+  const insuranceRatio = costBreakdown.total_cost > 0
+    ? Math.round(costBreakdown.cout_assurance / costBreakdown.total_cost * 1000) / 10
+    : 0;
+
+  const serviceTypeLabel = (st: string) =>
+    st === "course_dediee" ? p.dedicatedTrip
+    : st === "courrier"    ? p.courier
+    : st === "manutention" ? p.handling
+    : st;
 
   // ── Derived chart data ──────────────────────────────────────────────────────
 
@@ -381,6 +396,7 @@ export default function TransportPage() {
 
   const vehicleBarData = byVehicle.map((v) => ({ name: v.vehicle_type, value: v.cout_par_km }));
   const delayBarData   = delays.map((d) => ({ name: d.bucket, value: d.count }));
+  const byServiceTotal = byService.reduce((sum, s) => sum + s.nbr_requests, 0);
 
   // ── Column defs ─────────────────────────────────────────────────────────────
 
@@ -443,10 +459,18 @@ export default function TransportPage() {
 
       {/* ── Secondary KPI cards ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title={p.kpiPunctuality}      value={formatPercent(cur.avg_ponctualite_pct)} trend={d.mom_on_time}             trendLabel={trendLabel} icon={<Gauge size={16} />}   index={4} />
-        <KpiCard title={p.kpiCostPerKm}        value={`${d.cost_per_km} DZD`}                trend={0}                                                 icon={<Route size={16} />}   index={5} />
-        <KpiCard title={p.kpiCancellationRate} value={formatPercent(d.cancellation_rate)}     trend={d.mom_cancellation_rate}   trendLabel={trendLabel} icon={<Ban size={16} />}     index={6} />
-        <KpiCard title={p.kpiAvgNote}          value={cur.avg_note_client?.toFixed(1) ?? "—"} trend={0}                                                icon={<Star size={16} />}    index={7} />
+        <KpiCard title={p.kpiPunctuality}      value={formatPercent(cur.avg_ponctualite_pct)} trend={d.mom_on_time}           trendLabel={trendLabel} icon={<Gauge size={16} />}   index={4} />
+        <KpiCard title={p.kpiCostPerKm}        value={`${d.cost_per_km} DZD`}                                                                        icon={<Route size={16} />}   index={5} />
+        <KpiCard title={p.kpiCancellationRate} value={formatPercent(d.cancellation_rate)}     trend={d.mom_cancellation_rate} trendLabel={trendLabel} icon={<Ban size={16} />}     index={6} />
+        <KpiCard title={p.kpiAvgNote}          value={cur.avg_note_client?.toFixed(1) ?? "—"}                                                        icon={<Star size={16} />}    index={7} />
+      </div>
+
+      {/* ── Unit economics KPI cards (KPI-007, KPI-008, KPI-009, KPI-003) ── */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
+        <KpiCard title={p.kpiAvgCostPerRequest} value={formatDZD(cur.avg_cout_par_demande)}                        icon={<DollarSign size={16} />} index={8} />
+        <KpiCard title={p.kpiAvgCostPerPiece}   value={formatDZD(cur.avg_cout_par_piece)}                          icon={<DollarSign size={16} />} index={9} />
+        <KpiCard title={p.kpiInsuranceRatio}    value={formatPercent(insuranceRatio)}                              icon={<TrendingUp size={16} />} index={10} />
+        <KpiCard title={p.kpiAvgStops}          value={cur.avg_arrets_par_demande?.toFixed(1) ?? "—"}             icon={<Route size={16} />}      index={11} />
       </div>
 
       {/* ── Trends: Revenue vs Cost + Requests by Status ── */}
@@ -517,18 +541,70 @@ export default function TransportPage() {
         </SectionCard>
       </div>
 
-      {/* ── Vehicle efficiency (cost/km by type) ── */}
-      <SectionCard title={p.sectionVehicleEfficiency}>
-        {loading ? <Skeleton /> : (
-          <BarChart
-            data={vehicleBarData}
-            height={260}
-            color="#22D3EE"
-            label="DZD/km"
-            horizontal
-          />
-        )}
-      </SectionCard>
+      {/* ── Vehicle efficiency + Service breakdown ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        <SectionCard title={p.sectionVehicleEfficiency}>
+          {loading ? <Skeleton /> : (
+            <BarChart
+              data={vehicleBarData}
+              height={260}
+              color="#22D3EE"
+              label="DZD/km"
+              horizontal
+            />
+          )}
+        </SectionCard>
+        <SectionCard title={p.sectionServiceBreakdown}>
+          {loading ? <Skeleton /> : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="text-xs text-[var(--text-secondary)] uppercase tracking-wider border-b border-[var(--border)]">
+                    <th className="pb-2 text-left font-semibold">Type</th>
+                    <th className="pb-2 text-right font-semibold">{p.colRequests}</th>
+                    <th className="pb-2 text-right font-semibold">{p.colMarginPct}</th>
+                    <th className="pb-2 text-right font-semibold">{p.colPunctuality}</th>
+                    <th className="pb-2 text-right font-semibold">{p.colNote}</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-[var(--border)]">
+                  {byService.map((s) => {
+                    const share = byServiceTotal > 0
+                      ? Math.round(s.nbr_requests / byServiceTotal * 100) : 0;
+                    return (
+                      <tr key={`${s.service_type}-${s.sub_service_type}`} className="text-[var(--text-primary)]">
+                        <td className="py-2.5 font-medium">
+                          <span className="text-xs text-slate-400 block">{serviceTypeLabel(s.service_type)}</span>
+                          {s.sub_service_type !== "N/A" && (
+                            <span className="text-xs text-slate-500">{s.sub_service_type}</span>
+                          )}
+                        </td>
+                        <td className="py-2.5 text-right tabular-nums">
+                          {formatNumber(s.nbr_requests)}
+                          <span className="text-xs text-slate-500 ml-1">({share}%)</span>
+                        </td>
+                        <td className="py-2.5 text-right">
+                          <span className={`font-semibold ${s.taux_marge_pct >= 24 ? "text-emerald-400" : s.taux_marge_pct >= 20 ? "text-amber-400" : "text-red-400"}`}>
+                            {s.taux_marge_pct?.toFixed(1) ?? "—"}%
+                          </span>
+                        </td>
+                        <td className="py-2.5 text-right">
+                          <span className={`font-semibold ${s.taux_ponctualite_pct >= 90 ? "text-emerald-400" : s.taux_ponctualite_pct >= 80 ? "text-amber-400" : "text-red-400"}`}>
+                            {s.taux_ponctualite_pct?.toFixed(1) ?? "—"}%
+                          </span>
+                        </td>
+                        <td className="py-2.5 text-right text-slate-300">
+                          {s.avg_note_client?.toFixed(1) ?? "—"}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </SectionCard>
+      </div>
 
       {/* ── OD Matrix ── */}
       <SectionCard title={p.sectionODMatrix}>

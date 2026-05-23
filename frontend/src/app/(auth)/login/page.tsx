@@ -134,7 +134,7 @@ export default function LoginPage() {
         </form>
 
         <p className="text-center text-xs text-slate-600 mt-6">
-          Use your HRForce credentials to access the platform.
+          Use your HR-Force Platform credentials to access the platform.
         </p>
       </div>
     </motion.div>

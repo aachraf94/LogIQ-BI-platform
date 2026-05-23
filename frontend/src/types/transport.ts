@@ -50,6 +50,10 @@ export interface TransportSummary {
     total_cost: number;
     total_poids_kg: number;
     total_payes: number;
+    total_pieces: number;
+    avg_cout_par_demande: number;
+    avg_cout_par_piece: number;
+    avg_arrets_par_demande: number;
     avg_ponctualite_pct: number;
     avg_note_client: number;
     avg_retard_arrivee_min: number;
