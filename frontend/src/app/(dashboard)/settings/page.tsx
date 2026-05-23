@@ -194,9 +194,13 @@ function PreferencesTab() {
               </div>
               <button
                 onClick={() => toggle(key)}
-                className={cn('relative w-10 h-5 rounded-full transition-colors shrink-0 ml-4', prefs[key] ? 'bg-primary' : 'bg-[var(--toggle-off)]')}
+                className={cn('relative w-10 h-5 rounded-full transition-colors shrink-0 ml-4 overflow-hidden', prefs[key] ? 'bg-primary' : 'bg-[var(--toggle-off)]')}
               >
-                <span className={cn('absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform', prefs[key] ? 'translate-x-5' : 'translate-x-0.5')} />
+                <span className={cn(
+                  'absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform',
+                  'ltr:left-0.5 rtl:right-0.5',
+                  prefs[key] ? 'ltr:translate-x-5 rtl:-translate-x-5' : 'translate-x-0'
+                )} />
               </button>
             </div>
           ))}
