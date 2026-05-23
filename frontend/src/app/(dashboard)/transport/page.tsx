@@ -449,28 +449,28 @@ export default function TransportPage() {
         )}
       </div>
 
-      {/* ── Primary KPI cards ── */}
+      {/* ── Volume & Fulfillment ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title={p.kpiTotalRequests}    value={formatNumber(cur.total_requests)}       trend={d.mom_requests}          trendLabel={trendLabel} icon={<Truck size={16} />}        index={0} />
-        <KpiCard title={p.kpiCompletionRate}   value={formatPercent(d.completion_rate)}       trend={d.mom_completion_rate}   trendLabel={trendLabel} icon={<PackageCheck size={16} />}  index={1} />
-        <KpiCard title={p.kpiTotalRevenue}     value={formatDZD(cur.total_revenue)}           trend={d.mom_revenue}           trendLabel={trendLabel} icon={<DollarSign size={16} />}    index={2} />
-        <KpiCard title={p.kpiGrossMargin}      value={formatPercent(d.gross_margin_pct)}      trend={d.mom_margin}            trendLabel={trendLabel} icon={<TrendingUp size={16} />}    index={3} />
+        <KpiCard title={p.kpiTotalRequests}    value={formatNumber(cur.total_requests)}                    trend={d.mom_requests}          trendLabel={trendLabel} icon={<Truck size={16} />}       index={0} />
+        <KpiCard title={p.kpiCompletionRate}   value={formatPercent(d.completion_rate)}                    trend={d.mom_completion_rate}   trendLabel={trendLabel} icon={<PackageCheck size={16} />} index={1} />
+        <KpiCard title={p.kpiCancellationRate} value={formatPercent(d.cancellation_rate)}                  trend={d.mom_cancellation_rate} trendLabel={trendLabel} icon={<Ban size={16} />}          index={2} />
+        <KpiCard title={p.kpiAvgStops}         value={cur.avg_arrets_par_demande?.toFixed(1) ?? "—"}      trend={d.mom_avg_arrets}        trendLabel={trendLabel} icon={<Route size={16} />}        index={3} />
       </div>
 
-      {/* ── Secondary KPI cards ── */}
+      {/* ── Revenue & Cost Efficiency ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title={p.kpiPunctuality}      value={formatPercent(cur.avg_ponctualite_pct)} trend={d.mom_on_time}           trendLabel={trendLabel} icon={<Gauge size={16} />}   index={4} />
-        <KpiCard title={p.kpiCostPerKm}        value={`${d.cost_per_km} DZD`}                                                                        icon={<Route size={16} />}   index={5} />
-        <KpiCard title={p.kpiCancellationRate} value={formatPercent(d.cancellation_rate)}     trend={d.mom_cancellation_rate} trendLabel={trendLabel} icon={<Ban size={16} />}     index={6} />
-        <KpiCard title={p.kpiAvgNote}          value={cur.avg_note_client?.toFixed(1) ?? "—"}                                                        icon={<Star size={16} />}    index={7} />
+        <KpiCard title={p.kpiTotalRevenue}      value={formatDZD(cur.total_revenue)}         trend={d.mom_revenue}               trendLabel={trendLabel} icon={<DollarSign size={16} />} index={4} />
+        <KpiCard title={p.kpiGrossMargin}       value={formatPercent(d.gross_margin_pct)}    trend={d.mom_margin}                trendLabel={trendLabel} icon={<TrendingUp size={16} />} index={5} />
+        <KpiCard title={p.kpiAvgCostPerRequest} value={formatDZD(cur.avg_cout_par_demande)} trend={d.mom_avg_cout_par_demande}  trendLabel={trendLabel} icon={<DollarSign size={16} />} index={6} />
+        <KpiCard title={p.kpiCostPerKm}         value={`${d.cost_per_km} DZD`}              trend={d.mom_cost_per_km}           trendLabel={trendLabel} icon={<Route size={16} />}      index={7} />
       </div>
 
-      {/* ── Unit economics KPI cards (KPI-007, KPI-008, KPI-009, KPI-003) ── */}
+      {/* ── Quality & Cost Structure ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title={p.kpiAvgCostPerRequest} value={formatDZD(cur.avg_cout_par_demande)}                        icon={<DollarSign size={16} />} index={8} />
-        <KpiCard title={p.kpiAvgCostPerPiece}   value={formatDZD(cur.avg_cout_par_piece)}                          icon={<DollarSign size={16} />} index={9} />
-        <KpiCard title={p.kpiInsuranceRatio}    value={formatPercent(insuranceRatio)}                              icon={<TrendingUp size={16} />} index={10} />
-        <KpiCard title={p.kpiAvgStops}          value={cur.avg_arrets_par_demande?.toFixed(1) ?? "—"}             icon={<Route size={16} />}      index={11} />
+        <KpiCard title={p.kpiPunctuality}     value={formatPercent(cur.avg_ponctualite_pct)} trend={d.mom_on_time}            trendLabel={trendLabel} icon={<Gauge size={16} />}      index={8} />
+        <KpiCard title={p.kpiAvgNote}         value={cur.avg_note_client?.toFixed(1) ?? "—"} trend={d.mom_avg_note}           trendLabel={trendLabel} icon={<Star size={16} />}       index={9} />
+        <KpiCard title={p.kpiAvgCostPerPiece} value={formatDZD(cur.avg_cout_par_piece)}      trend={d.mom_avg_cout_par_piece} trendLabel={trendLabel} icon={<DollarSign size={16} />} index={10} />
+        <KpiCard title={p.kpiInsuranceRatio}  value={formatPercent(insuranceRatio)}          trend={d.mom_insurance_ratio}    trendLabel={trendLabel} icon={<TrendingUp size={16} />} index={11} />
       </div>
 
       {/* ── Trends: Revenue vs Cost + Requests by Status ── */}

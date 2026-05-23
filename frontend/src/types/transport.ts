@@ -51,6 +51,7 @@ export interface TransportSummary {
     total_poids_kg: number;
     total_payes: number;
     total_pieces: number;
+    cout_assurance: number;
     avg_cout_par_demande: number;
     avg_cout_par_piece: number;
     avg_arrets_par_demande: number;
@@ -70,6 +71,12 @@ export interface TransportSummary {
     mom_on_time: number;
     mom_completion_rate: number;
     mom_cancellation_rate: number;
+    mom_cost_per_km: number;
+    mom_avg_note: number;
+    mom_avg_cout_par_demande: number;
+    mom_avg_cout_par_piece: number;
+    mom_insurance_ratio: number;
+    mom_avg_arrets: number;
   };
 }
 

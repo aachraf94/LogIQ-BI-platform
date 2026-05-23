@@ -369,6 +369,7 @@ export const mockTransportSummary: TransportSummary = {
     total_poids_kg: 92_400,
     total_payes: 318,
     total_pieces: 5_840,
+    cout_assurance: 470_400,
     avg_cout_par_demande: 16_897,
     avg_cout_par_piece: 1_007,
     avg_arrets_par_demande: 3.2,
@@ -388,6 +389,12 @@ export const mockTransportSummary: TransportSummary = {
     mom_on_time: 2.4,
     mom_completion_rate: 3.1,
     mom_cancellation_rate: 1.2,
+    mom_cost_per_km: 3.2,
+    mom_avg_note: 1.5,
+    mom_avg_cout_par_demande: 2.8,
+    mom_avg_cout_par_piece: 4.1,
+    mom_insurance_ratio: -1.2,
+    mom_avg_arrets: 0.6,
   },
 };
 

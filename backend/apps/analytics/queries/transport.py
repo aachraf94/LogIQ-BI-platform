@@ -86,6 +86,7 @@ def get_summary(year=None, month=None, service_type=None, company_id=None):
             COALESCE(SUM(total_poids_kg), 0)                                            AS total_poids_kg,
             COALESCE(SUM(nbr_payes), 0)                                                 AS total_payes,
             COALESCE(SUM(total_pieces), 0)                                              AS total_pieces,
+            COALESCE(SUM(total_cout_assurance_dzd), 0)                                  AS cout_assurance,
             COALESCE(
                 SUM(total_cout_dzd) / NULLIF(SUM(nbr_terminees), 0),
                 0
@@ -143,10 +144,18 @@ def get_summary(year=None, month=None, service_type=None, company_id=None):
             COALESCE(SUM(nbr_annulees), 0)                                              AS total_annulees,
             COALESCE(SUM(total_facture_dzd), 0)                                         AS total_revenue,
             COALESCE(SUM(total_marge_brute_dzd), 0)                                     AS total_marge,
+            COALESCE(SUM(total_cout_dzd), 0)                                            AS total_cost,
+            COALESCE(SUM(total_km), 0)                                                  AS total_km,
+            COALESCE(SUM(total_pieces), 0)                                              AS total_pieces,
+            COALESCE(SUM(total_cout_assurance_dzd), 0)                                  AS cout_assurance,
             COALESCE(
                 SUM(taux_ponctualite_pct * nbr_terminees) / NULLIF(SUM(nbr_terminees), 0),
                 0
-            )                                                                           AS avg_ponctualite_pct
+            )                                                                           AS avg_ponctualite_pct,
+            COALESCE(
+                SUM(avg_note_client * nbr_terminees) / NULLIF(SUM(nbr_terminees), 0),
+                0
+            )                                                                           AS avg_note_client
         FROM warehouse.agg_transport_mensuel
         WHERE 1=1 {pw}
     """
@@ -155,14 +164,23 @@ def get_summary(year=None, month=None, service_type=None, company_id=None):
         prev_rows = _rows(cur)
 
     p = _coerce(prev_rows[0]) if prev_rows else {}
-    prev_tr   = p.get("total_requests") or 0
-    prev_tt   = p.get("total_terminees") or 0
-    prev_ta   = p.get("total_annulees") or 0
+    prev_tr    = p.get("total_requests") or 0
+    prev_tt    = p.get("total_terminees") or 0
+    prev_ta    = p.get("total_annulees") or 0
     prev_rev   = p.get("total_revenue") or 0
     prev_marge = p.get("total_marge") or 0
-    prev_margin_pct       = round(prev_marge / prev_rev * 100, 1) if prev_rev else 0.0
-    prev_completion_rate  = round(prev_tt / prev_tr * 100, 1) if prev_tr else 0.0
-    prev_cancellation_rate = round(prev_ta / prev_tr * 100, 1) if prev_tr else 0.0
+    prev_cost       = p.get("total_cost") or 0
+    prev_km         = p.get("total_km") or 0
+    prev_pieces     = p.get("total_pieces") or 0
+    prev_assurance  = p.get("cout_assurance") or 0
+    prev_avg_note   = p.get("avg_note_client") or 0
+    prev_margin_pct            = round(prev_marge / prev_rev * 100, 1) if prev_rev else 0.0
+    prev_completion_rate       = round(prev_tt / prev_tr * 100, 1) if prev_tr else 0.0
+    prev_cancellation_rate     = round(prev_ta / prev_tr * 100, 1) if prev_tr else 0.0
+    prev_cost_per_km           = round(prev_cost / prev_km, 1) if prev_km else 0.0
+    prev_avg_cout_par_demande  = round(prev_cost / prev_tt, 1) if prev_tt else 0.0
+    prev_avg_cout_par_piece    = round(prev_cost / prev_pieces, 1) if prev_pieces else 0.0
+    prev_insurance_ratio       = round(prev_assurance / prev_cost * 100, 1) if prev_cost else 0.0
 
     derived["mom_requests"]          = _mom(tr, prev_tr)
     derived["mom_revenue"]           = _mom(rev, prev_rev)
@@ -193,6 +211,39 @@ def get_summary(year=None, month=None, service_type=None, company_id=None):
     c["avg_arrets_par_demande"] = float(
         _coerce(stop_rows[0]).get("avg_arrets_par_demande", 0) or 0
     )
+
+    # Prev period avg stops — needed for mom_avg_arrets
+    prev_stop_conds = ["ft.status = 'terminée'"]
+    prev_stop_args  = []
+    if py:
+        prev_stop_conds.append("d.year = %s");       prev_stop_args.append(int(py))
+    if pm:
+        prev_stop_conds.append("d.month_num = %s");  prev_stop_args.append(int(pm))
+    if service_type and service_type != "all":
+        prev_stop_conds.append("ft.service_type = %s"); prev_stop_args.append(service_type)
+    with connections["warehouse"].cursor() as cur:
+        cur.execute(
+            "SELECT ROUND(COALESCE(AVG(ft.nbr_stops_total), 0)::numeric, 1) AS avg_arrets_par_demande"
+            " FROM warehouse.fact_transport ft"
+            " JOIN warehouse.dim_date d ON ft.date_creation_key = d.date_key"
+            " WHERE " + " AND ".join(prev_stop_conds),
+            prev_stop_args,
+        )
+        prev_stop_rows = _rows(cur)
+    prev_avg_arrets = float(
+        _coerce(prev_stop_rows[0]).get("avg_arrets_par_demande", 0) or 0
+    )
+
+    # 6 additional MoM metrics (negated where cost/ratio decrease = good signal)
+    cur_insurance_ratio = round(
+        (c.get("cout_assurance") or 0) / cost * 100, 1
+    ) if cost else 0.0
+    derived["mom_cost_per_km"]           = -_mom(derived["cost_per_km"], prev_cost_per_km)
+    derived["mom_avg_note"]              = _mom(c.get("avg_note_client") or 0, prev_avg_note)
+    derived["mom_avg_cout_par_demande"]  = -_mom(c.get("avg_cout_par_demande") or 0, prev_avg_cout_par_demande)
+    derived["mom_avg_cout_par_piece"]    = -_mom(c.get("avg_cout_par_piece") or 0, prev_avg_cout_par_piece)
+    derived["mom_insurance_ratio"]       = -_mom(cur_insurance_ratio, prev_insurance_ratio)
+    derived["mom_avg_arrets"]            = _mom(c.get("avg_arrets_par_demande") or 0, prev_avg_arrets)
 
     return {"current": c, "derived": derived}
 
