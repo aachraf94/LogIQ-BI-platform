@@ -100,6 +100,14 @@ export interface Translations {
       monthAll: string
       months: [string,string,string,string,string,string,string,string,string,string,string,string]
       monthsShort: [string,string,string,string,string,string,string,string,string,string,string,string]
+      infoPanel: {
+        labelMeaning: string
+        labelFormula: string
+        labelSource: string
+        labelDimensions: string
+        labelUpdateFreq: string
+        labelCalcNotes: string
+      }
     }
     overview: {
       kpiTotalDemands: string
@@ -510,6 +518,14 @@ const fr: Translations = {
       monthAll: "Toute l'année",
       months: ['Janvier','Février','Mars','Avril','Mai','Juin','Juillet','Août','Septembre','Octobre','Novembre','Décembre'],
       monthsShort: ['Jan','Fév','Mar','Avr','Mai','Jun','Jul','Aoû','Sep','Oct','Nov','Déc'],
+      infoPanel: {
+        labelMeaning: 'Signification métier',
+        labelFormula: 'Formule',
+        labelSource: 'Tables source',
+        labelDimensions: 'Dimensions / filtres',
+        labelUpdateFreq: 'Fréquence de mise à jour',
+        labelCalcNotes: 'Notes de calcul',
+      },
     },
     overview: {
       kpiTotalDemands: 'Total Demandes',
@@ -934,6 +950,14 @@ const en: Translations = {
       monthAll: 'All year',
       months: ['January','February','March','April','May','June','July','August','September','October','November','December'],
       monthsShort: ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],
+      infoPanel: {
+        labelMeaning: 'Business Meaning',
+        labelFormula: 'Formula',
+        labelSource: 'Source Tables',
+        labelDimensions: 'Dimensions / Filters',
+        labelUpdateFreq: 'Update Frequency',
+        labelCalcNotes: 'Calculation Notes',
+      },
     },
     overview: {
       kpiTotalDemands: 'Total Demands',
@@ -1358,6 +1382,14 @@ const ar: Translations = {
       monthAll: 'كل السنة',
       months: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
       monthsShort: ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'],
+      infoPanel: {
+        labelMeaning: 'الفائدة التجارية',
+        labelFormula: 'الصيغة',
+        labelSource: 'جداول المصدر',
+        labelDimensions: 'الأبعاد / المرشِّحات',
+        labelUpdateFreq: 'تكرار التحديث',
+        labelCalcNotes: 'ملاحظات الحساب',
+      },
     },
     overview: {
       kpiTotalDemands: 'إجمالي الطلبات',
