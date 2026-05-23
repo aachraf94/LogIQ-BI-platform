@@ -105,7 +105,7 @@ function Select({
           const num = Number(raw);
           onChange(isNaN(num) ? raw : num);
         }}
-        className="appearance-none bg-[var(--surface-secondary)] border border-[var(--border)] text-slate-200 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:border-primary/60 cursor-pointer"
+        className="appearance-none bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--text-primary)] text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:border-primary/60 cursor-pointer"
       >
         {options.map((o) => (
           <option key={String(o.value)} value={o.value === null ? "" : String(o.value)}>
@@ -596,7 +596,7 @@ export default function TransportPage() {
             <div className="shrink-0 space-y-2 pt-2">
               <p className="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-3">{p.marginLegend}</p>
               {odMatrix.slice(0, 6).map((cell) => (
-                <div key={`${cell.origin}-${cell.destination}`} className="flex items-center gap-2 text-xs text-slate-300">
+                <div key={`${cell.origin}-${cell.destination}`} className="flex items-center gap-2 text-xs text-[var(--text-secondary)]">
                   <span className="w-20 text-right text-slate-500">{cell.origin.slice(0, 4)}</span>
                   <span className="text-slate-600">→</span>
                   <span className="w-20">{cell.destination.slice(0, 4)}</span>
@@ -647,7 +647,7 @@ export default function TransportPage() {
                 </div>
                 <div className="flex justify-between text-xs text-slate-400">
                   <span>{p.colPunctuality}</span>
-                  <span className="font-semibold text-slate-200">{s.taux_ponctualite_pct?.toFixed(1)}%</span>
+                  <span className="font-semibold text-[var(--text-primary)]">{s.taux_ponctualite_pct?.toFixed(1)}%</span>
                 </div>
                 <div className="flex justify-between text-xs text-slate-400">
                   <span>{p.colNote}</span>

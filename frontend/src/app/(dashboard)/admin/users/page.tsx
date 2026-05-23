@@ -41,8 +41,8 @@ function SyncBanner({
       className={cn(
         'flex items-start gap-3 p-4 rounded-xl border text-sm',
         hasErrors
-          ? 'bg-amber-500/10 border-amber-500/30 text-amber-200'
-          : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-200',
+          ? 'bg-amber-500/10 border-amber-500/30 text-amber-700 dark:text-amber-200'
+          : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-200',
       )}
     >
       {hasErrors ? <AlertTriangle size={16} className="mt-0.5 shrink-0" /> : <CheckCircle size={16} className="mt-0.5 shrink-0" />}
@@ -152,7 +152,7 @@ function UserModal({
               <p className="text-xs text-slate-400">@{localUser.username}</p>
             </div>
           </div>
-          <button onClick={onClose} className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors">
+          <button onClick={onClose} className="p-1.5 text-slate-500 hover:text-[var(--text-primary)] transition-colors">
             <X size={18} />
           </button>
         </div>
@@ -210,19 +210,19 @@ function UserModal({
             ].map((f) => (
               <div key={f.label}>
                 <p className="text-xs text-slate-500 mb-0.5">{f.label}</p>
-                <p className="text-slate-200 text-xs">{f.value}</p>
+                <p className="text-[var(--text-primary)] text-xs">{f.value}</p>
               </div>
             ))}
           </div>
 
           {/* Role assignment */}
           <div className="bg-[var(--surface-secondary)] rounded-xl p-4">
-            <label className="text-xs font-semibold text-slate-400 block mb-2">{pu.assignRole}</label>
+            <label className="text-xs font-semibold text-[var(--text-secondary)] block mb-2">{pu.assignRole}</label>
             <div className="flex gap-2">
               <select
                 value={roleId}
                 onChange={(e) => setRoleId(e.target.value ? Number(e.target.value) : '')}
-                className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
+                className="flex-1 bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary"
               >
                 <option value="">—</option>
                 {roles.map((r) => (
@@ -273,7 +273,7 @@ function UserModal({
                       {s.device_type === 'mobile' ? <Smartphone size={14} /> : <Laptop size={14} />}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="text-xs text-slate-300">{s.browser} · {s.os}</p>
+                      <p className="text-xs text-[var(--text-secondary)]">{s.browser} · {s.os}</p>
                       <p className="text-[11px] text-slate-600">
                         {s.ip_address} · {formatDistanceToNow(new Date(s.logged_in_at), { addSuffix: true })}
                       </p>
@@ -399,13 +399,13 @@ export default function AdminUsersPage() {
       <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
           <h2 className="text-xl font-bold text-[var(--text-primary)]">{t.nav.users}</h2>
-          <p className="text-sm text-slate-400 mt-0.5">{count}</p>
+          <p className="text-sm text-[var(--text-muted)] mt-0.5">{count}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
             onClick={load}
             disabled={loading}
-            className="p-2 text-slate-500 hover:text-slate-300 transition-colors"
+            className="p-2 text-slate-500 hover:text-[var(--text-primary)] transition-colors"
           >
             <RefreshCw size={15} className={loading ? 'animate-spin' : ''} />
           </button>
@@ -437,14 +437,14 @@ export default function AdminUsersPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder={pu.searchPlaceholder}
-            className="pl-9 pr-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-primary w-56"
+            className="pl-9 pr-4 py-2 bg-[var(--surface)] border border-[var(--border)] rounded-lg text-sm text-[var(--text-primary)] placeholder-[var(--text-muted)] focus:outline-none focus:border-primary w-56"
           />
         </div>
 
         <select
           value={filterActive === undefined ? '' : String(filterActive)}
           onChange={(e) => setFilterActive(e.target.value === '' ? undefined : e.target.value === 'true')}
-          className="bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
+          className="bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary"
         >
           <option value="">—</option>
           <option value="true">{pu.active}</option>
@@ -454,7 +454,7 @@ export default function AdminUsersPage() {
         <select
           value={filterRole ?? ''}
           onChange={(e) => setFilterRole(e.target.value ? Number(e.target.value) : undefined)}
-          className="bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary"
+          className="bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary"
         >
           <option value="">—</option>
           {roles.map((r) => <option key={r.id} value={r.id}>{r.display_name}</option>)}
@@ -492,13 +492,13 @@ export default function AdminUsersPage() {
                   }
                 }}
                 disabled={bulkLoading}
-                className="px-3 py-1.5 text-xs font-semibold bg-[var(--surface-secondary)] text-slate-300 border border-[var(--border)] rounded-lg focus:outline-none focus:border-primary disabled:opacity-60"
+                className="px-3 py-1.5 text-xs font-semibold bg-[var(--surface-secondary)] text-[var(--text-secondary)] border border-[var(--border)] rounded-lg focus:outline-none focus:border-primary disabled:opacity-60"
               >
                 <option value="">{pu.assignRole}…</option>
                 <option value="null">—</option>
                 {roles.map((r) => <option key={r.id} value={r.id}>{r.display_name}</option>)}
               </select>
-              <button onClick={() => setSelected([])} className="px-2 text-slate-500 hover:text-slate-300">
+              <button onClick={() => setSelected([])} className="px-2 text-slate-500 hover:text-[var(--text-primary)]">
                 <X size={14} />
               </button>
             </div>
@@ -618,14 +618,14 @@ export default function AdminUsersPage() {
               <button
                 onClick={() => setPage((p) => Math.max(1, p - 1))}
                 disabled={page === 1}
-                className="p-1.5 text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-colors"
+                className="p-1.5 text-slate-500 hover:text-[var(--text-primary)] disabled:opacity-30 transition-colors"
               >
                 <ChevronLeft size={16} />
               </button>
               <button
                 onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
                 disabled={page === totalPages}
-                className="p-1.5 text-slate-500 hover:text-slate-300 disabled:opacity-30 transition-colors"
+                className="p-1.5 text-slate-500 hover:text-[var(--text-primary)] disabled:opacity-30 transition-colors"
               >
                 <ChevronRight size={16} />
               </button>

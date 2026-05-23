@@ -131,7 +131,7 @@ function Select({
           const num = Number(raw);
           onChange(isNaN(num) ? raw : num);
         }}
-        className="appearance-none bg-[var(--surface-secondary)] border border-[var(--border)] text-slate-200 text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:border-primary/60 cursor-pointer"
+        className="appearance-none bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--text-primary)] text-sm rounded-lg pl-3 pr-8 py-2 focus:outline-none focus:border-primary/60 cursor-pointer"
       >
         {options.map((o) => (
           <option key={String(o.value)} value={o.value === null ? "" : String(o.value)}>
@@ -531,7 +531,7 @@ export default function ParcelCostsPage() {
   ];
 
   const parcelCols: Column<(typeof parcels.results)[0]>[] = [
-    { key: "tracking",     header: p.colTracking,  render: (r) => <span className="font-mono text-xs text-slate-300">{r.tracking}</span> },
+    { key: "tracking",     header: p.colTracking,  render: (r) => <span className="font-mono text-xs text-[var(--text-secondary)]">{r.tracking}</span> },
     { key: "agence_nom",   header: p.colAgency,    sortable: true },
     { key: "wilaya_destination", header: p.colWilayaDest, sortable: true },
     {
@@ -725,8 +725,8 @@ export default function ParcelCostsPage() {
                 </div>
                 {[
                   { label: p.hdDeliveryRate, value: `${dt.taux_livraison_pct?.toFixed(1)}%`, color: dt.taux_livraison_pct >= 75 ? "text-emerald-400" : "text-amber-400" },
-                  { label: p.hdAvgFee,       value: `${dt.avg_fee_dzd?.toFixed(0)} DZD`,      color: "text-slate-200" },
-                  { label: p.hdAvgDuration,  value: `${Math.round(dt.avg_duree_livree_min / 60)} h`, color: "text-slate-200" },
+                  { label: p.hdAvgFee,       value: `${dt.avg_fee_dzd?.toFixed(0)} DZD`,      color: "text-[var(--text-primary)]" },
+                  { label: p.hdAvgDuration,  value: `${Math.round(dt.avg_duree_livree_min / 60)} h`, color: "text-[var(--text-primary)]" },
                   { label: p.hdReturnRate,   value: `${dt.taux_retour_pct?.toFixed(1)}%`,     color: "text-amber-400" },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="flex justify-between text-xs">

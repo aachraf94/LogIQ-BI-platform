@@ -92,7 +92,7 @@ function ProfileTab() {
 // ─── Preferences ─────────────────────────────────────────────────────────────
 
 function PreferencesTab() {
-  const { updateUser, user } = useAuthStore()
+  const { updateUser } = useAuthStore()
   const { setTheme } = useTheme()
   const { t } = useTranslation()
   const [prefs, setPrefs] = useState<UserPreferences | null>(null)
@@ -117,6 +117,7 @@ function PreferencesTab() {
       const updated = await meApi.updatePreferences(prefs)
       setPrefs(updated)
       updateUser({ preferences: updated })
+      setTheme(updated.theme ?? 'dark')
       setSaved(true)
       setTimeout(() => setSaved(false), 2000)
     } catch { /* silently ignore */ } finally { setSaving(false) }
@@ -149,10 +150,6 @@ function PreferencesTab() {
                   key={themeKey}
                   onClick={() => {
                     setPrefs((p) => p ? { ...p, theme: themeKey } : p)
-                    setTheme(themeKey)
-                    if (user?.preferences) {
-                      updateUser({ preferences: { ...user.preferences, theme: themeKey } })
-                    }
                   }}
                   className={cn(
                     'flex-1 py-2 text-xs font-medium rounded-lg border transition-colors',
@@ -173,10 +170,6 @@ function PreferencesTab() {
               onChange={(e) => {
                 const lang = e.target.value
                 setPrefs((p) => p ? { ...p, language: lang } : p)
-                // Immediately update authStore so all components using useTranslation() re-render
-                if (user?.preferences) {
-                  updateUser({ preferences: { ...user.preferences, language: lang } })
-                }
               }}
               className="w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-lg px-3 py-2.5 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary"
             >
