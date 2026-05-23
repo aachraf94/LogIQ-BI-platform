@@ -1,22 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { Bell, ChevronDown, LogOut } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotificationStore } from '@/stores/notificationStore'
-import { useFilterStore } from '@/stores/filterStore'
 import { authApi, clearTokens, getRefreshToken } from '@/lib/api'
 import { NotificationPanel } from '@/components/ui/NotificationPanel'
 import { useTranslation } from '@/lib/i18n'
-import { cn } from '@/lib/utils'
-
-const DATE_RANGES = [
-  { value: '7d' as const, label: '7d' },
-  { value: '30d' as const, label: '30d' },
-  { value: '3m' as const, label: '3m' },
-  { value: '12m' as const, label: '12m' },
-]
 
 interface TopbarProps {
   title: string
@@ -26,11 +17,23 @@ export function Topbar({ title }: TopbarProps) {
   const router = useRouter()
   const { userName, userRole, logout } = useAuthStore()
   const unreadCount = useNotificationStore((s) => s.unreadCount)
-  const { dateRange, setDateRange } = useFilterStore()
   const { t } = useTranslation()
 
   const [notifOpen, setNotifOpen] = useState(false)
   const [userMenuOpen, setUserMenuOpen] = useState(false)
+  const bellRef = useRef<HTMLButtonElement>(null)
+  const userMenuRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!userMenuOpen) return
+    const handler = (e: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [userMenuOpen])
 
   const initials = userName
     .split(' ')
@@ -54,27 +57,10 @@ export function Topbar({ title }: TopbarProps) {
       <h1 className="text-lg font-semibold text-[var(--text-primary)] truncate">{title}</h1>
 
       <div className="flex items-center gap-3">
-        {/* Date range */}
-        <div className="flex items-center gap-0.5 bg-[var(--surface-secondary)] rounded-lg p-1">
-          {DATE_RANGES.map((r) => (
-            <button
-              key={r.value}
-              onClick={() => setDateRange(r.value)}
-              className={cn(
-                'px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
-                dateRange === r.value
-                  ? 'bg-primary text-white'
-                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)]'
-              )}
-            >
-              {r.label}
-            </button>
-          ))}
-        </div>
-
         {/* Notification bell */}
         <div className="relative">
           <button
+            ref={bellRef}
             onClick={() => {
               setNotifOpen((o) => !o)
               setUserMenuOpen(false)
@@ -88,11 +74,11 @@ export function Topbar({ title }: TopbarProps) {
               </span>
             )}
           </button>
-          <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} />
+          <NotificationPanel open={notifOpen} onClose={() => setNotifOpen(false)} triggerRef={bellRef} />
         </div>
 
         {/* User button */}
-        <div className="relative">
+        <div ref={userMenuRef} className="relative">
           <button
             onClick={() => {
               setUserMenuOpen((o) => !o)

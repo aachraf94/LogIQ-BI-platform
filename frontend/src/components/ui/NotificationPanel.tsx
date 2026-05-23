@@ -12,6 +12,7 @@ import { formatDistanceToNow } from 'date-fns'
 interface Props {
   open: boolean
   onClose: () => void
+  triggerRef?: React.RefObject<HTMLElement>
 }
 
 const TYPE_ICON: Record<NotificationType, React.ReactNode> = {
@@ -72,21 +73,22 @@ function NotifItem({ notif }: { notif: Notification }) {
   )
 }
 
-export function NotificationPanel({ open, onClose }: Props) {
+export function NotificationPanel({ open, onClose, triggerRef }: Props) {
   const { notifications, unreadCount, markAllRead } = useNotificationStore()
   const panelRef = useRef<HTMLDivElement>(null)
 
-  // Close on outside click
+  // Close on outside click, but not when clicking the trigger button
   useEffect(() => {
     if (!open) return
     const handler = (e: MouseEvent) => {
+      if (triggerRef?.current?.contains(e.target as Node)) return
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
         onClose()
       }
     }
     document.addEventListener('mousedown', handler)
     return () => document.removeEventListener('mousedown', handler)
-  }, [open, onClose])
+  }, [open, onClose, triggerRef])
 
   const handleMarkAll = async () => {
     try {
