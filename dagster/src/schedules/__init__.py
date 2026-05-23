@@ -2,6 +2,7 @@ from dagster import (
     ScheduleDefinition,
     AssetSelection,
     define_asset_job,
+    multiprocess_executor,
 )
 
 # --- Jobs ---
@@ -34,6 +35,7 @@ full_etl_job = define_asset_job(
     name="full_etl_job",
     selection=AssetSelection.groups("staging", "dimensions", "facts", "aggregates"),
     description="Full nightly ETL: staging → dimensions → facts → aggregates.",
+    executor_def=multiprocess_executor.configured({"max_concurrent": 2}),
 )
 
 # --- Schedules ---
