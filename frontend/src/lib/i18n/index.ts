@@ -140,6 +140,7 @@ export interface Translations {
       kpiCancellationRate: string
       kpiAvgNote: string
       vsPrevMonth: string
+      vsLastYear: string
       demoData: string
       loading: string
       sectionRevenueCost: string
@@ -545,6 +546,7 @@ const fr: Translations = {
       kpiCancellationRate: 'Taux annulation',
       kpiAvgNote: 'Note client moy.',
       vsPrevMonth: 'vs mois précédent',
+      vsLastYear: 'vs année précédente',
       demoData: 'Données de démonstration — backend indisponible',
       loading: 'Chargement…',
       sectionRevenueCost: 'Revenu vs Coût mensuel (DZD)',
@@ -964,6 +966,7 @@ const en: Translations = {
       kpiCancellationRate: 'Cancellation Rate',
       kpiAvgNote: 'Avg. Rating',
       vsPrevMonth: 'vs previous month',
+      vsLastYear: 'vs previous year',
       demoData: 'Demo data — backend unavailable',
       loading: 'Loading…',
       sectionRevenueCost: 'Revenue vs Monthly Cost (DZD)',
@@ -1383,6 +1386,7 @@ const ar: Translations = {
       kpiCancellationRate: 'معدل الإلغاء',
       kpiAvgNote: 'متوسط التقييم',
       vsPrevMonth: 'مقابل الشهر الماضي',
+      vsLastYear: 'مقابل العام الماضي',
       demoData: 'بيانات تجريبية — الخادم غير متوفر',
       loading: 'جارٍ التحميل…',
       sectionRevenueCost: 'الإيرادات مقابل التكلفة الشهرية (دج)',

@@ -382,6 +382,8 @@ export const mockTransportSummary: TransportSummary = {
     mom_revenue: 12.1,
     mom_margin: 1.8,
     mom_on_time: 2.4,
+    mom_completion_rate: 3.1,
+    mom_cancellation_rate: 1.2,
   },
 };
 

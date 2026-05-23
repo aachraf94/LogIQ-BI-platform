@@ -49,8 +49,11 @@ def _where_mensuel(year=None, month=None, service_type=None, company_id=None):
 
 
 def _prev_period(year, month):
-    if not year or not month:
+    if not year:
         return None, None
+    if not month:
+        # Yearly view: compare to the same full year one year prior (YoY)
+        return int(year) - 1, None
     y, m = int(year), int(month)
     return (y - 1, 12) if m == 1 else (y, m - 1)
 
@@ -127,6 +130,8 @@ def get_summary(year=None, month=None, service_type=None, company_id=None):
     prev_sql = f"""
         SELECT
             COALESCE(SUM(nbr_requests), 0)                                              AS total_requests,
+            COALESCE(SUM(nbr_terminees), 0)                                             AS total_terminees,
+            COALESCE(SUM(nbr_annulees), 0)                                              AS total_annulees,
             COALESCE(SUM(total_facture_dzd), 0)                                         AS total_revenue,
             COALESCE(SUM(total_marge_brute_dzd), 0)                                     AS total_marge,
             COALESCE(
@@ -141,14 +146,22 @@ def get_summary(year=None, month=None, service_type=None, company_id=None):
         prev_rows = _rows(cur)
 
     p = _coerce(prev_rows[0]) if prev_rows else {}
+    prev_tr   = p.get("total_requests") or 0
+    prev_tt   = p.get("total_terminees") or 0
+    prev_ta   = p.get("total_annulees") or 0
     prev_rev   = p.get("total_revenue") or 0
     prev_marge = p.get("total_marge") or 0
-    prev_margin_pct = round(prev_marge / prev_rev * 100, 1) if prev_rev else 0.0
+    prev_margin_pct       = round(prev_marge / prev_rev * 100, 1) if prev_rev else 0.0
+    prev_completion_rate  = round(prev_tt / prev_tr * 100, 1) if prev_tr else 0.0
+    prev_cancellation_rate = round(prev_ta / prev_tr * 100, 1) if prev_tr else 0.0
 
-    derived["mom_requests"] = _mom(tr, p.get("total_requests") or 0)
-    derived["mom_revenue"]  = _mom(rev, prev_rev)
-    derived["mom_margin"]   = _mom(derived["gross_margin_pct"], prev_margin_pct)
-    derived["mom_on_time"]  = _mom(ponct, p.get("avg_ponctualite_pct") or 0)
+    derived["mom_requests"]          = _mom(tr, prev_tr)
+    derived["mom_revenue"]           = _mom(rev, prev_rev)
+    derived["mom_margin"]            = _mom(derived["gross_margin_pct"], prev_margin_pct)
+    derived["mom_on_time"]           = _mom(ponct, p.get("avg_ponctualite_pct") or 0)
+    derived["mom_completion_rate"]   = _mom(derived["completion_rate"], prev_completion_rate)
+    # Negated: a decrease in cancellation rate is a positive signal → show green
+    derived["mom_cancellation_rate"] = -_mom(derived["cancellation_rate"], prev_cancellation_rate)
 
     return {"current": c, "derived": derived}
 
@@ -277,9 +290,9 @@ def get_by_service(year=None, month=None):
 
 # ─── By vehicle type ──────────────────────────────────────────────────────────
 
-def get_by_vehicle(year=None, month=None):
+def get_by_vehicle(year=None, month=None, service_type=None):
     """Cost efficiency and performance grouped by vehicle type."""
-    w, a = _where_mensuel(year, month)
+    w, a = _where_mensuel(year, month, service_type)
     sql = f"""
         SELECT
             vehicle_type,

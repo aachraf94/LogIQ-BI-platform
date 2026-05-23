@@ -124,6 +124,7 @@ class TransportByVehicleView(APIView):
             data = tq.get_by_vehicle(
                 year=request.query_params.get("year"),
                 month=request.query_params.get("month"),
+                service_type=request.query_params.get("service_type"),
             )
             return Response(data)
         except Exception as exc:

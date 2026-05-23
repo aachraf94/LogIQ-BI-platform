@@ -64,6 +64,8 @@ export interface TransportSummary {
     mom_revenue: number;
     mom_margin: number;
     mom_on_time: number;
+    mom_completion_rate: number;
+    mom_cancellation_rate: number;
   };
 }
 

@@ -393,7 +393,7 @@ export const transportApi = {
       `/analytics/transport/by-service/${_qs(f as Record<string, string | number | undefined | null>)}`
     ),
 
-  byVehicle: (f: { year?: number | null; month?: number | null } = {}) =>
+  byVehicle: (f: { year?: number | null; month?: number | null; service_type?: string } = {}) =>
     request<import("@/types/transport").TransportVehicleData[]>(
       `/analytics/transport/by-vehicle/${_qs(f as Record<string, string | number | undefined | null>)}`
     ),
