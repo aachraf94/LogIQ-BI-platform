@@ -5,10 +5,11 @@ import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
 import {
   Truck, TrendingUp, DollarSign, Gauge, Star, Ban,
-  Route, PackageCheck, ChevronDown,
+  Route, PackageCheck, ChevronDown, Info,
 } from "lucide-react";
 
 import { KpiCard } from "@/components/ui/KpiCard";
+import { InfoPanel, type KpiInfo } from "@/components/ui/InfoPanel";
 import { DataTable } from "@/components/ui/DataTable";
 import { PieChart } from "@/components/charts/PieChart";
 import { BarChart } from "@/components/charts/BarChart";
@@ -45,6 +46,224 @@ import type {
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const YEARS = [2023, 2024, 2025];
+
+// ─── Info panel content ───────────────────────────────────────────────────────
+
+const FREQ = "Quotidienne — pipeline ETL Dagster (nightly job)";
+
+const KPI_INFO: Record<string, KpiInfo> = {
+  totalRequests: {
+    title: "Demandes totales",
+    meaning: "Nombre total de demandes de transport reçues sur la période, toutes agences et types de service confondus.",
+    formula: "SUM(nbr_requests)",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service", "Agence", "Type de véhicule"],
+    updateFreq: FREQ,
+    calcNotes: "Inclut toutes les demandes (en cours, terminées, annulées). Le groupe TEST (company_id=9) est exclu par contrainte CHECK en base.",
+  },
+  completionRate: {
+    title: "Taux de complétion",
+    meaning: "Part des demandes de transport menées à terme avec succès sur la période sélectionnée.",
+    formula: "SUM(nbr_terminees) / SUM(nbr_requests) × 100",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Une demande est 'terminée' lorsque toutes ses livraisons sont confirmées et son statut final validé en source.",
+  },
+  cancellationRate: {
+    title: "Taux d'annulation",
+    meaning: "Part des demandes annulées sur le total reçu. La tendance est inversée : une baisse du taux s'affiche en vert.",
+    formula: "SUM(nbr_annulees) / SUM(nbr_requests) × 100",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Tendance ×(−1) : une réduction du taux d'annulation est un signal positif (vert).",
+  },
+  avgStops: {
+    title: "Arrêts moy. / demande",
+    meaning: "Nombre moyen d'arrêts (pickup + livraison) par demande de transport complétée.",
+    formula: "AVG(nbr_stops_total)\nFILTER: status = 'terminée'",
+    source: ["warehouse.fact_transport", "warehouse.dim_date"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Requête directe sur fact_transport — non disponible dans agg_transport_mensuel. Seules les demandes terminées sont incluses.",
+    warning: "Données absentes si aucune demande terminée sur la période sélectionnée.",
+  },
+  totalRevenue: {
+    title: "Revenu total",
+    meaning: "Montant total facturé aux clients pour les services de transport sur la période (DZD).",
+    formula: "SUM(total_facture_dzd)",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Montant facturé, pas nécessairement encaissé. Voir le taux de recouvrement pour les paiements effectifs.",
+  },
+  grossMargin: {
+    title: "Marge brute %",
+    meaning: "Part du revenu restante après déduction des coûts directs (carburant, assurance, manutention, distance).",
+    formula: "SUM(total_marge_brute_dzd) / SUM(total_facture_dzd) × 100",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Marge brute opérationnelle directe — exclut charges indirectes (loyers, amortissements, administratif).",
+  },
+  avgCostPerRequest: {
+    title: "Coût moy. / demande",
+    meaning: "Coût opérationnel moyen engagé par demande de transport complétée (DZD).",
+    formula: "SUM(total_cout_dzd) / SUM(nbr_terminees)",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Calculé sur les demandes terminées uniquement. Tendance ×(−1) : une baisse s'affiche en vert.",
+  },
+  costPerKm: {
+    title: "Coût / km",
+    meaning: "Coût opérationnel moyen par kilomètre parcouru — indicateur clé d'efficacité logistique.",
+    formula: "SUM(total_cout_dzd) / SUM(total_km)",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service", "Type de véhicule"],
+    updateFreq: FREQ,
+    calcNotes: "Inclut carburant, assurance, manutention et frais de distance supplémentaire. Tendance ×(−1) : une baisse s'affiche en vert.",
+  },
+  punctuality: {
+    title: "Ponctualité",
+    meaning: "Pourcentage de demandes terminées avec arrivée à l'heure ou en avance (délai ≤ 0 min).",
+    formula: "SUM(taux_ponctualite_pct × nbr_terminees) / SUM(nbr_terminees)",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Moyenne pondérée par le volume pour éviter les biais des faibles volumes d'agences.",
+    warning: "Un retard de 1 minute est comptabilisé comme non ponctuel. Seuil strict : arrivée ≤ heure prévue.",
+  },
+  avgNote: {
+    title: "Note client moy.",
+    meaning: "Satisfaction client moyenne (1 à 5) collectée après chaque demande terminée.",
+    formula: "SUM(avg_note_client × nbr_terminees) / SUM(nbr_terminees)",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Moyenne pondérée par le volume. Les demandes sans note sont exclues.",
+    warning: "Taux de notation estimé à ~72% — biais de sélection possible si les clients insatisfaits notent moins.",
+  },
+  avgCostPerPiece: {
+    title: "Coût moy. / pièce",
+    meaning: "Coût opérationnel moyen par pièce (colis/article) transportée — indicateur de productivité unitaire.",
+    formula: "SUM(total_cout_dzd) / SUM(total_pieces)",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Tendance ×(−1) : une baisse du coût unitaire s'affiche en vert.",
+  },
+  insuranceRatio: {
+    title: "Ratio assurance",
+    meaning: "Part des coûts d'assurance dans le coût total — indicateur de la structure des charges de risque.",
+    formula: "SUM(cout_assurance) / SUM(total_cout) × 100\n\n[valeur issue de l'endpoint cost_breakdown]",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Tendance ×(−1) : une hausse du ratio (risque croissant) s'affiche en rouge.",
+    warning: "Contrainte légale : cout_assurance ≥ 5 000 DZD / demande (CHECK constraint sur fact_transport). Toute demande sous ce seuil est rejetée à l'ingestion ETL.",
+  },
+};
+
+const CHART_INFO: Record<string, KpiInfo> = {
+  revenueCost: {
+    title: "Évolution Revenu vs Coût",
+    meaning: "Comparaison mensuelle du revenu facturé et du coût opérationnel sur les 12 mois de l'année sélectionnée.",
+    formula: "Revenu : SUM(total_facture_dzd)\nCoût   : SUM(total_cout_dzd)\nGROUP BY year, month_num",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Mois", "Type de service"],
+    updateFreq: FREQ,
+  },
+  requestsByStatus: {
+    title: "Demandes par statut",
+    meaning: "Répartition mensuelle des demandes : terminées, en cours, annulées.",
+    formula: "Terminées : SUM(nbr_terminees)\nEn cours  : SUM(nbr_requests) - SUM(nbr_terminees) - SUM(nbr_annulees)\nAnnulées  : SUM(nbr_annulees)",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Les demandes 'en cours' sont calculées par soustraction et incluent aussi les demandes acceptées non encore traitées.",
+  },
+  costStructure: {
+    title: "Structure des coûts",
+    meaning: "Répartition des coûts par composante : base, distance supplémentaire, assurance, carburant, manutention, autres.",
+    formula: "SUM(cout_base) + SUM(cout_distance_supp) + SUM(cout_assurance)\n+ SUM(cout_carburant) + SUM(cout_manutention) + cout_autres",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "'Autres' = total_cout − somme des composantes connues (peut inclure ajustements ou frais non catégorisés).",
+  },
+  punctualityGauge: {
+    title: "Ponctualité (jauge)",
+    meaning: "Taux de ponctualité actuel sur la période — visualisation instantanée du niveau de service.",
+    formula: "SUM(taux_ponctualite_pct × nbr_terminees) / SUM(nbr_terminees)",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Seuils couleur : rouge < 70%, orange 70-85%, vert > 85%.",
+  },
+  punctualityTrend: {
+    title: "Tendance de ponctualité",
+    meaning: "Évolution mensuelle du taux de ponctualité — détection de dégradations progressives du niveau de service.",
+    formula: "SUM(taux_ponctualite_pct × nbr_terminees) / SUM(nbr_terminees)\nGROUP BY year, month_num",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Mois", "Type de service"],
+    updateFreq: FREQ,
+  },
+  costKmTrend: {
+    title: "Tendance Coût / km",
+    meaning: "Évolution mensuelle du coût par kilomètre — suivi de l'efficacité logistique dans le temps.",
+    formula: "SUM(total_cout_dzd) / SUM(total_km)\nGROUP BY year, month_num",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Mois", "Type de service"],
+    updateFreq: FREQ,
+  },
+  delayDistribution: {
+    title: "Distribution des retards",
+    meaning: "Répartition des demandes terminées par tranche de retard à l'arrivée (5 buckets).",
+    formula: "COUNT(*) GROUP BY bucket\nBuckets : À l'heure (≤0 min), 1-15 min, 16-30 min, 31-60 min, >60 min",
+    source: ["warehouse.fact_transport", "warehouse.dim_date"],
+    dimensions: ["Année", "Mois", "Type de service"],
+    updateFreq: FREQ,
+    calcNotes: "Requête directe sur fact_transport (granularité demande). Seules les demandes au statut 'terminée' sont incluses.",
+  },
+  vehicleEfficiency: {
+    title: "Efficacité par type de véhicule",
+    meaning: "Comparaison du coût par kilomètre entre catégories de véhicules — aide à l'optimisation de la flotte.",
+    formula: "SUM(total_cout_dzd) / SUM(total_km)\nGROUP BY vehicle_type, payload_class",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois", "Type de véhicule", "Classe de charge"],
+    updateFreq: FREQ,
+  },
+  serviceBreakdown: {
+    title: "Répartition par type de service",
+    meaning: "Volume, marge, ponctualité et satisfaction par type et sous-type de service.",
+    formula: "GROUP BY service_type, sub_service_type\nMarge : SUM(marge) / SUM(revenu) × 100",
+    source: ["warehouse.agg_transport_mensuel"],
+    dimensions: ["Année", "Mois"],
+    updateFreq: FREQ,
+    calcNotes: "Couleurs marge : vert ≥ 24%, orange 20-24%, rouge < 20%. Ponctualité : vert ≥ 90%, orange 80-90%, rouge < 80%.",
+  },
+  odMatrix: {
+    title: "Matrice Origine → Destination",
+    meaning: "Flux de transport entre régions — intensité = volume de demandes, info-bulle = marge.",
+    formula: "SUM(nbr_requests) GROUP BY region_depart, region_arrivee",
+    source: ["warehouse.agg_demande_transport"],
+    dimensions: ["Année", "Mois", "Région départ", "Région arrivée"],
+    updateFreq: FREQ,
+    calcNotes: "Source différente des autres charts : agg_demande_transport (grain : wilaya × wilaya × service × client).",
+    warning: "Des marges uniformes entre régions peuvent refléter une formule de pricing standardisée dans les données source.",
+  },
+  corridors: {
+    title: "Top Corridors (par volume)",
+    meaning: "Classement des paires Origine-Destination par volume, avec marge, distance et coût unitaire.",
+    formula: "GROUP BY wilaya_depart, wilaya_arrivee\nTrié par SUM(nbr_requests) DESC\nLIMIT 10",
+    source: ["warehouse.agg_demande_transport"],
+    dimensions: ["Année", "Mois", "Type de service", "Type de client"],
+    updateFreq: FREQ,
+    calcNotes: "Relation : Revenu ≈ Demandes × Dist_moy × DZD/km. Les 10 premiers corridors sont affichés.",
+  },
+};
 // MONTHS, SERVICE_TYPES, COST_LABELS, REGION_ORDER are built inside the component from translations
 
 // ─── Chart theme type ─────────────────────────────────────────────────────────
@@ -114,10 +333,26 @@ function Select({
   );
 }
 
-function SectionCard({ title, children, className = "" }: { title: string; children: React.ReactNode; className?: string }) {
+function SectionCard({ title, children, className = "", onInfoClick }: {
+  title: string;
+  children: React.ReactNode;
+  className?: string;
+  onInfoClick?: () => void;
+}) {
   return (
     <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 ${className}`}>
-      <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">{title}</h3>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h3>
+        {onInfoClick && (
+          <button
+            onClick={onInfoClick}
+            className="p-1.5 rounded-lg text-[var(--text-muted)] hover:text-[var(--text-secondary)] hover:bg-[var(--surface-secondary)] transition-colors"
+            aria-label="Informations"
+          >
+            <Info size={13} />
+          </button>
+        )}
+      </div>
       {children}
     </div>
   );
@@ -293,6 +528,7 @@ export default function TransportPage() {
   const [loading, setLoading] = useState(true);
   const [usingMock, setUsingMock] = useState(false);
   const [data, setData] = useState<PageData>(MOCK_DATA);
+  const [activeInfo, setActiveInfo] = useState<KpiInfo | null>(null);
 
   const { t } = useTranslation();
   const p = t.pages.transport;
@@ -451,34 +687,34 @@ export default function TransportPage() {
 
       {/* ── Volume & Fulfillment ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title={p.kpiTotalRequests}    value={formatNumber(cur.total_requests)}                    trend={d.mom_requests}          trendLabel={trendLabel} icon={<Truck size={16} />}       index={0} />
-        <KpiCard title={p.kpiCompletionRate}   value={formatPercent(d.completion_rate)}                    trend={d.mom_completion_rate}   trendLabel={trendLabel} icon={<PackageCheck size={16} />} index={1} />
-        <KpiCard title={p.kpiCancellationRate} value={formatPercent(d.cancellation_rate)}                  trend={d.mom_cancellation_rate} trendLabel={trendLabel} icon={<Ban size={16} />}          index={2} />
-        <KpiCard title={p.kpiAvgStops}         value={cur.avg_arrets_par_demande?.toFixed(1) ?? "—"}      trend={d.mom_avg_arrets}        trendLabel={trendLabel} icon={<Route size={16} />}        index={3} />
+        <KpiCard title={p.kpiTotalRequests}    value={formatNumber(cur.total_requests)}                 trend={d.mom_requests}          trendLabel={trendLabel} icon={<Truck size={16} />}        index={0}  onInfoClick={() => setActiveInfo(KPI_INFO.totalRequests)} />
+        <KpiCard title={p.kpiCompletionRate}   value={formatPercent(d.completion_rate)}                 trend={d.mom_completion_rate}   trendLabel={trendLabel} icon={<PackageCheck size={16} />}  index={1}  onInfoClick={() => setActiveInfo(KPI_INFO.completionRate)} />
+        <KpiCard title={p.kpiCancellationRate} value={formatPercent(d.cancellation_rate)}               trend={d.mom_cancellation_rate} trendLabel={trendLabel} icon={<Ban size={16} />}           index={2}  onInfoClick={() => setActiveInfo(KPI_INFO.cancellationRate)} />
+        <KpiCard title={p.kpiAvgStops}         value={cur.avg_arrets_par_demande?.toFixed(1) ?? "—"}   trend={d.mom_avg_arrets}        trendLabel={trendLabel} icon={<Route size={16} />}         index={3}  onInfoClick={() => setActiveInfo(KPI_INFO.avgStops)} />
       </div>
 
       {/* ── Revenue & Cost Efficiency ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title={p.kpiTotalRevenue}      value={formatDZD(cur.total_revenue)}         trend={d.mom_revenue}               trendLabel={trendLabel} icon={<DollarSign size={16} />} index={4} />
-        <KpiCard title={p.kpiGrossMargin}       value={formatPercent(d.gross_margin_pct)}    trend={d.mom_margin}                trendLabel={trendLabel} icon={<TrendingUp size={16} />} index={5} />
-        <KpiCard title={p.kpiAvgCostPerRequest} value={formatDZD(cur.avg_cout_par_demande)} trend={d.mom_avg_cout_par_demande}  trendLabel={trendLabel} icon={<DollarSign size={16} />} index={6} />
-        <KpiCard title={p.kpiCostPerKm}         value={`${d.cost_per_km} DZD`}              trend={d.mom_cost_per_km}           trendLabel={trendLabel} icon={<Route size={16} />}      index={7} />
+        <KpiCard title={p.kpiTotalRevenue}      value={formatDZD(cur.total_revenue)}          trend={d.mom_revenue}              trendLabel={trendLabel} icon={<DollarSign size={16} />} index={4}  onInfoClick={() => setActiveInfo(KPI_INFO.totalRevenue)} />
+        <KpiCard title={p.kpiGrossMargin}       value={formatPercent(d.gross_margin_pct)}     trend={d.mom_margin}               trendLabel={trendLabel} icon={<TrendingUp size={16} />} index={5}  onInfoClick={() => setActiveInfo(KPI_INFO.grossMargin)} />
+        <KpiCard title={p.kpiAvgCostPerRequest} value={formatDZD(cur.avg_cout_par_demande)}  trend={d.mom_avg_cout_par_demande} trendLabel={trendLabel} icon={<DollarSign size={16} />} index={6}  onInfoClick={() => setActiveInfo(KPI_INFO.avgCostPerRequest)} />
+        <KpiCard title={p.kpiCostPerKm}         value={`${d.cost_per_km} DZD`}               trend={d.mom_cost_per_km}          trendLabel={trendLabel} icon={<Route size={16} />}      index={7}  onInfoClick={() => setActiveInfo(KPI_INFO.costPerKm)} />
       </div>
 
       {/* ── Quality & Cost Structure ── */}
       <div className="grid grid-cols-2 xl:grid-cols-4 gap-4">
-        <KpiCard title={p.kpiPunctuality}     value={formatPercent(cur.avg_ponctualite_pct)} trend={d.mom_on_time}            trendLabel={trendLabel} icon={<Gauge size={16} />}      index={8} />
-        <KpiCard title={p.kpiAvgNote}         value={cur.avg_note_client?.toFixed(1) ?? "—"} trend={d.mom_avg_note}           trendLabel={trendLabel} icon={<Star size={16} />}       index={9} />
-        <KpiCard title={p.kpiAvgCostPerPiece} value={formatDZD(cur.avg_cout_par_piece)}      trend={d.mom_avg_cout_par_piece} trendLabel={trendLabel} icon={<DollarSign size={16} />} index={10} />
-        <KpiCard title={p.kpiInsuranceRatio}  value={formatPercent(insuranceRatio)}          trend={d.mom_insurance_ratio}    trendLabel={trendLabel} icon={<TrendingUp size={16} />} index={11} />
+        <KpiCard title={p.kpiPunctuality}     value={formatPercent(cur.avg_ponctualite_pct)}  trend={d.mom_on_time}            trendLabel={trendLabel} icon={<Gauge size={16} />}       index={8}  onInfoClick={() => setActiveInfo(KPI_INFO.punctuality)} />
+        <KpiCard title={p.kpiAvgNote}         value={cur.avg_note_client?.toFixed(1) ?? "—"}  trend={d.mom_avg_note}           trendLabel={trendLabel} icon={<Star size={16} />}        index={9}  onInfoClick={() => setActiveInfo(KPI_INFO.avgNote)} />
+        <KpiCard title={p.kpiAvgCostPerPiece} value={formatDZD(cur.avg_cout_par_piece)}       trend={d.mom_avg_cout_par_piece} trendLabel={trendLabel} icon={<DollarSign size={16} />}  index={10} onInfoClick={() => setActiveInfo(KPI_INFO.avgCostPerPiece)} />
+        <KpiCard title={p.kpiInsuranceRatio}  value={formatPercent(insuranceRatio)}           trend={d.mom_insurance_ratio}    trendLabel={trendLabel} icon={<TrendingUp size={16} />}  index={11} onInfoClick={() => setActiveInfo(KPI_INFO.insuranceRatio)} />
       </div>
 
       {/* ── Trends: Revenue vs Cost + Requests by Status ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title={p.sectionRevenueCost}>
+        <SectionCard title={p.sectionRevenueCost} onInfoClick={() => setActiveInfo(CHART_INFO.revenueCost)}>
           {loading ? <Skeleton /> : <AreaChart data={areaData} height={280} />}
         </SectionCard>
-        <SectionCard title={p.sectionRequestsByStatus}>
+        <SectionCard title={p.sectionRequestsByStatus} onInfoClick={() => setActiveInfo(CHART_INFO.requestsByStatus)}>
           {loading ? <Skeleton /> : (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
               <ReactECharts
@@ -493,18 +729,18 @@ export default function TransportPage() {
 
       {/* ── Cost breakdown + On-time gauge ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title={p.sectionCostStructure}>
+        <SectionCard title={p.sectionCostStructure} onInfoClick={() => setActiveInfo(CHART_INFO.costStructure)}>
           {loading ? <Skeleton /> : <PieChart data={costDonutData} height={280} />}
         </SectionCard>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <SectionCard title={p.sectionCurrentPunctuality}>
+          <SectionCard title={p.sectionCurrentPunctuality} onInfoClick={() => setActiveInfo(CHART_INFO.punctualityGauge)}>
             {loading ? <Skeleton h="h-full" /> : (
               <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.6 }}>
                 <ReactECharts option={buildOnTimeGaugeOption(cur.avg_ponctualite_pct, p.kpiPunctuality, ct)} style={{ height: 220 }} notMerge />
               </motion.div>
             )}
           </SectionCard>
-          <SectionCard title={p.sectionPunctualityTrend}>
+          <SectionCard title={p.sectionPunctualityTrend} onInfoClick={() => setActiveInfo(CHART_INFO.punctualityTrend)}>
             {loading ? <Skeleton h="h-full" /> : (
               <LineChart
                 categories={onTimeTrend.categories}
@@ -519,7 +755,7 @@ export default function TransportPage() {
 
       {/* ── Unit cost trend + Delay histogram ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title={p.sectionCostKmTrend}>
+        <SectionCard title={p.sectionCostKmTrend} onInfoClick={() => setActiveInfo(CHART_INFO.costKmTrend)}>
           {loading ? <Skeleton /> : (
             <LineChart
               categories={costKmTrend.categories}
@@ -529,7 +765,7 @@ export default function TransportPage() {
             />
           )}
         </SectionCard>
-        <SectionCard title={p.sectionDelayDistribution}>
+        <SectionCard title={p.sectionDelayDistribution} onInfoClick={() => setActiveInfo(CHART_INFO.delayDistribution)}>
           {loading ? <Skeleton /> : (
             <BarChart
               data={delayBarData}
@@ -543,7 +779,7 @@ export default function TransportPage() {
 
       {/* ── Vehicle efficiency + Service breakdown ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title={p.sectionVehicleEfficiency}>
+        <SectionCard title={p.sectionVehicleEfficiency} onInfoClick={() => setActiveInfo(CHART_INFO.vehicleEfficiency)}>
           {loading ? <Skeleton /> : (
             <BarChart
               data={vehicleBarData}
@@ -554,7 +790,7 @@ export default function TransportPage() {
             />
           )}
         </SectionCard>
-        <SectionCard title={p.sectionServiceBreakdown}>
+        <SectionCard title={p.sectionServiceBreakdown} onInfoClick={() => setActiveInfo(CHART_INFO.serviceBreakdown)}>
           {loading ? <Skeleton /> : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -607,7 +843,7 @@ export default function TransportPage() {
       </div>
 
       {/* ── OD Matrix ── */}
-      <SectionCard title={p.sectionODMatrix}>
+      <SectionCard title={p.sectionODMatrix} onInfoClick={() => setActiveInfo(CHART_INFO.odMatrix)}>
         <div className="flex items-start gap-8">
           {loading ? <div className="flex-1 h-64 bg-[var(--surface-secondary)] animate-pulse rounded-lg" /> : (
             <motion.div className="flex-1" initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.5 }}>
@@ -637,12 +873,13 @@ export default function TransportPage() {
       </SectionCard>
 
       {/* ── Top corridors table ── */}
-      <SectionCard title={p.sectionCorridors}>
+      <SectionCard title={p.sectionCorridors} onInfoClick={() => setActiveInfo(CHART_INFO.corridors)}>
         {loading ? <Skeleton h="h-48" /> : (
           <DataTable columns={corridorCols} data={corridors} />
         )}
       </SectionCard>
 
+      <InfoPanel info={activeInfo} onClose={() => setActiveInfo(null)} />
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { TrendingUp, TrendingDown } from "lucide-react";
+import { TrendingUp, TrendingDown, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface KpiCardProps {
@@ -11,9 +11,10 @@ interface KpiCardProps {
   trendLabel?: string;
   icon?: React.ReactNode;
   index?: number;
+  onInfoClick?: () => void;
 }
 
-export function KpiCard({ title, value, trend, trendLabel, icon, index = 0 }: KpiCardProps) {
+export function KpiCard({ title, value, trend, trendLabel, icon, index = 0, onInfoClick }: KpiCardProps) {
   const hasTrend = trend !== undefined && trend !== null;
   const isPositive = hasTrend && (trend as number) >= 0;
 
@@ -22,13 +23,22 @@ export function KpiCard({ title, value, trend, trendLabel, icon, index = 0 }: Kp
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ duration: 0.4, delay: index * 0.08, ease: "easeOut" }}
-      className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 flex flex-col gap-3 hover:border-primary/40 transition-colors"
+      className={cn(
+        "bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 flex flex-col gap-3 hover:border-primary/40 transition-colors relative group",
+        onInfoClick && "cursor-pointer"
+      )}
+      onClick={onInfoClick}
     >
       <div className="flex items-start justify-between">
-        <p className="text-sm text-[var(--text-secondary)] font-medium">{title}</p>
-        {icon && (
-          <div className="p-2 rounded-lg bg-primary/10 text-primary">{icon}</div>
-        )}
+        <p className="text-sm text-[var(--text-secondary)] font-medium pr-2">{title}</p>
+        <div className="flex items-center gap-1.5 shrink-0">
+          {onInfoClick && (
+            <Info size={11} className="text-[var(--text-muted)] opacity-0 group-hover:opacity-60 transition-opacity" />
+          )}
+          {icon && (
+            <div className="p-2 rounded-lg bg-primary/10 text-primary">{icon}</div>
+          )}
+        </div>
       </div>
 
       <p className="text-2xl font-bold text-[var(--text-primary)]">{value}</p>
