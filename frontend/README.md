@@ -42,6 +42,19 @@ npm run lint    # ESLint check via next lint
 | `/admin/roles` | Role CRUD |
 | `/admin/etl` | ETL run history and data freshness |
 
+## Logos
+
+Brand assets live in `public/assets/logos/`. Drop the final SVG files there — the filenames are already in place:
+
+| File | Usage |
+|---|---|
+| `Logo + LOGIQ Dark.svg` | Full wordmark — dark backgrounds |
+| `Logo + LOGIQ Light.svg` | Full wordmark — light backgrounds |
+| `Logo Only Dark.svg` | Icon mark only — dark backgrounds (favicon, sidebar collapsed) |
+| `Logo Only Light.svg` | Icon mark only — light backgrounds |
+
+Reference in code: `/assets/logos/Logo + LOGIQ Dark.svg` (served from `public/`).
+
 ## Key Libraries
 
 | Library | Version | Role |

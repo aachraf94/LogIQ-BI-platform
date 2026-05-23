@@ -18,6 +18,8 @@ import {
   Database,
 } from 'lucide-react'
 import { useState } from 'react'
+import { useTheme } from 'next-themes'
+import Image from 'next/image'
 import { useAuthStore } from '@/stores/authStore'
 import { useTranslation } from '@/lib/i18n'
 import { cn } from '@/lib/utils'
@@ -81,6 +83,8 @@ export function Sidebar() {
   const [collapsed, setCollapsed] = useState(false)
   const { user } = useAuthStore()
   const { t, isRTL } = useTranslation()
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme !== 'light'
 
   const accessibleDashboards = user?.accessible_dashboards ?? []
   const isSuperAdmin = user?.is_superuser ?? false
@@ -102,20 +106,27 @@ export function Sidebar() {
     >
       {/* Logo */}
       <div className="h-16 flex items-center px-4 border-b border-[var(--border)] shrink-0">
-        <div className="flex items-center gap-3 min-w-0">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <span className="text-white font-bold text-sm">L</span>
-          </div>
-          {!collapsed && (
-            <motion.span
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              className="text-[var(--text-primary)] font-bold text-lg tracking-tight"
-            >
-              LOGIQ
-            </motion.span>
-          )}
-        </div>
+        {collapsed ? (
+          <Image
+            src={isDark ? '/assets/logos/Logo Only Dark.svg' : '/assets/logos/Logo Only Light.svg'}
+            alt="LOGIQ"
+            width={36}
+            height={36}
+            className="shrink-0"
+            priority
+          />
+        ) : (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <Image
+              src={isDark ? '/assets/logos/Logo + LOGIQ Dark.svg' : '/assets/logos/Logo + LOGIQ Light.svg'}
+              alt="LOGIQ"
+              width={120}
+              height={36}
+              className="object-contain"
+              priority
+            />
+          </motion.div>
+        )}
       </div>
 
       {/* Main nav */}

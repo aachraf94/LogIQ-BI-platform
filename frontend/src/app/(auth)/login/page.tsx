@@ -4,12 +4,16 @@ import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { motion } from 'framer-motion'
 import { Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react'
+import { useTheme } from 'next-themes'
+import Image from 'next/image'
 import { authApi, saveTokens, ApiError } from '@/lib/api'
 import { useAuthStore } from '@/stores/authStore'
 
 export default function LoginPage() {
   const router = useRouter()
   const setAuth = useAuthStore((s) => s.setAuth)
+  const { resolvedTheme } = useTheme()
+  const isDark = resolvedTheme !== 'light'
 
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -53,10 +57,14 @@ export default function LoginPage() {
       <div className="relative bg-[var(--surface)] border border-[var(--border)] rounded-2xl p-8 shadow-2xl">
         {/* Logo */}
         <div className="flex flex-col items-center mb-8">
-          <div className="w-14 h-14 rounded-2xl bg-primary flex items-center justify-center mb-4 shadow-lg shadow-primary/30">
-            <span className="text-white font-black text-2xl">L</span>
-          </div>
-          <h1 className="text-2xl font-bold text-[var(--text-primary)]">LOGIQ</h1>
+          <Image
+            src={isDark ? '/assets/logos/Logo Only Dark.svg' : '/assets/logos/Logo Only Light.svg'}
+            alt="LOGIQ"
+            width={72}
+            height={72}
+            className="mb-4"
+            priority
+          />
           <p className="text-slate-400 text-sm mt-1">Logistics Intelligence Platform</p>
         </div>
 
