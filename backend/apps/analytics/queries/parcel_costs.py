@@ -378,8 +378,8 @@ def get_pcc_summary(year=None, month=None, company_id=None, agence_id=None,
             COALESCE(SUM(total_fees_dzd), 0)                                            AS total_fees,
             COALESCE(SUM(total_tarif_theorique_dzd), 0)                                 AS total_tarif_theorique,
             COALESCE(SUM(total_ecart_dzd), 0)                                           AS total_ecart_dzd,
-            ROUND(COALESCE(AVG(avg_ecart_dzd), 0), 2)                                  AS avg_ecart_dzd,
-            ROUND(COALESCE(AVG(avg_ecart_absolu_dzd), 0), 2)                           AS avg_ecart_absolu_dzd,
+            ROUND(COALESCE(SUM(total_ecart_dzd), 0) / NULLIF(SUM(nbr_avec_tarif), 0), 2) AS avg_ecart_dzd,
+            ROUND(COALESCE(AVG(avg_ecart_absolu_dzd), 0), 2)                             AS avg_ecart_absolu_dzd,
             ROUND(
                 SUM(nbr_sous_tarif) * 100.0 / NULLIF(SUM(nbr_avec_tarif), 0),
                 2
@@ -441,7 +441,7 @@ def get_pcc_by_agency(year=None, month=None, region=None, delivery_type=None,
                 SUM(nbr_sous_tarif) * 100.0 / NULLIF(SUM(nbr_avec_tarif), 0),
                 2
             )                                                                           AS taux_sous_tarif_pct,
-            ROUND(AVG(avg_ecart_dzd), 2)                                               AS avg_ecart_dzd
+            ROUND(SUM(total_ecart_dzd) / NULLIF(SUM(nbr_avec_tarif), 0), 2)           AS avg_ecart_dzd
         FROM warehouse.agg_profitabilite_colis
         WHERE agence_id IS NOT NULL {w}
         GROUP BY agence_id, agence_name, wilaya_name, region
@@ -755,7 +755,7 @@ def get_by_delivery_type(year=None, month=None, agence_id=None):
             SUM(nbr_livres)                                                             AS nbr_livres,
             SUM(nbr_retours)                                                            AS nbr_retours,
             SUM(total_fees_dzd)                                                         AS total_fees,
-            ROUND(AVG(avg_fee_dzd), 2)                                                  AS avg_fee_dzd,
+            ROUND(SUM(total_fees_dzd) / NULLIF(SUM(nbr_colis_total), 0), 2)            AS avg_fee_dzd,
             ROUND(
                 SUM(nbr_livres) * 100.0 / NULLIF(SUM(nbr_colis_total), 0),
                 2
