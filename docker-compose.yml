@@ -121,6 +121,7 @@ services:
       - WAREHOUSE_DB_PASSWORD=${WAREHOUSE_DB_PASSWORD}
       # Both Dagster and Backend reach mock-datasources via the shared Docker network.
       - API_BASE_URL=http://mock-datasources:8000
+      - BACKEND_URL=http://backend:8000
       - YALIDINE_API_ID=${YALIDINE_API_ID}
       - YALIDINE_API_TOKEN=${YALIDINE_API_TOKEN}
       - HRFORCE_API_TOKEN=${HRFORCE_API_TOKEN}
@@ -128,6 +129,11 @@ services:
       - PAIE_API_TOKEN=${PAIE_API_TOKEN}
       - TRANSPORT_API_TOKEN=${TRANSPORT_API_TOKEN}
       - DAGSTER_WEBHOOK_TOKEN=${DAGSTER_WEBHOOK_TOKEN}
+    volumes:
+      # Persist Dagster run history and schedule state across image rebuilds.
+      # dagster.yaml stays in the image so config changes apply on next build.
+      - dagster_storage:/app/dagster_home/storage
+      - dagster_schedules:/app/dagster_home/schedules
     ports:
       - "3000:3000"
     depends_on:
@@ -135,6 +141,8 @@ services:
         condition: service_healthy
       warehouse-db:
         condition: service_healthy
+      backend:
+        condition: service_started
 
   # NEXT_PUBLIC_API_URL is baked into the JS bundle at build time by Next.js.
   # Changing it requires rebuilding the image: docker compose up --build -d frontend
@@ -151,6 +159,8 @@ services:
 volumes:
   platform_db_data:
   warehouse_db_data:
+  dagster_storage:
+  dagster_schedules:
 
 networks:
   default:

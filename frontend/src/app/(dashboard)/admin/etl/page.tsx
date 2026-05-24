@@ -12,16 +12,16 @@ import { useTranslation } from '@/lib/i18n'
 
 const STATUS_ICON: Record<ETLStatus, React.ReactNode> = {
   success: <CheckCircle size={15} className="text-emerald-400" />,
-  failure: <XCircle size={15} className="text-red-400" />,
+  failed: <XCircle size={15} className="text-red-400" />,
   running: <Loader size={15} className="text-amber-400 animate-spin" />,
-  partial: <AlertTriangle size={15} className="text-amber-400" />,
+  cancelled: <AlertTriangle size={15} className="text-slate-400" />,
 }
 
 const STATUS_COLOR: Record<ETLStatus, string> = {
   success: 'bg-emerald-500/10 text-emerald-400',
-  failure: 'bg-red-500/10 text-red-400',
+  failed: 'bg-red-500/10 text-red-400',
   running: 'bg-amber-500/10 text-amber-400',
-  partial: 'bg-amber-500/10 text-amber-400',
+  cancelled: 'bg-slate-500/10 text-slate-400',
 }
 
 function formatDuration(seconds: number | null): string {
@@ -147,10 +147,10 @@ export default function AdminEtlPage() {
       {/* Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {[
-          { label: pe.labelTotal,   value: runs.length,           color: 'text-[var(--text-primary)]' },
+          { label: pe.labelTotal,     value: runs.length,             color: 'text-[var(--text-primary)]' },
           { label: pe.labelSuccess, value: counts.success ?? 0,   color: 'text-emerald-400' },
-          { label: pe.labelFailed,  value: counts.failure ?? 0,   color: 'text-red-400' },
-          { label: pe.labelPartial, value: counts.partial ?? 0,   color: 'text-amber-400' },
+          { label: pe.labelFailed,  value: counts.failed ?? 0,    color: 'text-red-400' },
+          { label: pe.labelPartial, value: counts.cancelled ?? 0, color: 'text-slate-400' },
         ].map((s) => (
           <div key={s.label} className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
             <p className="text-xs text-slate-400">{s.label}</p>
@@ -165,9 +165,9 @@ export default function AdminEtlPage() {
           className="bg-[var(--surface)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-primary">
           <option value="">{pe.statusAll}</option>
           <option value="success">{pe.statusSuccess}</option>
-          <option value="failure">{pe.statusFailure}</option>
+          <option value="failed">{pe.statusFailure}</option>
           <option value="running">{pe.statusRunning}</option>
-          <option value="partial">{pe.statusPartial}</option>
+          <option value="cancelled">{pe.statusPartial}</option>
         </select>
         {jobNames.length > 1 && (
           <select value={jobFilter} onChange={(e) => setJobFilter(e.target.value)}

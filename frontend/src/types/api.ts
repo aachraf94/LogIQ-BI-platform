@@ -141,7 +141,7 @@ export interface Alert {
 
 // ─── ETL ──────────────────────────────────────────────────────────────────────
 
-export type ETLStatus = 'running' | 'success' | 'failure' | 'partial'
+export type ETLStatus = 'running' | 'success' | 'failed' | 'cancelled'
 
 export interface ETLRun {
   id: number
