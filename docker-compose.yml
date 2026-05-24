@@ -64,6 +64,13 @@ services:
       - SUPERADMIN_USERNAME=${SUPERADMIN_USERNAME}
       - SUPERADMIN_EMAIL=${SUPERADMIN_EMAIL}
       - SUPERADMIN_PASSWORD=${SUPERADMIN_PASSWORD}
+      - EMAIL_BACKEND=${EMAIL_BACKEND:-django.core.mail.backends.smtp.EmailBackend}
+      - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-true}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-LOGIQ Platform <noreply@logiq.space>}
     ports:
       - "8000:8000"
     depends_on:
@@ -97,6 +104,13 @@ services:
       - API_BASE_URL=http://mock-datasources:8000
       - HRFORCE_API_TOKEN=${HRFORCE_API_TOKEN}
       - DAGSTER_WEBHOOK_TOKEN=${DAGSTER_WEBHOOK_TOKEN}
+      - EMAIL_BACKEND=${EMAIL_BACKEND:-django.core.mail.backends.smtp.EmailBackend}
+      - EMAIL_HOST=${EMAIL_HOST:-smtp.gmail.com}
+      - EMAIL_PORT=${EMAIL_PORT:-587}
+      - EMAIL_USE_TLS=${EMAIL_USE_TLS:-true}
+      - EMAIL_HOST_USER=${EMAIL_HOST_USER}
+      - EMAIL_HOST_PASSWORD=${EMAIL_HOST_PASSWORD}
+      - DEFAULT_FROM_EMAIL=${DEFAULT_FROM_EMAIL:-LOGIQ Platform <noreply@logiq.space>}
     depends_on:
       platform-db:
         condition: service_healthy

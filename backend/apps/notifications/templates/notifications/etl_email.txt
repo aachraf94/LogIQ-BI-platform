@@ -1,0 +1,22 @@
+LOGIQ Platform — Notification ETL
+===================================
+
+{{ title }}
+
+Pipeline : {{ job_name }}
+Statut   : {{ status_label }}
+{% if duration %}Durée    : {{ duration }}
+{% endif %}{% if total_rows_formatted %}Lignes   : {{ total_rows_formatted }}
+{% endif %}
+{% if error_message %}
+──────────────────────────────────
+ERREUR
+──────────────────────────────────
+{{ error_message }}
+
+{% endif %}
+──────────────────────────────────
+Vous recevez cet email car les notifications ETL sont activées dans vos préférences.
+Pour les désactiver : Paramètres → Notifications.
+
+© {{ current_year }} LOGIQ Platform · Yalidine Express

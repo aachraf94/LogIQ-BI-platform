@@ -68,13 +68,15 @@ class ETLWebhookView(APIView):
             },
         )
 
-        # Notify users when a run completes (success or failure)
-        if data["status"] in ("success", "failed") and data.get("duration_seconds"):
+        # Notify users when a run reaches a terminal state
+        if data["status"] in ("success", "failed", "cancelled"):
             from apps.notifications.tasks import notify_etl_complete
             notify_etl_complete.delay(
                 job_name=data["job_name"],
-                duration_seconds=data["duration_seconds"],
-                success=(data["status"] == "success"),
+                status=data["status"],
+                duration_seconds=data.get("duration_seconds"),
+                total_rows=data.get("total_rows_loaded", 0),
+                error_message=data.get("error_message", ""),
             )
 
         return Response(

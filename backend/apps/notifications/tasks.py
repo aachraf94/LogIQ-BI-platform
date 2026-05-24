@@ -154,34 +154,120 @@ def evaluate_alert_rules(self):
     return {"evaluated": rules.count(), "fired": fired}
 
 
+_ETL_STATUS_META = {
+    "success":   ("✅", "terminé avec succès", "#10b981", "#052e16"),
+    "failed":    ("❌", "échoué",              "#ef4444", "#200a0a"),
+    "cancelled": ("⚠️", "annulé",             "#6b7280", "#1c1c1e"),
+}
+
+
+def _format_duration(seconds: int | None) -> str:
+    if not seconds:
+        return ""
+    m, s = divmod(seconds, 60)
+    return f"{m}m {s}s" if m else f"{s}s"
+
+
 @shared_task(name="apps.notifications.tasks.notify_etl_complete")
-def notify_etl_complete(job_name: str, duration_seconds: int, success: bool):
+def notify_etl_complete(
+    job_name: str,
+    status: str,
+    duration_seconds: int | None = None,
+    total_rows: int = 0,
+    error_message: str = "",
+):
     """
-    Called by Dagster (or a webhook) after an ETL run completes.
-    Sends an in-app notification to users who opted in.
+    Dispatch ETL run completion notifications via in-app and/or email channels
+    based on each active user's notification preferences.
+
+    Channels:
+    - notif_in_app=True  → creates a Notification row (picked up by the SSE stream)
+    - notif_email=True   → sends an email via the configured EMAIL_BACKEND
+    Both require notif_etl_status=True.
     """
+    from datetime import datetime
+
+    from django.conf import settings
+    from django.core.mail import EmailMultiAlternatives
+    from django.template.loader import render_to_string
+
     from apps.notifications.models import Notification
     from apps.users.models import User
 
-    icon = "✅" if success else "❌"
-    status_label = "terminé avec succès" if success else "échoué"
-    title = f"{icon} ETL {job_name} {status_label}"
-    message = f"Le pipeline «{job_name}» s'est {status_label} en {duration_seconds}s."
-
-    target_users = User.objects.filter(
-        is_active=True,
-        preferences__notif_etl_status=True,
+    icon, status_label, status_color, status_bg_color = _ETL_STATUS_META.get(
+        status, ("🔔", status, "#6366f1", "#1e1b4b")
     )
-    notifications = [
-        Notification(
-            user=user,
-            notification_type="etl",
-            title=title,
-            message=message,
-            metadata={"job": job_name, "success": success, "duration_s": duration_seconds},
-        )
-        for user in target_users
-    ]
-    if notifications:
-        Notification.objects.bulk_create(notifications)
-    logger.info("ETL notification sent to %d user(s).", len(notifications))
+    title = f"{icon} ETL {job_name} {status_label}"
+
+    parts = [f"Le pipeline «{job_name}» s'est {status_label}."]
+    if duration_seconds:
+        parts.append(f"Durée : {_format_duration(duration_seconds)}.")
+    if total_rows:
+        parts.append(f"Lignes chargées : {total_rows:,}.")
+    if error_message and status == "failed":
+        parts.append(f"Erreur : {error_message[:500]}")
+    plain_message = " ".join(parts)
+
+    template_ctx = {
+        "title": title,
+        "job_name": job_name,
+        "status": status,
+        "status_label": status_label,
+        "status_color": status_color,
+        "status_bg_color": status_bg_color,
+        "status_icon": icon,
+        "duration": _format_duration(duration_seconds),
+        "total_rows_formatted": f"{total_rows:,}" if total_rows else "",
+        "error_message": error_message[:600] if error_message and status == "failed" else "",
+        "current_year": datetime.now().year,
+    }
+
+    target_users = list(
+        User.objects.filter(is_active=True, preferences__notif_etl_status=True)
+        .select_related("preferences")
+    )
+
+    in_app_batch = []
+    emails_sent = 0
+
+    for user in target_users:
+        prefs = user.preferences
+
+        if prefs.notif_in_app:
+            in_app_batch.append(Notification(
+                user=user,
+                notification_type="etl",
+                title=title,
+                message=plain_message,
+                metadata={
+                    "job": job_name,
+                    "status": status,
+                    "duration_s": duration_seconds,
+                    "total_rows": total_rows,
+                },
+            ))
+
+        if prefs.notif_email and user.email:
+            try:
+                email = EmailMultiAlternatives(
+                    subject=f"[LOGIQ ETL] {job_name} — {status_label.capitalize()}",
+                    body=render_to_string("notifications/etl_email.txt", template_ctx),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[user.email],
+                )
+                email.attach_alternative(
+                    render_to_string("notifications/etl_email.html", template_ctx),
+                    "text/html",
+                )
+                email.send(fail_silently=False)
+                emails_sent += 1
+            except Exception as exc:
+                logger.warning("ETL email failed for %s: %s", user.email, exc)
+
+    if in_app_batch:
+        Notification.objects.bulk_create(in_app_batch)
+
+    logger.info(
+        "ETL '%s' [%s] — in-app: %d, email: %d",
+        job_name, status, len(in_app_batch), emails_sent,
+    )
