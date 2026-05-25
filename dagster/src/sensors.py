@@ -11,7 +11,6 @@ import requests
 from dagster import (
     DagsterEventType,
     DagsterRunStatus,
-    EventRecordsFilter,
     RunFailureSensorContext,
     RunStatusSensorContext,
     run_failure_sensor,
@@ -59,14 +58,13 @@ def _collect_row_counts(context: RunStatusSensorContext, run_id: str) -> dict:
     """Extract row_count metadata from every ASSET_MATERIALIZATION event in the run."""
     assets: dict[str, int] = {}
     try:
-        records = context.instance.get_event_records(
-            EventRecordsFilter(
-                event_type=DagsterEventType.ASSET_MATERIALIZATION,
-                run_id=run_id,
-            )
-        )
-        for r in records:
-            mat = r.event_log_entry.dagster_event.asset_materialization
+        # instance.all_logs() is the correct API for fetching events by run_id in
+        # Dagster 1.9+ — EventRecordsFilter dropped the run_id parameter in that version.
+        logs = context.instance.all_logs(run_id, of_type=DagsterEventType.ASSET_MATERIALIZATION)
+        for log_entry in logs:
+            mat = log_entry.dagster_event.asset_materialization
+            if mat is None:
+                continue
             name = mat.asset_key.path[-1]
             rc = mat.metadata.get("row_count")
             if rc is not None:
