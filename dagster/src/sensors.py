@@ -85,15 +85,26 @@ def _user_tags(run) -> dict:
 # Sensors
 # ---------------------------------------------------------------------------
 
+def _get_stats(context, run_id):
+    """Return (start_time, end_time) floats from the run stats. Never raises."""
+    try:
+        stats = context.instance.get_run_stats(run_id)
+        return stats.start_time, stats.end_time
+    except Exception as exc:
+        logger.warning("Could not fetch run stats for %s: %s", run_id, exc)
+        return None, None
+
+
 @run_status_sensor(run_status=DagsterRunStatus.STARTED, name="etl_started_sensor")
 def etl_started_sensor(context: RunStatusSensorContext):
     run = context.dagster_run
+    start_time, _ = _get_stats(context, run.run_id)
     _post_webhook({
         "dagster_run_id": run.run_id,
         "job_name": run.job_name,
         "status": "running",
         "triggered_by": _triggered_by(run),
-        "started_at": _to_iso(run.start_time) or datetime.now(tz=timezone.utc).isoformat(),
+        "started_at": _to_iso(start_time) or datetime.now(tz=timezone.utc).isoformat(),
         "tags": _user_tags(run),
     })
 
@@ -102,18 +113,15 @@ def etl_started_sensor(context: RunStatusSensorContext):
 def etl_success_sensor(context: RunStatusSensorContext):
     run = context.dagster_run
     assets = _collect_row_counts(context, run.run_id)
-    duration = (
-        int(run.end_time - run.start_time)
-        if run.start_time and run.end_time
-        else None
-    )
+    start_time, end_time = _get_stats(context, run.run_id)
+    duration = int(end_time - start_time) if start_time and end_time else None
     _post_webhook({
         "dagster_run_id": run.run_id,
         "job_name": run.job_name,
         "status": "success",
         "triggered_by": _triggered_by(run),
-        "started_at": _to_iso(run.start_time),
-        "finished_at": _to_iso(run.end_time),
+        "started_at": _to_iso(start_time),
+        "finished_at": _to_iso(end_time),
         "duration_seconds": duration,
         "assets_materialized": assets,
         "total_rows_loaded": sum(assets.values()),
@@ -127,18 +135,15 @@ def etl_failure_sensor(context: RunFailureSensorContext):
     error_msg = ""
     if context.failure_event:
         error_msg = context.failure_event.message or ""
-    duration = (
-        int(run.end_time - run.start_time)
-        if run.start_time and run.end_time
-        else None
-    )
+    start_time, end_time = _get_stats(context, run.run_id)
+    duration = int(end_time - start_time) if start_time and end_time else None
     _post_webhook({
         "dagster_run_id": run.run_id,
         "job_name": run.job_name,
         "status": "failed",
         "triggered_by": _triggered_by(run),
-        "started_at": _to_iso(run.start_time),
-        "finished_at": _to_iso(run.end_time),
+        "started_at": _to_iso(start_time),
+        "finished_at": _to_iso(end_time),
         "duration_seconds": duration,
         "error_message": error_msg,
         "tags": _user_tags(run),
@@ -148,13 +153,14 @@ def etl_failure_sensor(context: RunFailureSensorContext):
 @run_status_sensor(run_status=DagsterRunStatus.CANCELED, name="etl_canceled_sensor")
 def etl_canceled_sensor(context: RunStatusSensorContext):
     run = context.dagster_run
+    start_time, end_time = _get_stats(context, run.run_id)
     _post_webhook({
         "dagster_run_id": run.run_id,
         "job_name": run.job_name,
         "status": "cancelled",
         "triggered_by": _triggered_by(run),
-        "started_at": _to_iso(run.start_time),
-        "finished_at": _to_iso(run.end_time),
+        "started_at": _to_iso(start_time),
+        "finished_at": _to_iso(end_time),
     })
 
 

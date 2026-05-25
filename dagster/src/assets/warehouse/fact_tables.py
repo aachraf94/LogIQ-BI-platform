@@ -387,7 +387,11 @@ def fact_bulletins_salaire(
                 WHERE dc.company_id != 9
                 ORDER BY emp.employee_key, s.period_month, s.period_year, s.bulletin_id DESC
 
-                ON CONFLICT (employee_key, period_month, period_year) DO UPDATE SET
+                ON CONFLICT (bulletin_id) DO UPDATE SET
+                    employee_key             = EXCLUDED.employee_key,
+                    agence_key               = EXCLUDED.agence_key,
+                    company_key              = EXCLUDED.company_key,
+                    occupation_key           = EXCLUDED.occupation_key,
                     net_a_payer              = EXCLUDED.net_a_payer,
                     total_brut               = EXCLUDED.total_brut,
                     total_charges_patronales = EXCLUDED.total_charges_patronales,
