@@ -1,0 +1,11 @@
+.venv/
+.env
+
+# Local Dagster run data — must not be baked into the image.
+# These directories are populated at runtime and persisted via named Docker volumes.
+dagster_home/history/
+dagster_home/storage/compute_logs/
+dagster_home/schedules/
+dagster_home/logs/
+dagster_home/.logs_queue/
+dagster_home/.nux/

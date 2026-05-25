@@ -146,6 +146,7 @@ services:
     volumes:
       # Persist Dagster run history and schedule state across image rebuilds.
       # dagster.yaml stays in the image so config changes apply on next build.
+      - dagster_history:/app/dagster_home/history
       - dagster_storage:/app/dagster_home/storage
       - dagster_schedules:/app/dagster_home/schedules
     ports:
@@ -173,6 +174,7 @@ services:
 volumes:
   platform_db_data:
   warehouse_db_data:
+  dagster_history:
   dagster_storage:
   dagster_schedules:
 
