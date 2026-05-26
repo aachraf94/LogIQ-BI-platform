@@ -8,7 +8,7 @@
 --          Freelance drivers are NOT here — see fact_paiements_livreurs.
 -- =============================================================================
 
-CREATE TABLE IF NOT EXISTS warehouse.fact_bulletins_salaire (
+CREATE TABLE IF NOT EXISTS warehouse.fact_bulletins_salaire (               --fact salaries -----------------------------
     bulletin_key                    BIGSERIAL       PRIMARY KEY,
 
     -- Date dimension key
@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_bulletins_salaire (
     occupation_key                  INTEGER         NOT NULL
                                     REFERENCES warehouse.dim_occupation (occupation_key),
 
-    -- Degenerate dimensions
+    -- Degenerate dimensions --       Employee
     bulletin_id                     VARCHAR(50)     NOT NULL UNIQUE, -- PAY-{YYYY}-{MM}-{employee_id}
     contract_type                   VARCHAR(20)     NOT NULL
                                     CHECK (contract_type IN ('CDI', 'CDD', 'Intérimaire')),
@@ -81,6 +81,11 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_bulletins_salaire (
 
     -- One bulletin per employee per month (enforced at both staging and fact level)
     UNIQUE (employee_key, period_month, period_year)
+
+
+    -- emplyee month 
+
+
 );
 
 COMMENT ON TABLE warehouse.fact_bulletins_salaire IS

@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_transport (
                                     CHECK (payment_status IN ('en_attente', 'payé', 'annulé')),
     merchandise_type                VARCHAR(100),
 
-    -- Cargo measures
+    -- Cargo measures            --- to remove
     total_weight_kg                 NUMERIC(10,2)   NOT NULL,
     total_volume_m3                 NUMERIC(8,2),
     nbr_pieces                      INTEGER         NOT NULL,
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_transport (
     total_duration_minutes          INTEGER,
     total_waiting_time_minutes      INTEGER,
     night_shift_hours               INTEGER,
-    nbr_floors                      INTEGER         NOT NULL DEFAULT 0,
+    nbr_floors                      INTEGER         NOT NULL DEFAULT 0,  -- number of floors
 
     -- Cost breakdown — all DZD (sum = total_cost exactly)
     cout_base                       NUMERIC(15,2)   NOT NULL,       -- flat base rate
@@ -114,7 +114,7 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_transport (
     on_time                         BOOLEAN,
 
     created_at                      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at                      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    updated_at                      TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()  --- To remove + boolean
 );
 
 COMMENT ON TABLE warehouse.fact_transport IS

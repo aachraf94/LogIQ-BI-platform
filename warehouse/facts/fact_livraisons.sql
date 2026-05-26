@@ -66,11 +66,11 @@ CREATE TABLE IF NOT EXISTS warehouse.fact_livraisons (
     ecart_tarif_dzd             NUMERIC(15,2),                      -- = delivery_fee - tarif_theorique; NULL when either is NULL
 
     -- Volume / duration measures
-    nbr_evenements              INTEGER         NOT NULL DEFAULT 1, -- count of source history events
+    nbr_evenements              INTEGER         NOT NULL DEFAULT 1, -- count of source history events   -------- NOT IMPORTE TO REMOVE IT
     duree_livraison_minutes     INTEGER,                            -- time from first to last event
 
     created_at                  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
-    updated_at                  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
+    updated_at                  TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()    -- TO REMOVE
 );
 
 COMMENT ON TABLE warehouse.fact_livraisons IS

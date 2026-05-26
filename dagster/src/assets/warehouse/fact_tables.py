@@ -78,7 +78,7 @@ def fact_livraisons(
                 -- Resolve whether a livraison_date applies (only for terminal statuses)
                 is_terminal AS (
                     SELECT statut_name,
-                           statut_name IN ('Livré','Retourner au vendeur','Retour à retirer','Echec',
+                           statut_name IN ('Livré','retourné au vendeur','Retour à retirer','Echec',
                                            'Retour groupé') AS terminal
                     FROM warehouse.dim_statut_colis
                 ),
