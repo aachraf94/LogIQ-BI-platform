@@ -1,6 +1,8 @@
 """
-Staging assets — Dedicated Transport API (1 endpoint → 2 staging tables).
-Requests and stops come from the same endpoint; stops are embedded in each request.
+Staging assets — Dedicated Transport API (2 endpoints → 2 staging tables).
+Requests load from /transport/requests; stops load from the dedicated /transport/stops endpoint.
+stg_transport_stops declares a deps dependency on stg_transport_requests to guarantee ordering
+(stops reference request_id values that must exist in staging first).
 """
 
 import uuid

@@ -260,7 +260,7 @@ class PaieAPIClient(ConfigurableResource):
 
 
 class TransportAPIClient(ConfigurableResource):
-    """Client for the Dedicated Transport API (1 endpoint, stops embedded in each request)."""
+    """Client for the Dedicated Transport API (2 endpoints: /transport/requests and /transport/stops)."""
 
     base_url: str
     token: str
