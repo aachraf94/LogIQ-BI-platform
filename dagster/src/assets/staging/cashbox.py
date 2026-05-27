@@ -152,6 +152,7 @@ def stg_cashbox_depenses(
             d.get("description"),
             d.get("justificatif"),
             d.get("mode_paiement", ""),
+            d.get("currency", "DZD"),
             batch_id,
         )
         for d in depenses
@@ -169,7 +170,7 @@ def stg_cashbox_depenses(
                 rubrique_id, rubrique_name,
                 brq_id, requested_by_user_id, requested_by_name,
                 validated_by_user_id, validated_by_name,
-                montant, quantite, unite, description, justificatif, mode_paiement,
+                montant, quantite, unite, description, justificatif, mode_paiement, currency,
                 batch_id
             ) VALUES %s
             ON CONFLICT (depense_id) DO UPDATE SET
@@ -230,6 +231,7 @@ def stg_cashbox_paiements_livreurs(
             p.get("brq", {}).get("validated_by_user_id"),
             p.get("brq", {}).get("validated_by_name"),
             p.get("mode_paiement", ""),
+            p.get("currency", "DZD"),
             batch_id,
         )
         for p in paiements
@@ -249,7 +251,7 @@ def stg_cashbox_paiements_livreurs(
                 montant_colis_livres, montant_colis_echoues,
                 prime_rendement, deductions, total_brut, total_net,
                 brq_id, validated_by_user_id, validated_by_name,
-                mode_paiement, batch_id
+                mode_paiement, currency, batch_id
             ) VALUES %s
             ON CONFLICT (paiement_id) DO UPDATE SET
                 total_net  = EXCLUDED.total_net,
@@ -298,6 +300,7 @@ def stg_cashbox_remboursements(
             int(r["caisse"]["id"]),
             r["caisse"].get("name", ""),
             r.get("mode_paiement", ""),
+            r.get("currency", "DZD"),
             batch_id,
         )
         for r in remboursements
@@ -320,7 +323,7 @@ def stg_cashbox_remboursements(
                 seller_id, store_name, delivery_type,
                 montant_rembourse, motif, justificatif,
                 brq_id, validated_by_user_id, validated_by_name,
-                caisse_id, caisse_name, mode_paiement,
+                caisse_id, caisse_name, mode_paiement, currency,
                 batch_id
             ) VALUES %s
             ON CONFLICT (remboursement_id) DO UPDATE SET
@@ -364,6 +367,7 @@ def stg_cashbox_transferts(
             t["banque"].get("reference_virement") if t.get("banque") else None,
             t.get("brq", {}).get("brq_id"),
             t.get("brq", {}).get("validated_by_user_id"),
+            t.get("currency", "DZD"),
             batch_id,
         )
         for t in transferts
@@ -377,7 +381,7 @@ def stg_cashbox_transferts(
                 caisse_source_id, caisse_source_name, agence_source_id, agence_source_name,
                 caisse_dest_id, caisse_dest_name, agence_dest_id, agence_dest_name,
                 banque_id, banque_name, reference_virement,
-                brq_id, validated_by_user_id,
+                brq_id, validated_by_user_id, currency,
                 batch_id
             ) VALUES %s
             ON CONFLICT (transfert_id) DO UPDATE SET

@@ -91,18 +91,18 @@ def stg_transport_requests(
             bool(r["cargo"].get("hazardous", False)),
             r["cargo"].get("total_weight_kg"),
             r["cargo"].get("total_volume_m3"),
-            int(r["cargo"].get("nbr_pieces", 0)),
-            int(r["cargo"].get("nbr_pieces_lt50kg", 0)),
-            int(r["cargo"].get("nbr_pieces_50_99kg", 0)),
-            int(r["cargo"].get("nbr_pieces_100_199kg", 0)),
-            int(r["cargo"].get("nbr_pieces_gte200kg", 0)),
+            int(r["cargo"].get("nbr_pieces") or 0),
+            int(r["cargo"].get("nbr_pieces_lt50kg") or 0),
+            int(r["cargo"].get("nbr_pieces_50_99kg") or 0),
+            int(r["cargo"].get("nbr_pieces_100_199kg") or 0),
+            int(r["cargo"].get("nbr_pieces_gte200kg") or 0),
             bool(r["cargo"].get("requires_clark", False)),
             bool(r["cargo"].get("requires_packaging", False)),
             r["cargo"].get("declared_value_dzd"),
             # Routing
-            int(r["routing"].get("nbr_stops_pickup", 0)),
-            int(r["routing"].get("nbr_stops_delivery", 0)),
-            int(r["routing"].get("nbr_stops_total", 0)),
+            int(r["routing"].get("nbr_stops_pickup") or 0),
+            int(r["routing"].get("nbr_stops_delivery") or 0),
+            int(r["routing"].get("nbr_stops_total") or 0),
             r["routing"].get("distance_unit_km"),
             r["routing"].get("distance_real_km"),
             r["routing"].get("distance_extra_km"),
@@ -110,21 +110,22 @@ def stg_transport_requests(
             r["routing"].get("total_waiting_time_minutes"),
             bool(r["routing"].get("is_night_shift", False)),
             r["routing"].get("night_shift_hours"),
-            int(r["routing"].get("nbr_floors", 0)),
+            int(r["routing"].get("nbr_floors") or 0),
             bool(r["routing"].get("return_trip", False)),
             # Cost breakdown
             r["cost_breakdown"].get("cout_base"),
-            r["cost_breakdown"].get("cout_distance_supp", 0),
-            r["cost_breakdown"].get("cout_ramassage", 0),
-            r["cost_breakdown"].get("cout_livraison", 0),
-            r["cost_breakdown"].get("cout_manutention", 0),
-            r["cost_breakdown"].get("cout_emballage", 0),
-            r["cost_breakdown"].get("cout_tarif_nuit", 0),
-            r["cost_breakdown"].get("cout_prod_frais", 0),
+            r["cost_breakdown"].get("cout_distance_supp") or 0,
+            r["cost_breakdown"].get("cout_ramassage") or 0,
+            r["cost_breakdown"].get("cout_livraison") or 0,
+            r["cost_breakdown"].get("cout_manutention") or 0,
+            r["cost_breakdown"].get("cout_emballage") or 0,
+            r["cost_breakdown"].get("cout_tarif_nuit") or 0,
+            r["cost_breakdown"].get("cout_prod_frais") or 0,
             r["cost_breakdown"].get("cout_assurance"),
             r["cost_breakdown"].get("cout_carburant"),
             r["cost_breakdown"].get("cout_peage"),
             r["cost_breakdown"].get("total_cost"),
+            r["cost_breakdown"].get("currency", "DZD"),
             # Billing
             r["billing"].get("amount_invoiced"),
             r["billing"].get("amount_paid"),
@@ -142,7 +143,9 @@ def stg_transport_requests(
             batch_id,
         )
         for r in requests_data
-        if r.get("request_id") and r.get("departure") and r.get("arrival")
+        if (r.get("request_id") and r.get("departure") and r.get("arrival")
+            and r.get("vehicle") and r.get("client") and r.get("cargo")
+            and r.get("routing") and r.get("cost_breakdown") and r.get("billing"))
     ]
 
     with warehouse_db.get_connection() as conn:
@@ -174,7 +177,7 @@ def stg_transport_requests(
                 is_night_shift, night_shift_hours, nbr_floors, return_trip,
                 cout_base, cout_distance_supp, cout_ramassage, cout_livraison,
                 cout_manutention, cout_emballage, cout_tarif_nuit, cout_prod_frais,
-                cout_assurance, cout_carburant, cout_peage, total_cost,
+                cout_assurance, cout_carburant, cout_peage, total_cost, cost_currency,
                 amount_invoiced, amount_paid, payment_method, payment_status,
                 invoice_ref, invoiced_at, paid_at,
                 departure_delay_minutes, arrival_delay_minutes, on_time,
