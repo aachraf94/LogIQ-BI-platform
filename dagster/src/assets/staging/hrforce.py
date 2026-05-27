@@ -27,22 +27,16 @@ def stg_hrforce_companies(
             int(c["id"]),
             c.get("licenseNumber", ""),
             c.get("companyName", ""),
-            c.get("arabicCompanyName"),
             c.get("tradeName"),
-            c.get("arabicTradeName"),
             c.get("legalType"),
             c.get("registerNumber"),
             c.get("NIF"),
             c.get("NIS"),
             c.get("AI"),
-            c.get("pathLogoFront"),
-            c.get("pathLogoBack"),
             c.get("manager"),
-            c.get("arabicManager"),
             c.get("email"),
             c.get("contactNumber"),
             c.get("adress"),          # note: field is misspelled in source
-            c.get("arabicAddress"),
             batch_id,
         )
         for c in companies
@@ -52,10 +46,10 @@ def stg_hrforce_companies(
     with warehouse_db.get_connection() as conn:
         warehouse_db.bulk_insert(conn, """
             INSERT INTO warehouse.stg_hrforce_companies (
-                company_id, license_number, company_name, arabic_company_name,
-                trade_name, arabic_trade_name, legal_type, register_number,
-                nif, nis, ai, path_logo_front, path_logo_back,
-                manager, arabic_manager, email, contact_number, adress, arabic_address,
+                company_id, license_number, company_name,
+                trade_name, legal_type, register_number,
+                nif, nis, ai,
+                manager, email, contact_number, adress,
                 batch_id
             ) VALUES %s
             ON CONFLICT (company_id) DO UPDATE SET

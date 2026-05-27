@@ -212,8 +212,18 @@ class CashBoxAPIClient(ConfigurableResource):
     def get_all_remboursements(self) -> list:
         return self._paginate("/cashbox/remboursements")
 
-    def get_all_transferts(self) -> list:
-        return self._paginate("/cashbox/transferts")
+    def get_all_transferts(self, page_size: int = 500) -> list:
+        """Transferts endpoint returns no pagination object — stop when results < page_size."""
+        all_results = []
+        page = 1
+        while True:
+            resp = self._get("/cashbox/transferts", params={"page": page, "limit": page_size})
+            results = resp.get("results", [])
+            all_results.extend(results)
+            if len(results) < page_size:
+                break
+            page += 1
+        return all_results
 
 
 class PaieAPIClient(ConfigurableResource):

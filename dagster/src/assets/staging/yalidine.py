@@ -166,7 +166,7 @@ def stg_yalidine_pricing(
     description=(
         "Incremental load of /yalidine/histories → stg_yalidine_parcel_history. "
         "Resumes from max(date_statut) already in staging. "
-        "~27M rows total; loads day by day to manage memory."
+        "~220M rows total; loads day by day to manage memory."
     ),
 )
 def stg_yalidine_parcel_history(
@@ -246,7 +246,7 @@ def _load_history_day(
                 INSERT INTO warehouse.stg_yalidine_parcel_history (
                     source_id, date_statut, tracking, statut, current_status,
                     hub_id, hub_name, seller_id, seller_company_id, seller_company_name,
-                    store_name, depart_wilaya_id, whois, whois_company_id,
+                    store_name, depart_wilaya_id, whois, whois_company_id, whois_company_name,
                     forced, forced_by, firstname, familyname,
                     destination_commune_id, destination_wilaya_id, destination_hub_id,
                     delivery_type, zone, delivery_fee, parcel_type,
@@ -274,7 +274,8 @@ def _history_to_row(r: dict) -> tuple:
         r.get("depart_wilaya_id"),
         r.get("whois"),
         r.get("whois_company_id"),
-        bool(r.get("forced", False)),
+        r.get("whois_company_name"),
+        r.get("forced"),                         # SMALLINT: 0, 1, or null
         r.get("forcedBy"),
         r.get("firstname"),
         r.get("familyname"),
