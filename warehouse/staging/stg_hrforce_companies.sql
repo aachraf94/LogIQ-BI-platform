@@ -13,22 +13,16 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_hrforce_companies (
     company_id              INTEGER         NOT NULL UNIQUE,        -- source PK (1–11)
     license_number          VARCHAR(50)     NOT NULL,               -- short identifier e.g. YALIDINE, GUEPEX
     company_name            VARCHAR(100)    NOT NULL,               -- official French name
-    arabic_company_name     VARCHAR(100),
     trade_name              VARCHAR(100),
-    arabic_trade_name       VARCHAR(100),
     legal_type              VARCHAR(20),                            -- EURL, SARL
     register_number         VARCHAR(100),                           -- registre de commerce
     nif                     VARCHAR(30),                            -- numéro d'identification fiscale
     nis                     VARCHAR(30),                            -- numéro d'identification statistique
     ai                      VARCHAR(30),                            -- article d'imposition
-    path_logo_front         VARCHAR(300),
-    path_logo_back          VARCHAR(300),
     manager                 VARCHAR(150),
-    arabic_manager          VARCHAR(150),
     email                   VARCHAR(150),
     contact_number          VARCHAR(30),
     adress                  VARCHAR(300),                           -- intentional source typo preserved
-    arabic_address          VARCHAR(300),
 
     -- ETL metadata
     loaded_at               TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

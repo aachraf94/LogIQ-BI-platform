@@ -62,7 +62,7 @@ COMMENT ON TABLE warehouse.stg_cashbox_remboursements IS
 COMMENT ON COLUMN warehouse.stg_cashbox_remboursements.colis_tracking IS
     'Cross-source reference to stg_yalidine_parcel_history.tracking. Validated by ETL.';
 COMMENT ON COLUMN warehouse.stg_cashbox_remboursements.montant_rembourse IS
-    'Must be between 50% and 100% of declared_value per business rules.';
+    'Must be between 60% and 100% of declared_value per business rules.';
 
 CREATE INDEX IF NOT EXISTS idx_stg_rmb_agence   ON warehouse.stg_cashbox_remboursements (agence_responsable_id);
 CREATE INDEX IF NOT EXISTS idx_stg_rmb_date     ON warehouse.stg_cashbox_remboursements (date_remboursement);

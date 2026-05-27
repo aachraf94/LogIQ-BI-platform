@@ -17,8 +17,8 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_hrforce_agencies (
     code_yal            VARCHAR(20),                                -- Yalidine hub_id as string; "" if non-operational
     code_yal_two        VARCHAR(10),                                -- short code e.g. HUS1
     address             VARCHAR(300),
-    created_at_src      TIMESTAMP,                                  -- source createdAt (ISO 8601)
-    updated_at_src      TIMESTAMP,                                  -- source updateAt (note: source typo)
+    created_at_src      TIMESTAMP       NOT NULL,                   -- source createdAt (ISO 8601)
+    updated_at_src      TIMESTAMP       NOT NULL,                   -- source updateAt (note: source typo)
 
     -- Flattened company
     company_id          INTEGER         NOT NULL,                   -- FK → hrforce.companies.id

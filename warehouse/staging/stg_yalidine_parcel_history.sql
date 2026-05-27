@@ -57,10 +57,6 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_yalidine_parcel_history (
     reason                      VARCHAR(300),
     note                        TEXT,
 
-    -- Legacy fields (always null in mock — kept for schema fidelity)
-    last_hub_wilaya_todelete    INTEGER,
-    last_hub_commune_todelete   INTEGER,
-
     -- ETL metadata
     loaded_at                   TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     batch_id                    VARCHAR(50),                        -- ETL batch identifier
@@ -70,7 +66,7 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_yalidine_parcel_history (
 );
 
 COMMENT ON TABLE warehouse.stg_yalidine_parcel_history IS
-    'Staging for Yalidine parcel history events. One row per event. ~27M rows at full scale.';
+    'Staging for Yalidine parcel history events. One row per event. ~220M rows at full scale.';
 COMMENT ON COLUMN warehouse.stg_yalidine_parcel_history.source_id IS
     'Original event ID from yalidine.parcel_history.id — not reused as DW key.';
 COMMENT ON COLUMN warehouse.stg_yalidine_parcel_history.current_status IS
