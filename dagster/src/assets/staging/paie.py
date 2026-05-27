@@ -85,6 +85,7 @@ def stg_paie_bulletins(
             int(b["time_worked"].get("jours_maladie", 0)),
             float(b["time_worked"].get("heures_normales", 0)),
             b["time_worked"].get("heures_sup"),
+            b.get("currency", "DZD"),
             batch_id,
         )
         for b in bulletins
@@ -111,7 +112,7 @@ def stg_paie_bulletins(
                 net_a_payer, mode_paiement,
                 jours_travailles, jours_absence, jours_conge, jours_maladie,
                 heures_normales, heures_sup,
-                batch_id
+                currency, batch_id
             ) VALUES %s
             ON CONFLICT (bulletin_id) DO UPDATE SET
                 net_a_payer = EXCLUDED.net_a_payer,
