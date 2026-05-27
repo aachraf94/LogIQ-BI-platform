@@ -86,7 +86,7 @@ def stg_hrforce_agencies(
             int(a["company"]["id"]),
             a["company"].get("companyName", ""),
             int(a["city"]["id"]),
-            int(a["city"].get("zipCode", 0)),
+            int(a["city"].get("zipCode") or 0),
             a["city"].get("latinName", ""),
             a["city"].get("arabicName"),
             a["city"].get("codeYal"),
@@ -198,8 +198,6 @@ def stg_hrforce_users(
             int(u["agency"]["id"]) if u.get("agency") else None,
             u["agency"].get("name") if u.get("agency") else None,
             u["agency"].get("code") if u.get("agency") else None,
-            # is_supervisor = True when supervision.agencies is non-empty
-            bool(u.get("supervision", {}).get("agencies")),
             json.dumps(u.get("supervision", {}).get("agencies", [])),
             batch_id,
         )
@@ -216,7 +214,7 @@ def stg_hrforce_users(
                 company_id, company_name,
                 occupation_name,
                 agency_id, agency_name, agency_code,
-                is_supervisor, supervision_agencies,
+                supervision_agencies,
                 batch_id
             ) VALUES %s
             ON CONFLICT (user_id) DO UPDATE SET
@@ -225,7 +223,6 @@ def stg_hrforce_users(
                 agency_id           = EXCLUDED.agency_id,
                 agency_name         = EXCLUDED.agency_name,
                 occupation_name     = EXCLUDED.occupation_name,
-                is_supervisor       = EXCLUDED.is_supervisor,
                 supervision_agencies= EXCLUDED.supervision_agencies,
                 batch_id            = EXCLUDED.batch_id,
                 updated_at          = NOW()
