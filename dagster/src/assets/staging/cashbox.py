@@ -348,8 +348,11 @@ def stg_cashbox_transferts(
     transferts = cashbox_api.get_all_transferts()
     batch_id = uuid.uuid4().hex[:8]
 
-    records = [
-        (
+    deduped: dict[str, tuple] = {}
+    for t in transferts:
+        if not (t.get("transfert_id") and t.get("caisse_source") and t.get("caisse_destination")):
+            continue
+        deduped[str(t["transfert_id"])] = (
             t["transfert_id"],
             t.get("date_transfert"),
             t.get("montant"),
@@ -370,9 +373,8 @@ def stg_cashbox_transferts(
             t.get("currency", "DZD"),
             batch_id,
         )
-        for t in transferts
-        if t.get("transfert_id") and t.get("caisse_source") and t.get("caisse_destination")
-    ]
+
+    records = list(deduped.values())
 
     with warehouse_db.get_connection() as conn:
         warehouse_db.bulk_insert(conn, """
