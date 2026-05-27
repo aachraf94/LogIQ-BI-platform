@@ -31,9 +31,8 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_hrforce_users (
     agency_name         VARCHAR(200),
     agency_code         VARCHAR(30),
 
-    -- Supervisor metadata
-    is_supervisor       BOOLEAN         NOT NULL DEFAULT FALSE,
-    supervision_agencies JSONB,                                     -- array of supervised agency IDs
+    -- Supervision metadata
+    supervision_agencies JSONB          NOT NULL DEFAULT '[]',      -- array of supervised agency IDs
 
     -- ETL metadata
     loaded_at           TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

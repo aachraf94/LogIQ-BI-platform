@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_cashbox_depenses (
     description             TEXT,
     justificatif            VARCHAR(100),
     mode_paiement           VARCHAR(20)     NOT NULL,               -- espèces, virement, chèque
+    currency                VARCHAR(3)      NOT NULL DEFAULT 'DZD',
 
     -- ETL metadata
     loaded_at               TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

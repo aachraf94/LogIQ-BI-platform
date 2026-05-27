@@ -38,6 +38,7 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_cashbox_transferts (
     -- BRQ
     brq_id                  VARCHAR(50),
     validated_by_user_id    INTEGER,                                -- FK → hrforce.users.id
+    currency                VARCHAR(3)      NOT NULL DEFAULT 'DZD',
 
     -- ETL metadata
     loaded_at               TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

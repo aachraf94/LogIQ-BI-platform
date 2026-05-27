@@ -1,8 +1,8 @@
 -- =============================================================================
 -- STAGING: stg_hrforce_companies
 -- Source : HRFORCE — GET /hrforce/companies
--- Grain  : One row per company (9 rows in DB including TEST id=9)
--- Notes  : All 9 companies are staged including TEST (id=9). The ETL dimension
+-- Grain  : One row per company (11 rows in DB including TEST id=9)
+-- Notes  : All 11 companies are staged including TEST (id=9). The ETL dimension
 --          load step filters out id=9. Field name "adress" preserves the source
 --          typo intentionally for schema fidelity.
 -- =============================================================================
@@ -10,7 +10,7 @@
 CREATE TABLE IF NOT EXISTS warehouse.stg_hrforce_companies (
     stg_id                  BIGSERIAL       PRIMARY KEY,
 
-    company_id              INTEGER         NOT NULL UNIQUE,        -- source PK (1–9)
+    company_id              INTEGER         NOT NULL UNIQUE,        -- source PK (1–11)
     license_number          VARCHAR(50)     NOT NULL,               -- short identifier e.g. YALIDINE, GUEPEX
     company_name            VARCHAR(100)    NOT NULL,               -- official French name
     arabic_company_name     VARCHAR(100),

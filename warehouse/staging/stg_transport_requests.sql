@@ -120,9 +120,10 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_transport_requests (
     cout_carburant                  NUMERIC(15,2),
     cout_peage                      NUMERIC(15,2),
     total_cost                      NUMERIC(15,2)   NOT NULL,        -- exact sum of all cout_* fields
+    cost_currency                   VARCHAR(3)      NOT NULL DEFAULT 'DZD',
 
     -- Billing
-    amount_invoiced                 NUMERIC(15,2),                           -- NULL for annulée requests
+    amount_invoiced                 NUMERIC(15,2)   NOT NULL,
     amount_paid                     NUMERIC(15,2),
     payment_method                  VARCHAR(20),
     payment_status                  VARCHAR(20)     NOT NULL,        -- en_attente, payé, annulé

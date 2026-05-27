@@ -76,6 +76,7 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_paie_bulletins (
     jours_maladie                   SMALLINT        NOT NULL DEFAULT 0,
     heures_normales                 NUMERIC(6,2)    NOT NULL,
     heures_sup                      NUMERIC(6,2),
+    currency                        VARCHAR(3)      NOT NULL DEFAULT 'DZD',
 
     -- ETL metadata
     loaded_at                       TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),

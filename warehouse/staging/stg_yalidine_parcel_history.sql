@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_yalidine_parcel_history (
     date_statut                 TIMESTAMP       NOT NULL,           -- event timestamp (UTC)
     tracking                    VARCHAR(20)     NOT NULL,           -- yal-XXXXXX or sac-XXXXXX
     statut                      VARCHAR(50)     NOT NULL,           -- status at this event
-    current_status              VARCHAR(50),                        -- final resolved status of the parcel
+    current_status              VARCHAR(50)     NOT NULL,           -- final resolved status of the parcel
 
     -- Location
     hub_id                      INTEGER,                            -- FK → yalidine.centers; null in early statuses
@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_yalidine_parcel_history (
     whois                       INTEGER         NOT NULL,           -- FK → hrforce.users.id
     whois_company_id            INTEGER,
     whois_company_name          VARCHAR(150),
-    forced                      BOOLEAN,
+    forced                      SMALLINT,
     forced_by                   INTEGER,                            -- FK → hrforce.users.id
 
     -- Recipient (denormalized, not used for DW joins)
@@ -45,7 +45,7 @@ CREATE TABLE IF NOT EXISTS warehouse.stg_yalidine_parcel_history (
     destination_hub_id          INTEGER,
 
     -- Delivery details
-    delivery_type               VARCHAR(2),                         -- HD or SD
+    delivery_type               VARCHAR(2)      NOT NULL,           -- HD or SD
     zone                        SMALLINT,                           -- pricing zone 0–4+
     delivery_fee                NUMERIC(15,2),                      -- DZD; null before Centre status
 
