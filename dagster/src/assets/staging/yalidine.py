@@ -174,12 +174,12 @@ def stg_yalidine_parcel_history(
     yalidine_api: YalidineAPIClient,
     warehouse_db: WarehousePostgresResource,
 ) -> MaterializeResult:
-    # Determine start date (resume from last loaded day)
+    # Determine start date (resume from last loaded day, reprocess last 7 days)
     row = warehouse_db.fetch_one(
         "SELECT MAX(date_statut::DATE) FROM warehouse.stg_yalidine_parcel_history"
     )
     max_date = row[0] if row and row[0] else None
-    start_date = max_date if max_date else date(2023, 1, 1)
+    start_date = (max_date - timedelta(days=7)) if max_date else date(2023, 1, 1)
     end_date = date.today()
 
     if start_date > end_date:
