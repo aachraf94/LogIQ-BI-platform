@@ -1,6 +1,6 @@
 -- =============================================================================
 -- DIMENSION: dim_date
--- Grain     : One row per calendar day — 2022-01-01 → 2026-12-31 (1 827 rows)
+-- Grain     : One row per calendar day — 2022-01-01 → 2026-12-31 (1 826 rows)
 -- Source    : Static — arithmetic calendar spine, seeded once
 -- Algerian calendar: weekend = Friday (DOW=5) + Saturday (DOW=6)
 -- Ramadan/Eid dates are approximate Islamic calendar conversions.

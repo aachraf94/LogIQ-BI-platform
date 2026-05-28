@@ -16,5 +16,3 @@ INSERT INTO warehouse.dim_transport_payment_status (payment_status_id, payment_s
     (2, 'payé',       TRUE),
     (3, 'annulé',     TRUE)
 ON CONFLICT (payment_status_id) DO NOTHING;
-
-CREATE SEQUENCE IF NOT EXISTS warehouse.dim_transport_payment_status_seq START 4;

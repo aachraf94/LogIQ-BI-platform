@@ -18,5 +18,3 @@ INSERT INTO warehouse.dim_transport_status (status_id, status_name, is_terminal)
     (4, 'terminée',   TRUE),
     (5, 'annulée',    TRUE)
 ON CONFLICT (status_id) DO NOTHING;
-
-CREATE SEQUENCE IF NOT EXISTS warehouse.dim_transport_status_seq START 6;

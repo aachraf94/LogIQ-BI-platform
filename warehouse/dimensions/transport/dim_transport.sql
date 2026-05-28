@@ -19,7 +19,7 @@ CREATE TABLE IF NOT EXISTS warehouse.dim_transport (
     status_id               SMALLINT     NOT NULL REFERENCES warehouse.dim_transport_status(status_id),
     payment_status_id       SMALLINT     NOT NULL REFERENCES warehouse.dim_transport_payment_status(payment_status_id),
     vehicle_id              VARCHAR(20)  NOT NULL REFERENCES warehouse.dim_transport_vehicle(vehicle_id),
-    driver_key              INTEGER      REFERENCES warehouse.dim_employee(employee_key),   -- SCD2 surrogate at request date
+    driver_key              INTEGER      NOT NULL REFERENCES warehouse.dim_employee(employee_key),   -- SCD2 surrogate at request date
     second_driver_key       INTEGER      REFERENCES warehouse.dim_employee(employee_key),   -- NULL for trips ≤ 400 km
     departure_key           INTEGER      NOT NULL REFERENCES warehouse.dim_transport_departure(departure_key),
     arrival_key             INTEGER      NOT NULL REFERENCES warehouse.dim_transport_arrival(arrival_key),

@@ -17,5 +17,3 @@ INSERT INTO warehouse.dim_transport_sub_service_type (sub_service_id, sub_servic
     (2, 'pickup',    1),
     (3, 'echange',   1)
 ON CONFLICT (sub_service_id) DO NOTHING;
-
-CREATE SEQUENCE IF NOT EXISTS warehouse.dim_transport_sub_service_type_seq START 4;

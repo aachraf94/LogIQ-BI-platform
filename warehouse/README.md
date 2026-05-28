@@ -109,7 +109,7 @@ When `commune_id` is NULL (transport deps) → use `wilaya_id` directly (always 
 | `cout_assurance >= 5000 DZD` | `fact_transport_cost` |
 | `company_id = 9` (TEST) excluded | All fact tables — filtered at ETL load |
 | All monetary amounts in **DZD** | Throughout |
-| `dim_date` spans `2022-01-01 → 2026-12-31` | 1 827 rows |
+| `dim_date` spans `2022-01-01 → 2026-12-31` | 1 826 rows |
 | One bulletin per employee per month | `UNIQUE (employee_key, period_month, period_year)` on `dim_bulletin` |
 | One pricing row per (service × wilaya × date) | `UNIQUE` constraint on `dim_pricing` |
 
