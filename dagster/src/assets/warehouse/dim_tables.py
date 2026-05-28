@@ -602,11 +602,13 @@ def dim_employee(
         r[0] for r in warehouse_db.fetch_all("SELECT company_id FROM warehouse.dim_company")
     }
 
-    # hire_date per employee (min hire_date from bulletins)
+    # hire_date per employee (min hire_date from bulletins within dim_date range).
+    # Employees hired before 2022 are skipped — hire_date_id is NOT NULL in dim_employee.
     hire_dates = dict(warehouse_db.fetch_all("""
         SELECT employee_id, MIN(hire_date)
         FROM warehouse.stg_paie_bulletins
         WHERE company_id != 9
+          AND hire_date IN (SELECT date_id FROM warehouse.dim_date)
         GROUP BY employee_id
     """))
 
@@ -941,10 +943,11 @@ def dim_paiement_livreurs(
                 INSERT INTO warehouse.dim_paiement_livreurs
                 (paiement_id, livreur_id, depense_id, period_from_id, period_to_id,
                  date_paiement_id, nbr_colis_livres, nbr_colis_echoues)
-                SELECT
+                SELECT DISTINCT ON (p.paiement_id)
                     p.paiement_id,
                     p.livreur_id,
-                    -- resolve matching depense via nature_id=5 on same agence/date
+                    -- resolve matching depense via nature_id=5 on same agence/date;
+                    -- DISTINCT ON picks the first match if multiple depenses share agence+date
                     d.depense_id,
                     p.period_from,
                     p.period_to,
@@ -959,6 +962,7 @@ def dim_paiement_livreurs(
                 LEFT JOIN warehouse.dim_depense d ON d.depense_id = sd.depense_id
                 WHERE p.livreur_id IN (SELECT livreur_id FROM warehouse.dim_livreur_freelance)
                   AND d.depense_id IS NOT NULL
+                ORDER BY p.paiement_id, sd.depense_id
                 ON CONFLICT (paiement_id) DO UPDATE SET
                     livreur_id       = EXCLUDED.livreur_id,
                     depense_id       = EXCLUDED.depense_id,
@@ -1001,7 +1005,7 @@ def dim_remboursement(
                 INSERT INTO warehouse.dim_remboursement
                 (remboursement_id, colis_tracking, depense_id, parcel_declared_value,
                  montant_rembourse, sinistre_type_id, date_remboursement_id)
-                SELECT
+                SELECT DISTINCT ON (r.remboursement_id)
                     r.remboursement_id,
                     r.colis_tracking,
                     d.depense_id,
@@ -1012,13 +1016,15 @@ def dim_remboursement(
                 FROM warehouse.stg_cashbox_remboursements r
                 JOIN warehouse.dim_sinistre_type st
                     ON st.sinistre_type = r.sinistre_type
-                -- dual-tracked: find matching depense with nature_id 3 or 4
+                -- dual-tracked: find matching depense with nature_id 3 or 4;
+                -- DISTINCT ON picks the first match if multiple depenses share agence+date
                 LEFT JOIN warehouse.stg_cashbox_depenses sd
                     ON sd.agence_id = r.agence_responsable_id
                     AND sd.nature_id IN (3, 4)
                     AND DATE(sd.date_depense) = r.date_remboursement
                 LEFT JOIN warehouse.dim_depense d ON d.depense_id = sd.depense_id
                 WHERE d.depense_id IS NOT NULL
+                ORDER BY r.remboursement_id, sd.depense_id
                 ON CONFLICT (remboursement_id) DO UPDATE SET
                     depense_id            = EXCLUDED.depense_id,
                     parcel_declared_value = EXCLUDED.parcel_declared_value,
@@ -1192,10 +1198,13 @@ def dim_transport_client(
                     ct.client_type_id,
                     r.client_contact_phone,
                     r.client_contact_email,
-                    r.client_company_id
+                    -- only store company_id if it was successfully loaded into dim_transport_client_company
+                    cc.client_company_id
                 FROM warehouse.stg_transport_requests r
                 JOIN warehouse.dim_client_type ct
                     ON ct.client_type = r.client_type
+                LEFT JOIN warehouse.dim_transport_client_company cc
+                    ON cc.client_company_id = r.client_company_id
                 ORDER BY client_id
                 ON CONFLICT (client_id) DO UPDATE SET
                     client_name       = EXCLUDED.client_name,
