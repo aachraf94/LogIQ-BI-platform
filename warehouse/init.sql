@@ -5,32 +5,27 @@
 -- Project  : LOGIQ BI Platform — Yalidine Express
 -- =============================================================================
 --
--- EXECUTION ORDER (respect dependency chain):
---   1. Schema creation
---   2. Staging tables        (no inter-table dependencies)
---   3. Dimension tables      (dependency order: company → wilaya → commune →
---                             occupation → agence → employee → others)
---   4. Fact tables           (depend on all dimensions)
---   5. Aggregate views       (depend on fact tables and dimensions)
+-- EXECUTION ORDER (respects full FK dependency chain):
+--   0. Schema
+--   1. Staging tables        (no inter-table FK dependencies)
+--   2. Seeded enum dims      (no DW FK dependencies — loaded first)
+--   3. Reference dims        (depend only on enum dims or on each other in order)
+--   4. SCD2 and derived dims (depend on reference dims)
+--   5. Cashbox dims          (2-pass ETL pattern — back-ref FKs added after)
+--   6. Salary dims
+--   7. Transport dims        (transport → stops order enforced)
+--   8. Parcel dim
+--   9. Fact tables           (depend on all dimensions)
+--   10. Aggregate views      (defined separately — refresh after ETL)
 --
 -- USAGE:
 --   psql -U <user> -d <database> -f warehouse/init.sql
 --
 -- RE-RUN SAFETY:
---   All CREATE statements use IF NOT EXISTS.
---   Dimension seed INSERTs use ON CONFLICT DO NOTHING.
---   dim_date INSERT uses ON CONFLICT (full_date) DO NOTHING.
+--   All CREATE TABLE statements use IF NOT EXISTS.
+--   All seed INSERTs use ON CONFLICT DO NOTHING.
+--   dim_date INSERT uses ON CONFLICT (date_id) DO NOTHING.
 --   Safe to re-run without data loss.
---
--- REFRESH AGGREGATES after ETL loads:
---   REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_livraisons_journalieres;
---   REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_depenses_mensuelles;
---   REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_cout_total_mensuel;
---   REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_performance_livraison;
---   REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_masse_salariale_mensuelle;
---   REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_transport_mensuel;
---   REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_demande_transport;
---   REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_profitabilite_colis;
 -- =============================================================================
 
 -- ─── 0. Schema ───────────────────────────────────────────────────────────────
@@ -62,45 +57,143 @@ SET search_path TO warehouse, public;
 \i staging/stg_transport_requests.sql
 \i staging/stg_transport_stops.sql
 
--- ─── 2. Dimension Tables ─────────────────────────────────────────────────────
--- Load order respects foreign key dependencies.
--- SCD Type 2 dimensions: dim_agence, dim_employee.
+-- ─── 2. Seeded Enum Dimensions ────────────────────────────────────────────────
+-- No FK dependencies on other warehouse tables — loaded first.
+-- Static seeds are inserted inline; dynamic dims are seeded by ETL.
 
--- 2a. Independent reference dimensions (no FK to other dims)
-\i dimensions/dim_date.sql
-\i dimensions/dim_company.sql
-\i dimensions/dim_vehicle_type.sql
-\i dimensions/dim_statut_colis.sql
-\i dimensions/dim_nature_depense.sql
+-- Geographic
+\i dimensions/geographic/dim_region.sql
 
--- 2b. Geographic dimensions (wilaya → commune)
-\i dimensions/dim_wilaya.sql
-\i dimensions/dim_commune.sql
+-- Parcel
+\i dimensions/parcel/dim_parcels_status.sql
+\i dimensions/parcel/dim_parcel_type.sql
+\i dimensions/parcel/dim_delivery_type.sql
+\i dimensions/parcel/dim_zone.sql
+\i dimensions/parcel/dim_pricing_service_type.sql
 
--- 2c. Occupation (depends on dim_company)
-\i dimensions/dim_occupation.sql
+-- HR
+\i dimensions/hr/dim_role.sql
+\i dimensions/hr/dim_employee_status.sql
+\i dimensions/hr/dim_livreur_vehicule_type.sql
 
--- 2d. Agence — SCD Type 2 (depends on dim_company, dim_wilaya, dim_commune)
-\i dimensions/dim_agence.sql
+-- Cashbox
+\i dimensions/cashbox/dim_nature_category.sql
+\i dimensions/cashbox/dim_depense_status.sql
+\i dimensions/cashbox/dim_sinistre_type.sql
 
--- 2e. Employee — SCD Type 2 (depends on dim_agence, dim_occupation, dim_company)
-\i dimensions/dim_employee.sql
+-- Salary / Paie
+\i dimensions/paie/dim_contract_type.sql
+\i dimensions/paie/dim_contract_regime.sql
 
--- 2f. Freelance driver (depends on dim_agence)
-\i dimensions/dim_freelance_driver.sql
+-- Transport
+\i dimensions/transport/dim_transport_status.sql
+\i dimensions/transport/dim_transport_service_type.sql
+\i dimensions/transport/dim_transport_sub_service_type.sql
+\i dimensions/transport/dim_transport_payment_status.sql
+\i dimensions/transport/dim_transport_merchandise_type.sql
+\i dimensions/transport/dim_distance_category.sql
+\i dimensions/transport/dim_complexity_category.sql
+\i dimensions/transport/dim_location_type.sql
+\i dimensions/transport/dim_stop_type.sql
+\i dimensions/transport/dim_client_type.sql
 
--- ─── 3. Fact Tables ──────────────────────────────────────────────────────────
--- All facts depend on dimensions. Load after all dims are populated.
+-- ─── 3. Time Dimension ────────────────────────────────────────────────────────
+-- Must exist before any dim with a DATE FK → dim_date.
 
-\i facts/fact_livraisons.sql
-\i facts/fact_depenses.sql
-\i facts/fact_remboursements.sql
-\i facts/fact_paiements_livreurs.sql
-\i facts/fact_bulletins_salaire.sql
-\i facts/fact_transport.sql
-\i facts/fact_transferts_caisse.sql
+\i dimensions/time/dim_date.sql
 
--- ─── 4. Aggregate Materialized Views ─────────────────────────────────────────
+-- ─── 4. Reference Dimensions ─────────────────────────────────────────────────
+-- Depend on enum dims and on each other in dependency order.
+
+-- Company hierarchy (company → department → service → occupation)
+\i dimensions/hr/dim_company.sql
+\i dimensions/hr/dim_department.sql
+\i dimensions/hr/dim_service.sql
+\i dimensions/hr/dim_occupation.sql
+
+-- Geographic hierarchy (region already seeded in step 2 → wilaya → commune)
+\i dimensions/geographic/dim_wilaya.sql
+\i dimensions/geographic/dim_commune.sql
+
+-- Agency type (dynamically seeded by ETL — table created here)
+\i dimensions/geographic/dim_agency_type.sql
+
+-- Agency SCD2 (depends on dim_agency_type, dim_commune, dim_company)
+\i dimensions/geographic/dim_agence.sql
+
+-- Yalidine center (depends on dim_agence)
+\i dimensions/geographic/dim_center.sql
+
+-- Contract (must exist before dim_employee)
+\i dimensions/paie/dim_contract.sql
+
+-- Employee SCD2 (depends on dim_role, dim_employee_status, dim_agence, dim_company,
+--                dim_occupation, dim_contract, dim_date)
+\i dimensions/hr/dim_employee.sql
+
+-- Freelance driver (depends on dim_livreur_vehicule_type, dim_agence)
+\i dimensions/hr/dim_livreur_freelance.sql
+
+-- Pricing (depends on dim_pricing_service_type, dim_wilaya, dim_date)
+\i dimensions/parcel/dim_pricing.sql
+
+-- ─── 5. Cashbox Dimensions (2-pass ETL) ──────────────────────────────────────
+-- dim_depense is loaded first with NULL back-ref FKs (paiement_livreur_id,
+-- remboursement_id). After dim_paiement_livreurs and dim_remboursement are created,
+-- the deferred FK constraints are added and then the second-pass UPDATE fills them.
+
+-- Cashbox reference dims
+\i dimensions/cashbox/dim_nature.sql
+\i dimensions/cashbox/dim_rubriques.sql
+
+-- Step 41: dim_depense (back-ref FKs added later)
+\i dimensions/cashbox/dim_depense.sql
+
+-- Step 42–43: depends on dim_depense
+\i dimensions/cashbox/dim_paiement_livreurs.sql
+\i dimensions/cashbox/dim_remboursement.sql
+
+-- Deferred FK constraints: dim_depense ↔ dim_paiement_livreurs / dim_remboursement
+\i dimensions/cashbox/dim_depense_backref_fk.sql
+
+-- ─── 6. Salary Dimensions ─────────────────────────────────────────────────────
+-- dim_bulletin depends on dim_employee SCD2 and dim_contract.
+
+\i dimensions/paie/dim_bulletin.sql
+
+-- ─── 7. Transport Dimensions ──────────────────────────────────────────────────
+-- dim_transport MUST be loaded before dim_transport_stops
+-- (stops.transport_key FK → dim_transport).
+
+\i dimensions/transport/dim_transport_client_company.sql
+\i dimensions/transport/dim_transport_client.sql
+\i dimensions/transport/dim_transport_vehicle_type.sql
+\i dimensions/transport/dim_transport_vehicle.sql
+\i dimensions/transport/dim_transport_cargo.sql
+\i dimensions/transport/dim_transport_routing.sql
+\i dimensions/transport/dim_transport_departure.sql
+\i dimensions/transport/dim_transport_arrival.sql
+\i dimensions/transport/dim_transport.sql
+\i dimensions/transport/dim_transport_stops.sql
+
+-- ─── 8. Express Service Parcel Dimension ─────────────────────────────────────
+-- dim_parcel depends on dim_parcels_status, dim_delivery_type, dim_zone,
+-- dim_parcel_type, dim_date, dim_center.
+
+\i dimensions/parcel/dim_parcel.sql
+
+-- ─── 9. Fact Tables ───────────────────────────────────────────────────────────
+-- All facts depend on dimensions. Load only after all dims are populated.
+
+\i facts/fact_parcel_revenue.sql
+\i facts/fact_parcel_performance.sql
+\i facts/fact_cost_salaire.sql
+\i facts/fact_charges.sql
+\i facts/fact_transport_cost.sql
+\i facts/fact_transport_billing.sql
+\i facts/fact_transport_performance.sql
+
+-- ─── 10. Aggregate Materialized Views ────────────────────────────────────────
 -- Created after facts. Initial WITH DATA populates them immediately.
 -- Requires at least some fact data to compute; safe to run on empty facts.
 
@@ -110,42 +203,18 @@ SET search_path TO warehouse, public;
 \i aggregates/agg_performance_livraison.sql
 \i aggregates/agg_masse_salariale_mensuelle.sql
 \i aggregates/agg_transport_mensuel.sql
-
--- Axis 1 — Transport Requests (Must have): origin-destination demand matrix
 \i aggregates/agg_demande_transport.sql
-
--- Axis 2 — Parcel Cost Control (Should have): fee vs tariff deviation detection
 \i aggregates/agg_profitabilite_colis.sql
 
 -- ─── Axis 3 — Route Analysis (Could have) — NOT IMPLEMENTED ──────────────────
 --
--- This axis would connect the DW to a route optimization solver (e.g. Google OR-Tools)
--- and present actual vs. optimized route comparisons.
+-- When implemented, requires:
+--   New fact    : facts/fact_routes_optimisees.sql
+--   New dims    : dimensions/dim_route.sql
+--                 dimensions/dim_optimization_run.sql
+--   New agg     : aggregates/agg_optimisation_routes.sql
 --
--- When implemented, it would require:
---   New fact table   : fact_routes_optimisees
---     Grain          : one row per (optimization run × transport request)
---     Key measures   : distance_reel_km, distance_optimise_km, ecart_distance_km
---                      cout_reel_dzd, cout_optimise_dzd, economie_potentielle_dzd
---                      duree_reelle_min, duree_optimisee_min
---     New dimensions : dim_route (route definition: fixed corridor, recurring pattern)
---                      dim_optimization_run (solver run metadata, algorithm version)
---
---   New aggregate    : agg_optimisation_routes
---     Grain          : one row per (year, month, corridor wilaya_depart × wilaya_arrivee)
---     KPIs           : avg economies_km, avg economies_cout_dzd,
---                      taux_ecart_pct (actual vs optimal), nbr_runs
---
---   Integration note : OR-Tools output would be loaded via a dedicated ETL asset
---                      (Dagster op) after fact_transport is populated.
---                      stg_transport_stops already holds stop-level detail needed
---                      by the solver as input.
---
--- Plug-in point in this script (after existing aggregates, before Done):
---   \i facts/fact_routes_optimisees.sql
---   \i dimensions/dim_route.sql
---   \i aggregates/agg_optimisation_routes.sql
---
+-- stg_transport_stops already holds stop-level detail needed by the OR-Tools solver.
 -- ─────────────────────────────────────────────────────────────────────────────
 
 -- ─── Done ─────────────────────────────────────────────────────────────────────
@@ -155,15 +224,22 @@ BEGIN
     RAISE NOTICE '============================================================';
     RAISE NOTICE 'LOGIQ warehouse schema initialized successfully.';
     RAISE NOTICE '  Staging tables : 18';
-    RAISE NOTICE '  Dimensions     : 11 (2 SCD Type 2)';
-    RAISE NOTICE '  Fact tables    : 7  (fact_livraisons includes PCC measures)';
+    RAISE NOTICE '  Dimensions     : 49 (2 SCD Type 2, 2 junk dims)';
+    RAISE NOTICE '  Fact tables    : 7';
     RAISE NOTICE '  Aggregates     : 8 materialized views';
-    RAISE NOTICE '  Axis 1 (Must)  : fact_transport + agg_transport_mensuel + agg_demande_transport';
-    RAISE NOTICE '  Axis 2 (Should): fact_livraisons PCC + agg_profitabilite_colis';
-    RAISE NOTICE '  Axis 3 (Could) : NOT IMPLEMENTED — see placeholder comment above';
+    RAISE NOTICE '  Financial perimeters: Express Service / On-Demand Transport';
+    RAISE NOTICE '  Express cost tracks : Salary (fact_cost_salaire) /';
+    RAISE NOTICE '                        Cashbox (fact_charges)';
+    RAISE NOTICE '  Axis 3 (Could) : NOT IMPLEMENTED — see placeholder comment';
     RAISE NOTICE '============================================================';
     RAISE NOTICE 'Next step: run the Dagster ETL pipeline to load data.';
-    RAISE NOTICE 'After loading, refresh aggregates with:';
+    RAISE NOTICE 'After ETL, refresh aggregates:';
     RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_livraisons_journalieres;';
-    RAISE NOTICE '  ... (see init.sql header for full list)';
+    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_depenses_mensuelles;';
+    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_cout_total_mensuel;';
+    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_performance_livraison;';
+    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_masse_salariale_mensuelle;';
+    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_transport_mensuel;';
+    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_demande_transport;';
+    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_profitabilite_colis;';
 END $$;
