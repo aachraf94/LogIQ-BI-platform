@@ -20,5 +20,3 @@ INSERT INTO warehouse.dim_nature_category (category_id, category) VALUES
     (7, 'Financier'),
     (8, 'Divers')
 ON CONFLICT (category_id) DO NOTHING;
-
-CREATE SEQUENCE IF NOT EXISTS warehouse.dim_nature_category_seq START 9;

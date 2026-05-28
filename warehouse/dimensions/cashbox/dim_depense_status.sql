@@ -15,5 +15,3 @@ INSERT INTO warehouse.dim_depense_status (depense_status_id, status) VALUES
     (2, 'validée'),
     (3, 'rejetée')
 ON CONFLICT (depense_status_id) DO NOTHING;
-
-CREATE SEQUENCE IF NOT EXISTS warehouse.dim_depense_status_seq START 4;

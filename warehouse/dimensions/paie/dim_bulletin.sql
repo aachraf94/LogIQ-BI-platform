@@ -12,7 +12,7 @@ CREATE TABLE IF NOT EXISTS warehouse.dim_bulletin (
     period_year      SMALLINT     NOT NULL,
     payment_date_id  DATE         NOT NULL REFERENCES warehouse.dim_date(date_id),
     seniority_months SMALLINT     NOT NULL,       -- total months of seniority at this payslip
-    employee_key     INTEGER      REFERENCES warehouse.dim_employee(employee_key),
+    employee_key     INTEGER      NOT NULL REFERENCES warehouse.dim_employee(employee_key),
     contract_key     INTEGER      NOT NULL REFERENCES warehouse.dim_contract(contract_key),
 
     CONSTRAINT uq_bulletin_employee_period UNIQUE (employee_key, period_month, period_year)

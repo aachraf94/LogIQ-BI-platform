@@ -15,5 +15,3 @@ INSERT INTO warehouse.dim_sinistre_type (sinistre_type_id, sinistre_type) VALUES
     (2, 'endommagé'),
     (3, 'vol')
 ON CONFLICT (sinistre_type_id) DO NOTHING;
-
-CREATE SEQUENCE IF NOT EXISTS warehouse.dim_sinistre_type_seq START 4;
