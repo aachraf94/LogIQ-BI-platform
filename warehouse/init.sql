@@ -194,17 +194,17 @@ SET search_path TO warehouse, public;
 \i facts/fact_transport_performance.sql
 
 -- ─── 10. Aggregate Materialized Views ────────────────────────────────────────
--- Created after facts. Initial WITH DATA populates them immediately.
--- Requires at least some fact data to compute; safe to run on empty facts.
+-- NOT IMPLEMENTED YET — aggregate SQL files pending.
+-- Uncomment once aggregates/agg_*.sql files are created.
 
-\i aggregates/agg_livraisons_journalieres.sql
-\i aggregates/agg_depenses_mensuelles.sql
-\i aggregates/agg_cout_total_mensuel.sql
-\i aggregates/agg_performance_livraison.sql
-\i aggregates/agg_masse_salariale_mensuelle.sql
-\i aggregates/agg_transport_mensuel.sql
-\i aggregates/agg_demande_transport.sql
-\i aggregates/agg_profitabilite_colis.sql
+-- \i aggregates/agg_livraisons_journalieres.sql
+-- \i aggregates/agg_depenses_mensuelles.sql
+-- \i aggregates/agg_cout_total_mensuel.sql
+-- \i aggregates/agg_performance_livraison.sql
+-- \i aggregates/agg_masse_salariale_mensuelle.sql
+-- \i aggregates/agg_transport_mensuel.sql
+-- \i aggregates/agg_demande_transport.sql
+-- \i aggregates/agg_profitabilite_colis.sql
 
 -- ─── Axis 3 — Route Analysis (Could have) — NOT IMPLEMENTED ──────────────────
 --
@@ -226,20 +226,12 @@ BEGIN
     RAISE NOTICE '  Staging tables : 18';
     RAISE NOTICE '  Dimensions     : 49 (2 SCD Type 2, 2 junk dims)';
     RAISE NOTICE '  Fact tables    : 7';
-    RAISE NOTICE '  Aggregates     : 8 materialized views';
+    RAISE NOTICE '  Aggregates     : 0 (pending — aggregate files not yet created)';
     RAISE NOTICE '  Financial perimeters: Express Service / On-Demand Transport';
     RAISE NOTICE '  Express cost tracks : Salary (fact_cost_salaire) /';
     RAISE NOTICE '                        Cashbox (fact_charges)';
     RAISE NOTICE '  Axis 3 (Could) : NOT IMPLEMENTED — see placeholder comment';
     RAISE NOTICE '============================================================';
     RAISE NOTICE 'Next step: run the Dagster ETL pipeline to load data.';
-    RAISE NOTICE 'After ETL, refresh aggregates:';
-    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_livraisons_journalieres;';
-    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_depenses_mensuelles;';
-    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_cout_total_mensuel;';
-    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_performance_livraison;';
-    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_masse_salariale_mensuelle;';
-    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_transport_mensuel;';
-    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_demande_transport;';
-    RAISE NOTICE '  REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_profitabilite_colis;';
+    RAISE NOTICE 'Aggregates: create aggregates/agg_*.sql files then re-run phase 10.';
 END $$;
