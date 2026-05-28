@@ -7,14 +7,26 @@
 -- ordering conflicts.
 -- =============================================================================
 
-ALTER TABLE warehouse.dim_depense
-    ADD CONSTRAINT IF NOT EXISTS fk_depense_paiement_livreur
-        FOREIGN KEY (paiement_livreur_id)
-        REFERENCES warehouse.dim_paiement_livreurs(paiement_id)
-        DEFERRABLE INITIALLY DEFERRED;
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_depense_paiement_livreur'
+    ) THEN
+        ALTER TABLE warehouse.dim_depense
+            ADD CONSTRAINT fk_depense_paiement_livreur
+                FOREIGN KEY (paiement_livreur_id)
+                REFERENCES warehouse.dim_paiement_livreurs(paiement_id)
+                DEFERRABLE INITIALLY DEFERRED;
+    END IF;
+END $$;
 
-ALTER TABLE warehouse.dim_depense
-    ADD CONSTRAINT IF NOT EXISTS fk_depense_remboursement
-        FOREIGN KEY (remboursement_id)
-        REFERENCES warehouse.dim_remboursement(remboursement_id)
-        DEFERRABLE INITIALLY DEFERRED;
+DO $$ BEGIN
+    IF NOT EXISTS (
+        SELECT 1 FROM pg_constraint WHERE conname = 'fk_depense_remboursement'
+    ) THEN
+        ALTER TABLE warehouse.dim_depense
+            ADD CONSTRAINT fk_depense_remboursement
+                FOREIGN KEY (remboursement_id)
+                REFERENCES warehouse.dim_remboursement(remboursement_id)
+                DEFERRABLE INITIALLY DEFERRED;
+    END IF;
+END $$;
