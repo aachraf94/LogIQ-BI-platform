@@ -122,12 +122,21 @@ def dim_nature(
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO warehouse.dim_nature_category (category)
-                SELECT DISTINCT category_group
-                FROM warehouse.stg_cashbox_natures
-                WHERE category_group IS NOT NULL
+                INSERT INTO warehouse.dim_nature_category (category_id, category)
+                SELECT
+                    (SELECT COALESCE(MAX(category_id), 0) FROM warehouse.dim_nature_category)
+                    + ROW_NUMBER() OVER (ORDER BY category_group),
+                    category_group
+                FROM (
+                    SELECT DISTINCT category_group
+                    FROM warehouse.stg_cashbox_natures
+                    WHERE category_group IS NOT NULL
+                      AND category_group NOT IN (SELECT category FROM warehouse.dim_nature_category)
+                ) new_vals
                 ON CONFLICT (category) DO NOTHING
             """)
+            if cur.rowcount:
+                context.log.info(f"dim_nature_category: inserted {cur.rowcount} new category rows")
             cur.execute("""
                 INSERT INTO warehouse.dim_nature (nature_id, nature_name, category_id)
                 SELECT n.nature_id, n.name,
@@ -383,6 +392,10 @@ def dim_agence(
         for r in current_rows
     }
 
+    valid_companies = {
+        r[0] for r in warehouse_db.fetch_all("SELECT company_id FROM warehouse.dim_company")
+    }
+
     to_close, to_insert = [], []
     today = date.today()
 
@@ -392,9 +405,7 @@ def dim_agence(
         if not agency_type_id:
             context.log.warning(f"Skipping agency {agency_id}: unknown type")
             continue
-        if company_id not in {r[0] for r in warehouse_db.fetch_all(
-            "SELECT company_id FROM warehouse.dim_company"
-        )}:
+        if int(company_id) not in valid_companies:
             continue
 
         ins = (agency_id, name, int(agency_type_id), code, address,
@@ -521,11 +532,13 @@ def dim_contract(
     """)
 
     records = []
+    skipped_unmapped = 0
     for row in rows:
         contract_type, regime, hire_date, work_hours = row
         ct_id = _CONTRACT_TYPE_MAP.get(contract_type)
         regime_id = _REGIME_MAP.get(regime)
         if not ct_id or not regime_id or not hire_date:
+            skipped_unmapped += 1
             continue
         records.append((ct_id, regime_id, hire_date, float(work_hours)))
 
@@ -536,11 +549,22 @@ def dim_contract(
                 cur.execute("""
                     INSERT INTO warehouse.dim_contract
                     (contract_type_id, regime_id, hire_date_id, work_hours_per_week)
-                    VALUES (%s, %s, %s, %s)
-                    ON CONFLICT DO NOTHING
-                """, rec)
+                    SELECT %s, %s, %s, %s
+                    WHERE NOT EXISTS (
+                        SELECT 1
+                        FROM warehouse.dim_contract dc
+                        WHERE dc.contract_type_id = %s
+                          AND dc.regime_id = %s
+                          AND dc.hire_date_id = %s
+                          AND dc.work_hours_per_week = %s
+                    )
+                """, (*rec, *rec))
                 inserted += cur.rowcount
 
+    if skipped_unmapped:
+        context.log.warning(
+            f"dim_contract: skipped {skipped_unmapped} rows due to unmapped contract_type/regime/hire_date"
+        )
     context.log.info(f"Inserted {inserted} contracts ({len(records)} distinct configs)")
     return MaterializeResult(metadata={"inserted": MetadataValue.int(inserted)})
 
@@ -558,9 +582,11 @@ def dim_employee(
     warehouse_db: WarehousePostgresResource,
 ) -> MaterializeResult:
     # Lookup maps
-    agence_map = dict(warehouse_db.fetch_all(
-        "SELECT agency_id, agence_key FROM warehouse.dim_agence WHERE is_current = TRUE"
-    ))
+    agence_rows = warehouse_db.fetch_all(
+        "SELECT agency_id, agence_key, company_id FROM warehouse.dim_agence WHERE is_current = TRUE"
+    )
+    agence_map = {r[0]: r[1] for r in agence_rows}
+    agence_company_map = {r[0]: r[2] for r in agence_rows}
     occ_map = dict(warehouse_db.fetch_all(
         "SELECT occupation_name, occupation_id FROM warehouse.dim_occupation"
     ))
@@ -592,11 +618,6 @@ def dim_employee(
         SELECT contract_key, contract_type_id, regime_id, hire_date_id, work_hours_per_week
         FROM warehouse.dim_contract
     """)
-    contract_key_map = {
-        (_CONTRACT_TYPE_MAP.get(ct_id, ct_id), r_id, hd, float(wh)): ck
-        for ck, ct_id, r_id, hd, wh in contract_rows
-    }
-    # Re-key by (contract_type_id, regime_id, hire_date, work_hours)
     contract_key_map2 = {
         (ct_id, r_id, hd, float(wh)): ck
         for ck, ct_id, r_id, hd, wh in contract_rows
@@ -648,6 +669,11 @@ def dim_employee(
 
         agence_key = agence_map.get(int(agency_id)) if agency_id else None
         occupation_id = occ_map.get(occ_name) if occ_name else None
+        resolved_company_id = (
+            agence_company_map.get(int(agency_id))
+            if agency_id
+            else int(company_id)
+        )
 
         # contract_key: match latest bulletin's contract config
         contract_key = None
@@ -658,11 +684,10 @@ def dim_employee(
             if ct_id and r_id:
                 contract_key = contract_key_map2.get((ct_id, r_id, hd, wh))
 
-        ins = (uid, full_name, email, role_id, status_id, agence_key,
-               int(company_id), occupation_id, contract_key, hire_date,
-               today, None, True)
-
         if uid not in current:
+            valid_from = hire_date
+            ins = (uid, full_name, email, role_id, status_id, agence_key,
+                int(resolved_company_id), occupation_id, contract_key, hire_date, valid_from, None, True)
             to_insert.append(ins)
         else:
             old = current[uid]
@@ -674,6 +699,9 @@ def dim_employee(
                 or contract_key != old["contract_key"]
             )
             if changed:
+                valid_from = today
+                ins = (uid, full_name, email, role_id, status_id, agence_key,
+                    int(resolved_company_id), occupation_id, contract_key, hire_date, valid_from, None, True)
                 to_close.append(old["employee_key"])
                 to_insert.append(ins)
 
@@ -694,6 +722,19 @@ def dim_employee(
                         valid_from, valid_to, is_current
                     ) VALUES %s
                 """, to_insert)
+
+            cur.execute("""
+                UPDATE warehouse.dim_employee e
+                SET full_name = s.family_name || ' ' || s.first_name,
+                    email = s.email
+                FROM warehouse.stg_hrforce_users s
+                WHERE e.employee_id = s.user_id
+                  AND e.is_current = TRUE
+                  AND (
+                    e.full_name IS DISTINCT FROM (s.family_name || ' ' || s.first_name)
+                    OR e.email IS DISTINCT FROM s.email
+                  )
+            """)
 
     context.log.info(
         f"dim_employee: {len(to_close)} closed, {len(to_insert)} inserted, {skipped} skipped"
@@ -723,16 +764,14 @@ def dim_livreur_freelance(
                     p.livreur_id,
                     p.livreur_nom,
                     p.livreur_prenom,
-                    CASE p.livreur_vehicule_type
-                        WHEN 'moto'        THEN 1
-                        WHEN 'voiture'     THEN 2
-                        WHEN 'camionnette' THEN 3
-                        ELSE NULL
-                    END,
+                    vt.vehicule_type_id,
                     a.agence_key
                 FROM warehouse.stg_cashbox_paiements_livreurs p
+                LEFT JOIN warehouse.dim_livreur_vehicule_type vt
+                    ON vt.vehicule_type = p.livreur_vehicule_type
                 LEFT JOIN warehouse.dim_agence a
                     ON a.agency_id = p.agence_id AND a.is_current = TRUE
+                WHERE vt.vehicule_type_id IS NOT NULL
                 ORDER BY p.livreur_id, p.date_paiement DESC
                 ON CONFLICT (livreur_id) DO UPDATE SET
                     vehicule_type_id = EXCLUDED.vehicule_type_id,
@@ -759,12 +798,22 @@ def dim_pricing(
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO warehouse.dim_pricing_service_type (service_type)
-                SELECT DISTINCT service_type
-                FROM warehouse.stg_yalidine_pricing
-                WHERE service_type IS NOT NULL
-                ON CONFLICT (service_type) DO NOTHING
+                INSERT INTO warehouse.dim_pricing_service_type (pricing_service_type_id, service_type)
+                SELECT
+                    (SELECT COALESCE(MAX(pricing_service_type_id), 0) FROM warehouse.dim_pricing_service_type)
+                    + ROW_NUMBER() OVER (ORDER BY service_type),
+                    service_type
+                FROM (
+                    SELECT DISTINCT service_type
+                    FROM warehouse.stg_yalidine_pricing
+                    WHERE service_type IS NOT NULL
+                      AND service_type NOT IN (
+                          SELECT service_type FROM warehouse.dim_pricing_service_type
+                      )
+                ) new_vals
             """)
+            if cur.rowcount:
+                context.log.info(f"dim_pricing_service_type: inserted {cur.rowcount} new service type rows")
             cur.execute("TRUNCATE warehouse.dim_pricing RESTART IDENTITY")
             cur.execute("""
                 INSERT INTO warehouse.dim_pricing
@@ -811,12 +860,21 @@ def dim_depense(
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO warehouse.dim_depense_status (status)
-                SELECT DISTINCT status
-                FROM warehouse.stg_cashbox_depenses
-                WHERE status IS NOT NULL
+                INSERT INTO warehouse.dim_depense_status (depense_status_id, status)
+                SELECT
+                    (SELECT COALESCE(MAX(depense_status_id), 0) FROM warehouse.dim_depense_status)
+                    + ROW_NUMBER() OVER (ORDER BY status),
+                    status
+                FROM (
+                    SELECT DISTINCT status
+                    FROM warehouse.stg_cashbox_depenses
+                    WHERE status IS NOT NULL
+                      AND status NOT IN (SELECT status FROM warehouse.dim_depense_status)
+                ) new_vals
                 ON CONFLICT (status) DO NOTHING
             """)
+            if cur.rowcount:
+                context.log.info(f"dim_depense_status: inserted {cur.rowcount} new status rows")
             cur.execute("""
                 INSERT INTO warehouse.dim_depense
                 (depense_id, date_depense_id, depense_status_id, rubrique_id, nature_id, agence_key,
@@ -825,13 +883,13 @@ def dim_depense(
                     d.depense_id,
                     d.date_depense,
                     ds.depense_status_id,
-                    CASE WHEN d.rubrique_id IS NOT NULL THEN d.rubrique_id ELSE NULL END,
+                    d.rubrique_id,
                     CASE WHEN d.rubrique_id IS NULL THEN d.nature_id ELSE NULL END,
                     a.agence_key,
                     NULL,
                     NULL
                 FROM warehouse.stg_cashbox_depenses d
-                LEFT JOIN warehouse.dim_depense_status ds ON ds.status = d.status
+                JOIN warehouse.dim_depense_status ds ON ds.status = d.status
                 LEFT JOIN warehouse.dim_agence a
                     ON a.agency_id = d.agence_id AND a.is_current = TRUE
                 ON CONFLICT (depense_id) DO UPDATE SET
@@ -857,6 +915,21 @@ def dim_paiement_livreurs(
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
+                SELECT COUNT(*)
+                FROM warehouse.stg_cashbox_paiements_livreurs p
+                LEFT JOIN warehouse.stg_cashbox_depenses sd
+                    ON sd.agence_id = p.agence_id
+                    AND sd.nature_id = 5
+                    AND DATE(sd.date_depense) = p.date_paiement
+                WHERE p.livreur_id IN (SELECT livreur_id FROM warehouse.dim_livreur_freelance)
+                  AND sd.depense_id IS NULL
+            """)
+            skipped = cur.fetchone()[0]
+            if skipped:
+                context.log.warning(
+                    f"dim_paiement_livreurs: {skipped} payments skipped — no matching nature_id=5 depense for agence+date"
+                )
+            cur.execute("""
                 INSERT INTO warehouse.dim_paiement_livreurs
                 (paiement_id, livreur_id, depense_id, period_from_id, period_to_id,
                  date_paiement_id, nbr_colis_livres, nbr_colis_echoues)
@@ -877,6 +950,7 @@ def dim_paiement_livreurs(
                     AND DATE(sd.date_depense) = p.date_paiement
                 LEFT JOIN warehouse.dim_depense d ON d.depense_id = sd.depense_id
                 WHERE p.livreur_id IN (SELECT livreur_id FROM warehouse.dim_livreur_freelance)
+                  AND d.depense_id IS NOT NULL
                 ON CONFLICT (paiement_id) DO UPDATE SET
                     livreur_id       = EXCLUDED.livreur_id,
                     depense_id       = EXCLUDED.depense_id,
@@ -900,12 +974,21 @@ def dim_remboursement(
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO warehouse.dim_sinistre_type (sinistre_type)
-                SELECT DISTINCT sinistre_type
-                FROM warehouse.stg_cashbox_remboursements
-                WHERE sinistre_type IS NOT NULL
+                INSERT INTO warehouse.dim_sinistre_type (sinistre_type_id, sinistre_type)
+                SELECT
+                    (SELECT COALESCE(MAX(sinistre_type_id), 0) FROM warehouse.dim_sinistre_type)
+                    + ROW_NUMBER() OVER (ORDER BY sinistre_type),
+                    sinistre_type
+                FROM (
+                    SELECT DISTINCT sinistre_type
+                    FROM warehouse.stg_cashbox_remboursements
+                    WHERE sinistre_type IS NOT NULL
+                      AND sinistre_type NOT IN (SELECT sinistre_type FROM warehouse.dim_sinistre_type)
+                ) new_vals
                 ON CONFLICT (sinistre_type) DO NOTHING
             """)
+            if cur.rowcount:
+                context.log.info(f"dim_sinistre_type: inserted {cur.rowcount} new sinistre_type rows")
             cur.execute("""
                 INSERT INTO warehouse.dim_remboursement
                 (remboursement_id, colis_tracking, depense_id, parcel_declared_value,
@@ -919,7 +1002,7 @@ def dim_remboursement(
                     st.sinistre_type_id,
                     r.date_remboursement
                 FROM warehouse.stg_cashbox_remboursements r
-                LEFT JOIN warehouse.dim_sinistre_type st
+                JOIN warehouse.dim_sinistre_type st
                     ON st.sinistre_type = r.sinistre_type
                 -- dual-tracked: find matching depense with nature_id 3 or 4
                 LEFT JOIN warehouse.stg_cashbox_depenses sd
@@ -927,6 +1010,7 @@ def dim_remboursement(
                     AND sd.nature_id IN (3, 4)
                     AND DATE(sd.date_depense) = r.date_remboursement
                 LEFT JOIN warehouse.dim_depense d ON d.depense_id = sd.depense_id
+                WHERE d.depense_id IS NOT NULL
                 ON CONFLICT (remboursement_id) DO UPDATE SET
                     depense_id            = EXCLUDED.depense_id,
                     parcel_declared_value = EXCLUDED.parcel_declared_value,
@@ -1075,12 +1159,20 @@ def dim_transport_client(
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO warehouse.dim_client_type (client_type)
-                SELECT DISTINCT client_type
-                FROM warehouse.stg_transport_requests
-                WHERE client_type IS NOT NULL
-                ON CONFLICT (client_type) DO NOTHING
+                INSERT INTO warehouse.dim_client_type (client_type_id, client_type)
+                SELECT
+                    (SELECT COALESCE(MAX(client_type_id), 0) FROM warehouse.dim_client_type)
+                    + ROW_NUMBER() OVER (ORDER BY client_type),
+                    client_type
+                FROM (
+                    SELECT DISTINCT client_type
+                    FROM warehouse.stg_transport_requests
+                    WHERE client_type IS NOT NULL
+                      AND client_type NOT IN (SELECT client_type FROM warehouse.dim_client_type)
+                ) new_vals
             """)
+            if cur.rowcount:
+                context.log.info(f"dim_client_type: inserted {cur.rowcount} new client type rows")
             cur.execute("""
                 INSERT INTO warehouse.dim_transport_client
                 (client_id, client_name, client_type_id, contact_phone,
@@ -1093,7 +1185,7 @@ def dim_transport_client(
                     r.client_contact_email,
                     r.client_company_id
                 FROM warehouse.stg_transport_requests r
-                LEFT JOIN warehouse.dim_client_type ct
+                JOIN warehouse.dim_client_type ct
                     ON ct.client_type = r.client_type
                 ORDER BY client_id
                 ON CONFLICT (client_id) DO UPDATE SET
@@ -1120,12 +1212,20 @@ def dim_transport_vehicle(
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO warehouse.dim_transport_vehicle_type (vehicle_type)
-                SELECT DISTINCT vehicle_type
-                FROM warehouse.stg_transport_requests
-                WHERE vehicle_type IS NOT NULL
-                ON CONFLICT (vehicle_type) DO NOTHING
+                INSERT INTO warehouse.dim_transport_vehicle_type (vehicle_type_id, vehicle_type)
+                SELECT
+                    (SELECT COALESCE(MAX(vehicle_type_id), 0) FROM warehouse.dim_transport_vehicle_type)
+                    + ROW_NUMBER() OVER (ORDER BY vehicle_type),
+                    vehicle_type
+                FROM (
+                    SELECT DISTINCT vehicle_type
+                    FROM warehouse.stg_transport_requests
+                    WHERE vehicle_type IS NOT NULL
+                      AND vehicle_type NOT IN (SELECT vehicle_type FROM warehouse.dim_transport_vehicle_type)
+                ) new_vals
             """)
+            if cur.rowcount:
+                context.log.info(f"dim_transport_vehicle_type: inserted {cur.rowcount} new rows")
             cur.execute("""
                 INSERT INTO warehouse.dim_transport_vehicle
                 (vehicle_id, vehicle_type_id, vehicle_plate, vehicle_brand,
@@ -1139,7 +1239,7 @@ def dim_transport_vehicle(
                     r.payload_capacity_kg,
                     r.volume_capacity_m3
                 FROM warehouse.stg_transport_requests r
-                LEFT JOIN warehouse.dim_transport_vehicle_type vt
+                JOIN warehouse.dim_transport_vehicle_type vt
                     ON vt.vehicle_type = r.vehicle_type
                 ORDER BY vehicle_id
                 ON CONFLICT (vehicle_id) DO UPDATE SET
@@ -1276,67 +1376,144 @@ def dim_transport(
 ) -> MaterializeResult:
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
+            # dim_transport_service_type — SMALLINT PK (not SERIAL), UNIQUE on service_type
             cur.execute("""
-                INSERT INTO warehouse.dim_transport_service_type (service_type)
-                SELECT DISTINCT service_type
-                FROM warehouse.stg_transport_requests
-                WHERE service_type IS NOT NULL
-                ON CONFLICT (service_type) DO NOTHING
-            """)
-            cur.execute("""
-                INSERT INTO warehouse.dim_transport_sub_service_type (sub_service_type, service_type_id)
-                SELECT DISTINCT r.sub_service_type, st.service_type_id
-                FROM warehouse.stg_transport_requests r
-                JOIN warehouse.dim_transport_service_type st
-                    ON st.service_type = r.service_type
-                WHERE r.sub_service_type IS NOT NULL
-                ON CONFLICT (sub_service_type) DO NOTHING
-            """)
-            cur.execute("""
-                INSERT INTO warehouse.dim_transport_status (status_name, is_terminal)
-                SELECT DISTINCT status, status IN ('terminée', 'annulée')
-                FROM warehouse.stg_transport_requests
-                WHERE status IS NOT NULL
-                ON CONFLICT (status_name) DO UPDATE SET
-                    is_terminal = EXCLUDED.is_terminal
-            """)
-            cur.execute("""
-                INSERT INTO warehouse.dim_transport_payment_status (payment_status, is_terminal)
-                SELECT DISTINCT payment_status, payment_status IN ('payé', 'annulé')
-                FROM warehouse.stg_transport_requests
-                WHERE payment_status IS NOT NULL
-                ON CONFLICT (payment_status) DO UPDATE SET
-                    is_terminal = EXCLUDED.is_terminal
-            """)
-            cur.execute("""
-                INSERT INTO warehouse.dim_location_type (location_type)
-                SELECT DISTINCT location_type
+                INSERT INTO warehouse.dim_transport_service_type (service_type_id, service_type)
+                SELECT
+                    (SELECT COALESCE(MAX(service_type_id), 0) FROM warehouse.dim_transport_service_type)
+                    + ROW_NUMBER() OVER (ORDER BY service_type),
+                    service_type
                 FROM (
-                    SELECT depart_location_type AS location_type
+                    SELECT DISTINCT service_type
                     FROM warehouse.stg_transport_requests
-                    UNION
-                    SELECT arrival_location_type AS location_type
-                    FROM warehouse.stg_transport_requests
-                    UNION
-                    SELECT location_type
-                    FROM warehouse.stg_transport_stops
-                ) t
-                WHERE location_type IS NOT NULL
-                ON CONFLICT (location_type) DO NOTHING
+                    WHERE service_type IS NOT NULL
+                      AND service_type NOT IN (SELECT service_type FROM warehouse.dim_transport_service_type)
+                ) new_vals
             """)
+            if cur.rowcount:
+                context.log.info(f"dim_transport_service_type: inserted {cur.rowcount} new rows")
+
+            # dim_transport_sub_service_type — SMALLINT PK (not SERIAL), UNIQUE on sub_service_type
             cur.execute("""
-                INSERT INTO warehouse.dim_stop_type (stop_type)
-                SELECT DISTINCT stop_type
-                FROM warehouse.stg_transport_stops
-                WHERE stop_type IS NOT NULL
-                ON CONFLICT (stop_type) DO NOTHING
+                INSERT INTO warehouse.dim_transport_sub_service_type (sub_service_id, sub_service_type, service_type_id)
+                SELECT
+                    (SELECT COALESCE(MAX(sub_service_id), 0) FROM warehouse.dim_transport_sub_service_type)
+                    + ROW_NUMBER() OVER (ORDER BY r.sub_service_type),
+                    r.sub_service_type,
+                    st.service_type_id
+                FROM (
+                    SELECT DISTINCT r.sub_service_type, r.service_type
+                    FROM warehouse.stg_transport_requests r
+                    WHERE r.sub_service_type IS NOT NULL
+                      AND r.sub_service_type NOT IN (SELECT sub_service_type FROM warehouse.dim_transport_sub_service_type)
+                ) r
+                JOIN warehouse.dim_transport_service_type st ON st.service_type = r.service_type
             """)
+            if cur.rowcount:
+                context.log.info(f"dim_transport_sub_service_type: inserted {cur.rowcount} new rows")
+
+            # dim_transport_status — SMALLINT PK (not SERIAL), UNIQUE on status_name
+            cur.execute("""
+                INSERT INTO warehouse.dim_transport_status (status_id, status_name, is_terminal)
+                SELECT
+                    (SELECT COALESCE(MAX(status_id), 0) FROM warehouse.dim_transport_status)
+                    + ROW_NUMBER() OVER (ORDER BY status_name),
+                    status_name,
+                    is_terminal
+                FROM (
+                    SELECT DISTINCT
+                        status AS status_name,
+                        status IN ('terminée', 'annulée') AS is_terminal
+                    FROM warehouse.stg_transport_requests
+                    WHERE status IS NOT NULL
+                      AND status NOT IN (SELECT status_name FROM warehouse.dim_transport_status)
+                ) new_vals
+            """)
+            if cur.rowcount:
+                context.log.info(f"dim_transport_status: inserted {cur.rowcount} new rows")
+            # Update is_terminal for existing rows that may have changed
+            cur.execute("""
+                UPDATE warehouse.dim_transport_status dst
+                SET is_terminal = (dst.status_name IN ('terminée', 'annulée'))
+                WHERE dst.is_terminal != (dst.status_name IN ('terminée', 'annulée'))
+            """)
+
+            # dim_transport_payment_status — SMALLINT PK (not SERIAL), UNIQUE on payment_status
+            cur.execute("""
+                INSERT INTO warehouse.dim_transport_payment_status (payment_status_id, payment_status, is_terminal)
+                SELECT
+                    (SELECT COALESCE(MAX(payment_status_id), 0) FROM warehouse.dim_transport_payment_status)
+                    + ROW_NUMBER() OVER (ORDER BY payment_status),
+                    payment_status,
+                    is_terminal
+                FROM (
+                    SELECT DISTINCT
+                        payment_status,
+                        payment_status IN ('payé', 'annulé') AS is_terminal
+                    FROM warehouse.stg_transport_requests
+                    WHERE payment_status IS NOT NULL
+                      AND payment_status NOT IN (SELECT payment_status FROM warehouse.dim_transport_payment_status)
+                ) new_vals
+            """)
+            if cur.rowcount:
+                context.log.info(f"dim_transport_payment_status: inserted {cur.rowcount} new rows")
+            cur.execute("""
+                UPDATE warehouse.dim_transport_payment_status dps
+                SET is_terminal = (dps.payment_status IN ('payé', 'annulé'))
+                WHERE dps.is_terminal != (dps.payment_status IN ('payé', 'annulé'))
+            """)
+
+            # dim_location_type — SMALLINT PK (not SERIAL), UNIQUE on location_type
+            cur.execute("""
+                INSERT INTO warehouse.dim_location_type (location_type_id, location_type)
+                SELECT
+                    (SELECT COALESCE(MAX(location_type_id), 0) FROM warehouse.dim_location_type)
+                    + ROW_NUMBER() OVER (ORDER BY location_type),
+                    location_type
+                FROM (
+                    SELECT DISTINCT location_type
+                    FROM (
+                        SELECT depart_location_type AS location_type
+                        FROM warehouse.stg_transport_requests
+                        UNION
+                        SELECT arrival_location_type
+                        FROM warehouse.stg_transport_requests
+                        UNION
+                        SELECT location_type
+                        FROM warehouse.stg_transport_stops
+                    ) t
+                    WHERE location_type IS NOT NULL
+                      AND location_type NOT IN (SELECT location_type FROM warehouse.dim_location_type)
+                ) new_vals
+            """)
+            if cur.rowcount:
+                context.log.info(f"dim_location_type: inserted {cur.rowcount} new rows")
+
+            # dim_stop_type — SMALLINT PK (not SERIAL), NO UNIQUE on stop_type → NOT IN pattern
+            cur.execute("""
+                INSERT INTO warehouse.dim_stop_type (stop_type_id, stop_type)
+                SELECT
+                    (SELECT COALESCE(MAX(stop_type_id), 0) FROM warehouse.dim_stop_type)
+                    + ROW_NUMBER() OVER (ORDER BY stop_type),
+                    stop_type
+                FROM (
+                    SELECT DISTINCT stop_type
+                    FROM warehouse.stg_transport_stops
+                    WHERE stop_type IS NOT NULL
+                      AND stop_type NOT IN (SELECT stop_type FROM warehouse.dim_stop_type)
+                ) new_vals
+            """)
+            if cur.rowcount:
+                context.log.info(f"dim_stop_type: inserted {cur.rowcount} new rows")
 
     # ── Build lookup maps ────────────────────────────────────────────────────
 
-    existing_requests = dict(warehouse_db.fetch_all(
-        "SELECT request_id, departure_key, arrival_key FROM warehouse.dim_transport"
-    ))
+    existing_requests = {
+        r[0]: (r[1], r[2])
+        for r in warehouse_db.fetch_all(
+            "SELECT request_id, departure_key, arrival_key FROM warehouse.dim_transport"
+        )
+    }
 
     employee_key_map = dict(warehouse_db.fetch_all(
         "SELECT employee_id, employee_key FROM warehouse.dim_employee WHERE is_current = TRUE"
@@ -1451,10 +1628,13 @@ def dim_transport(
     arr_request_ids = []
     arr_records = []
     for row in new_rows:
-        (request_id, *_, arr_loc_type, arr_loc_name, arr_addr,
-         arr_wilaya, arr_commune, arr_gps, *rest) = (
-            row[0], *row[1:18], *row[18:25], *row[25:]
-        )
+        request_id   = row[0]
+        arr_loc_type = row[18]
+        arr_loc_name = row[19]
+        arr_addr     = row[20]
+        arr_wilaya   = row[21]
+        arr_commune  = row[22]
+        arr_gps      = row[23]
         loc_type_id = location_type_map.get(arr_loc_type)
         if not loc_type_id:
             continue
@@ -1666,13 +1846,23 @@ def dim_parcel(
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
             cur.execute("""
-                INSERT INTO warehouse.dim_parcels_status (status_name, is_terminal)
-                SELECT DISTINCT statut, statut IN ('Livré', 'Retourné au vendeur')
-                FROM warehouse.stg_yalidine_parcel_history
-                WHERE statut IS NOT NULL
+                INSERT INTO warehouse.dim_parcels_status (status_id, status_name, is_terminal)
+                SELECT
+                    (SELECT COALESCE(MAX(status_id), 0) FROM warehouse.dim_parcels_status)
+                    + ROW_NUMBER() OVER (ORDER BY statut),
+                    statut,
+                    statut IN ('Livré', 'Retourné au vendeur')
+                FROM (
+                    SELECT DISTINCT statut
+                    FROM warehouse.stg_yalidine_parcel_history
+                    WHERE statut IS NOT NULL
+                      AND statut NOT IN (SELECT status_name FROM warehouse.dim_parcels_status)
+                ) new_vals
                 ON CONFLICT (status_name) DO UPDATE SET
                     is_terminal = EXCLUDED.is_terminal
             """)
+            if cur.rowcount:
+                context.log.info(f"dim_parcels_status: inserted {cur.rowcount} new status rows")
             cur.execute("""
                 INSERT INTO warehouse.dim_parcel (
                     tracking,
