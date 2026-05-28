@@ -361,7 +361,9 @@ def dim_agence(
     context: AssetExecutionContext,
     warehouse_db: WarehousePostgresResource,
 ) -> MaterializeResult:
-    # Source: join agencies with their matching Yalidine center (for commune_id)
+    # Source: join agencies with their matching Yalidine center (for commune_id).
+    # Validate commune_id against dim_commune — stg_yalidine_centers may reference
+    # communes not yet in dim_commune (e.g. communes outside the 58-wilaya filter).
     source_rows = warehouse_db.fetch_all("""
         SELECT
             a.agency_id,
@@ -370,12 +372,17 @@ def dim_agence(
             a.code,
             a.address,
             a.company_id,
-            CASE WHEN NULLIF(a.code_yal, '') IS NOT NULL THEN c.commune_id ELSE NULL END AS commune_id
+            CASE
+                WHEN NULLIF(a.code_yal, '') IS NOT NULL AND dc.commune_id IS NOT NULL
+                THEN dc.commune_id
+                ELSE NULL
+            END AS commune_id
         FROM warehouse.stg_hrforce_agencies a
         LEFT JOIN warehouse.dim_agency_type at ON at.agency_type = a.type
         LEFT JOIN warehouse.stg_yalidine_centers c
             ON NULLIF(a.code_yal, '') IS NOT NULL
             AND c.hub_id = NULLIF(a.code_yal, '')::INTEGER
+        LEFT JOIN warehouse.dim_commune dc ON dc.commune_id = c.commune_id
         WHERE a.company_id != 9
     """)
 
@@ -529,6 +536,7 @@ def dim_contract(
         SELECT DISTINCT contract_type, regime, hire_date, work_hours_per_week
         FROM warehouse.stg_paie_bulletins
         WHERE company_id != 9
+          AND hire_date IN (SELECT date_id FROM warehouse.dim_date)
     """)
 
     records = []
@@ -1139,6 +1147,7 @@ def dim_transport_client_company(
                 SELECT DISTINCT client_company_id, client_company_name
                 FROM warehouse.stg_transport_requests
                 WHERE client_company_id IS NOT NULL
+                  AND client_company_name IS NOT NULL
                 ON CONFLICT (client_company_id) DO UPDATE SET
                     client_company_name = EXCLUDED.client_company_name
             """)
