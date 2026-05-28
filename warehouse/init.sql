@@ -224,7 +224,7 @@ BEGIN
     RAISE NOTICE '============================================================';
     RAISE NOTICE 'LOGIQ warehouse schema initialized successfully.';
     RAISE NOTICE '  Staging tables : 18';
-    RAISE NOTICE '  Dimensions     : 49 (2 SCD Type 2, 2 junk dims)';
+    RAISE NOTICE '  Dimensions     : 55 (2 SCD Type 2, 2 junk dims)';
     RAISE NOTICE '  Fact tables    : 7';
     RAISE NOTICE '  Aggregates     : 0 (pending — aggregate files not yet created)';
     RAISE NOTICE '  Financial perimeters: Express Service / On-Demand Transport';
