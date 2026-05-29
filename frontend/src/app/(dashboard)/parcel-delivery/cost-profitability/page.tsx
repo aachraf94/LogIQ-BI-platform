@@ -6,7 +6,6 @@ import { motion } from "framer-motion";
 import { DollarSign, TrendingUp, TrendingDown, BarChart2, Layers } from "lucide-react";
 
 import { KpiCard } from "@/components/ui/KpiCard";
-import { PieChart } from "@/components/charts/PieChart";
 import { BarChart } from "@/components/charts/BarChart";
 import { useTranslation } from "@/lib/i18n";
 import { useChartTheme } from "@/lib/chartTheme";
@@ -16,16 +15,17 @@ import { formatNumber, formatPercent, formatDZD } from "@/lib/utils";
 import {
   mockParcelCostKpis,
   mockParcelRevenueCostTrend,
-  mockParcelCostStructureNew,
   mockParcelCostNature,
-  mockParcelEcartBuckets,
+  mockParcelRegionProfit,
+  mockParcelZoneProfit,
+  REGION_FLOW_REGIONS,
 } from "@/lib/mock-data";
 import type {
   ParcelCostKpis,
   ParcelRevenueCostPoint,
-  ParcelCostStructure,
   ParcelCostNatureItem,
-  ParcelEcartBucket,
+  ParcelRegionProfitItem,
+  ParcelZoneProfitItem,
 } from "@/types/parcel_delivery";
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
@@ -58,7 +58,7 @@ function EmptyChartState() {
   );
 }
 
-// ─── Revenue vs Cost trend chart ──────────────────────────────────────────────
+// ─── Revenue vs Cost trend ────────────────────────────────────────────────────
 
 function buildRevenueCostOption(
   trend: ParcelRevenueCostPoint[],
@@ -95,7 +95,6 @@ function buildRevenueCostOption(
       axisLabel: { color: ct.labelColor, fontSize: 11 },
     },
     series: [
-      // Cost drawn first (behind revenue)
       {
         name: labels.cost,
         type: "line" as const,
@@ -135,15 +134,103 @@ function buildRevenueCostOption(
   };
 }
 
-// ─── Tariff gap histogram ─────────────────────────────────────────────────────
+// ─── Regional profit heatmap — main value = marge_brute, tooltip = all metrics ─
 
-function buildEcartHistogramOption(
-  buckets: ParcelEcartBucket[],
-  labels: { parcels: string; sumEcart: string },
+function buildRegionProfitOption(
+  data: ParcelRegionProfitItem[],
+  regions: string[],
   ct: ReturnType<typeof useChartTheme>
 ) {
-  const sorted = [...buckets].sort((a, b) => a.bucket_order - b.bucket_order);
-  const cats = sorted.map((b) => b.bucket);
+  const lookup = new Map(data.map((d) => [`${d.origin}|${d.destination}`, d]));
+  const allMargins = data.map((d) => d.marge_pct);
+  const minPct = Math.min(...allMargins);
+  const maxPct = Math.max(...allMargins);
+
+  const cells: [number, number, number][] = [];
+  regions.forEach((origin, yi) => {
+    regions.forEach((dest, xi) => {
+      const item = lookup.get(`${origin}|${dest}`);
+      cells.push([xi, yi, item?.marge_pct ?? 0]);
+    });
+  });
+
+  const fmt = (n: number) => n.toLocaleString("fr-FR");
+
+  return {
+    backgroundColor: "transparent",
+    tooltip: {
+      trigger: "item" as const,
+      backgroundColor: ct.tooltipBg,
+      borderColor: ct.borderColor,
+      textStyle: { color: ct.textColor, fontSize: 12 },
+      formatter: (p: { value: [number, number, number] }) => {
+        const [xi, yi] = p.value;
+        const item = lookup.get(`${regions[yi]}|${regions[xi]}`);
+        if (!item || !item.nbr_colis) return "";
+        return [
+          `<b>${regions[yi]}</b> → <b>${regions[xi]}</b>`,
+          `Colis : ${fmt(item.nbr_colis)}`,
+          `Frais : ${fmt(item.total_fees)} DZD`,
+          `Coût  : ${fmt(item.cout_total)} DZD`,
+          `<span style="color:#10B981;font-weight:600">Marge : ${fmt(item.marge_brute)} DZD (${item.marge_pct}%)</span>`,
+        ].join("<br/>");
+      },
+    },
+    grid: { left: 60, right: 12, top: 12, bottom: 60, containLabel: false },
+    xAxis: {
+      type: "category" as const,
+      data: regions,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: ct.labelColor, fontSize: 10, rotate: 35 },
+      name: "Destination",
+      nameLocation: "middle" as const,
+      nameGap: 46,
+      nameTextStyle: { color: ct.labelColor, fontSize: 10 },
+    },
+    yAxis: {
+      type: "category" as const,
+      data: regions,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: ct.labelColor, fontSize: 10 },
+      name: "Origine",
+      nameLocation: "middle" as const,
+      nameGap: 50,
+      nameTextStyle: { color: ct.labelColor, fontSize: 10 },
+    },
+    visualMap: {
+      min: minPct,
+      max: maxPct,
+      show: false,
+      inRange: {
+        // amber (low margin) → emerald (high margin)
+        color: ["rgba(245,158,11,0.25)", "rgba(245,158,11,0.5)", "rgba(16,185,129,0.35)", "rgba(16,185,129,0.75)"],
+      },
+    },
+    series: [{
+      type: "heatmap" as const,
+      data: cells,
+      label: {
+        show: true,
+        fontSize: 9,
+        color: ct.textColor,
+        formatter: (p: { value: [number, number, number] }) =>
+          p.value[2] > 0 ? `${p.value[2]}%` : "",
+      },
+      emphasis: { itemStyle: { shadowBlur: 10, shadowColor: "rgba(16,185,129,0.4)" } },
+      itemStyle: { borderColor: ct.bgColor, borderWidth: 1.5, borderRadius: 3 },
+    }],
+  };
+}
+
+// ─── Zone profitability — grouped bars (fees/cost) + margin % line ────────────
+
+function buildZoneProfitOption(
+  zones: ParcelZoneProfitItem[],
+  ct: ReturnType<typeof useChartTheme>
+) {
+  const cats = zones.map((z) => `Zone ${z.zone_num}`);
   return {
     backgroundColor: "transparent",
     tooltip: {
@@ -152,57 +239,83 @@ function buildEcartHistogramOption(
       borderColor: ct.borderColor,
       textStyle: { color: ct.textColor, fontSize: 12 },
       axisPointer: { type: "shadow" as const },
+      formatter: (params: Array<{ seriesName: string; value: number; color: string }>) => {
+        const z = zones[params[0] ? cats.indexOf(params[0].seriesName) : 0];
+        const lines = params.map(
+          (p) => `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${p.color};margin-right:4px"></span>${p.seriesName}: <b>${p.value.toLocaleString("fr-FR")} ${p.seriesName.includes("%") ? "%" : "DZD"}</b>`
+        );
+        return lines.join("<br/>");
+      },
     },
     legend: {
       top: 0, right: 0,
       textStyle: { color: ct.legendColor, fontSize: 11 },
       itemWidth: 10, itemHeight: 10,
     },
-    grid: { left: 16, right: 16, top: 36, bottom: 0, containLabel: true },
+    grid: { left: 16, right: 48, top: 36, bottom: 0, containLabel: true },
     xAxis: {
       type: "category" as const,
       data: cats,
       axisLine: { lineStyle: { color: ct.axisColor } },
       axisTick: { show: false },
-      axisLabel: { color: ct.labelColor, fontSize: 9, rotate: 35 },
+      axisLabel: { color: ct.labelColor, fontSize: 11 },
     },
     yAxis: [
       {
         type: "value" as const,
-        name: labels.parcels,
+        name: "DZD",
         nameTextStyle: { color: ct.labelColor, fontSize: 10 },
         axisLine: { show: false },
         splitLine: { lineStyle: { color: ct.splitColor, type: "dashed" as const } },
-        axisLabel: { color: ct.labelColor, fontSize: 10 },
+        axisLabel: {
+          color: ct.labelColor, fontSize: 10,
+          formatter: (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v),
+        },
       },
       {
         type: "value" as const,
-        name: labels.sumEcart,
+        name: "Marge %",
+        min: 0, max: 50,
         nameTextStyle: { color: ct.labelColor, fontSize: 10 },
         axisLine: { show: false },
         splitLine: { show: false },
-        axisLabel: { color: ct.labelColor, fontSize: 10 },
+        axisLabel: { color: ct.labelColor, fontSize: 10, formatter: (v: number) => `${v}%` },
       },
     ],
     series: [
       {
-        name: labels.parcels,
+        name: "Frais collectés",
         type: "bar" as const,
         yAxisIndex: 0,
-        data: sorted.map((b) => b.nbr_colis),
-        itemStyle: { color: "#6366F1", borderRadius: [4, 4, 0, 0] },
-        barMaxWidth: 40,
+        data: zones.map((z) => z.total_fees),
+        itemStyle: { color: "#10B981", borderRadius: [4, 4, 0, 0] },
+        barMaxWidth: 36,
       },
       {
-        name: labels.sumEcart,
+        name: "Coût total",
+        type: "bar" as const,
+        yAxisIndex: 0,
+        data: zones.map((z) => z.cout_total),
+        itemStyle: { color: "#EF4444", borderRadius: [4, 4, 0, 0] },
+        barMaxWidth: 36,
+      },
+      {
+        name: "Marge %",
         type: "line" as const,
         yAxisIndex: 1,
-        data: sorted.map((b) => b.sum_ecart_dzd),
+        data: zones.map((z) => z.marge_pct),
         smooth: true,
         symbol: "circle",
-        symbolSize: 5,
-        lineStyle: { color: "#F59E0B", width: 2 },
-        itemStyle: { color: "#F59E0B" },
+        symbolSize: 7,
+        lineStyle: { color: "#6366F1", width: 2.5 },
+        itemStyle: { color: "#6366F1" },
+        label: {
+          show: true,
+          position: "top" as const,
+          color: ct.legendColor,
+          fontSize: 10,
+          formatter: (p: { value: number }) => `${p.value}%`,
+        },
       },
     ],
   };
@@ -213,17 +326,17 @@ function buildEcartHistogramOption(
 interface PageData {
   kpis: ParcelCostKpis
   revenueCostTrend: ParcelRevenueCostPoint[]
-  costStructure: ParcelCostStructure
   costByNature: ParcelCostNatureItem[]
-  ecartBuckets: ParcelEcartBucket[]
+  regionProfit: ParcelRegionProfitItem[]
+  zoneProfit: ParcelZoneProfitItem[]
 }
 
 const MOCK: PageData = {
   kpis: mockParcelCostKpis,
   revenueCostTrend: mockParcelRevenueCostTrend,
-  costStructure: mockParcelCostStructureNew,
   costByNature: mockParcelCostNature,
-  ecartBuckets: mockParcelEcartBuckets,
+  regionProfit: mockParcelRegionProfit,
+  zoneProfit: mockParcelZoneProfit,
 };
 
 export default function CostProfitabilityPage() {
@@ -254,18 +367,18 @@ export default function CostProfitabilityPage() {
   const fetchData = useCallback(async () => {
     setFetching(true);
     try {
-      const [kpis, revenueCostTrend, costStructure, costByNature, ecartBuckets] = await Promise.all([
+      const [kpis, revenueCostTrend, costByNature, regionProfit, zoneProfit] = await Promise.all([
         parcelDeliveryApi.costKpis(filters),
         parcelDeliveryApi.revenueCostTrend(filters),
-        parcelDeliveryApi.costStructure(filters),
         parcelDeliveryApi.costByNature(filters),
-        parcelDeliveryApi.ecartDistribution(filters),
+        parcelDeliveryApi.regionProfit(filters),
+        parcelDeliveryApi.zoneProfit(filters),
       ]);
-      setData({ kpis, revenueCostTrend, costStructure, costByNature, ecartBuckets });
+      setData({ kpis, revenueCostTrend, costByNature, regionProfit, zoneProfit });
       setUsingMock(false);
     } catch {
       setData(MOCK);
-      setUsingMock(true);  // shared store — layout reads this for the badge
+      setUsingMock(true);
     } finally {
       setFetching(false);
     }
@@ -273,14 +386,7 @@ export default function CostProfitabilityPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const { kpis, revenueCostTrend, costStructure, costByNature, ecartBuckets } = data;
-
-  const costStructurePieData = [
-    { name: "Salaires",   value: costStructure.total_salaires  },
-    { name: "Dépenses",   value: costStructure.total_depenses  },
-    { name: "Freelance",  value: costStructure.total_freelance },
-    { name: "Sinistres",  value: costStructure.total_sinistres },
-  ].filter((d) => d.value > 0);
+  const { kpis, revenueCostTrend, costByNature, regionProfit, zoneProfit } = data;
 
   const costNatureBarData = [...costByNature]
     .sort((a, b) => b.total_dzd - a.total_dzd)
@@ -299,18 +405,18 @@ export default function CostProfitabilityPage() {
         </div>
       )}
 
-      {/* Demo badge is shown in layout.tsx's tab row — no badge here */}
+      {/* Demo badge is shown in layout.tsx's tab row */}
 
       {/* ── Row 1: 5 KPI cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard title={p.kpiFeesCollected}    value={formatDZD(kpis.total_fees)}                       trend={kpis.pop_fees}           trendLabel={trendLabel} icon={<DollarSign size={15} />}  index={0} />
-        <KpiCard title={p.kpiTotalCost}        value={formatDZD(kpis.cout_total)}                       trend={-kpis.pop_cout}          trendLabel={trendLabel} icon={<TrendingDown size={15} />} index={1} />
-        <KpiCard title={p.kpiGrossMargin}      value={formatPercent(kpis.marge_pct)}                    trend={kpis.pop_marge}          trendLabel={trendLabel} icon={<TrendingUp size={15} />}   index={2} />
-        <KpiCard title={p.kpiAvgFee}           value={`${formatNumber(kpis.avg_fee_par_colis)} DZD`}    trend={kpis.pop_avg_fee}        trendLabel={trendLabel} icon={<BarChart2 size={15} />}    index={3} />
+        <KpiCard title={p.kpiFeesCollected}    value={formatDZD(kpis.total_fees)}                       trend={kpis.pop_fees}            trendLabel={trendLabel} icon={<DollarSign size={15} />}  index={0} />
+        <KpiCard title={p.kpiTotalCost}        value={formatDZD(kpis.cout_total)}                       trend={-kpis.pop_cout}           trendLabel={trendLabel} icon={<TrendingDown size={15} />} index={1} />
+        <KpiCard title={p.kpiGrossMargin}      value={formatPercent(kpis.marge_pct)}                    trend={kpis.pop_marge}           trendLabel={trendLabel} icon={<TrendingUp size={15} />}   index={2} />
+        <KpiCard title={p.kpiAvgFee}           value={`${formatNumber(kpis.avg_fee_par_colis)} DZD`}    trend={kpis.pop_avg_fee}         trendLabel={trendLabel} icon={<BarChart2 size={15} />}    index={3} />
         <KpiCard title={p.kpiCostPerDelivery}  value={`${formatNumber(kpis.cout_par_colis_livre)} DZD`} trend={-kpis.pop_cout_par_livre} trendLabel={trendLabel} icon={<Layers size={15} />}      index={4} />
       </div>
 
-      {/* ── Row 2: Revenue vs Cost trend + Cost Structure ── */}
+      {/* ── Row 2: Revenue vs Cost trend (left) + Expenses by Category (right) ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <SectionCard title={p.sectionRevenueCostTrend}>
           {!chartsReady ? <div className="h-[280px]" /> : revenueCostTrend.length === 0 ? <EmptyChartState /> : (
@@ -323,23 +429,34 @@ export default function CostProfitabilityPage() {
           )}
         </SectionCard>
 
-        <SectionCard title={p.sectionCostStructure}>
-          {!chartsReady ? <div className="h-[280px]" /> : <PieChart data={costStructurePieData} height={280} />}
-        </SectionCard>
-      </div>
-
-      {/* ── Row 3: Cost by Nature + Tariff Gap Distribution ── */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+        {/* Expenses by Category replaced Operational Cost Structure here */}
         <SectionCard title={p.sectionCostByNature}>
           {!chartsReady ? <div className="h-[280px]" /> : (
             <BarChart data={costNatureBarData} height={280} color="#10B981" horizontal label="DZD" />
           )}
         </SectionCard>
+      </div>
 
-        <SectionCard title={p.sectionTariffGapDist}>
-          {!chartsReady ? <div className="h-[280px]" /> : ecartBuckets.length === 0 ? <EmptyChartState /> : (
+      {/* ── Row 3: Regional Margin heatmap (left) + Zone Profitability (right) ── */}
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+        {/* Regional Flow — colour = margin %, tooltip shows revenue/cost/margin */}
+        <SectionCard title={p.sectionRegionProfit}>
+          {!chartsReady ? <div className="h-[320px]" /> : regionProfit.length === 0 ? <EmptyChartState /> : (
             <ReactECharts
-              option={buildEcartHistogramOption(ecartBuckets, { parcels: p.seriesDelivered, sumEcart: "Écart DZD" }, ct)}
+              option={buildRegionProfitOption(regionProfit, REGION_FLOW_REGIONS, ct)}
+              style={{ height: 320 }}
+              notMerge
+              lazyUpdate
+            />
+          )}
+        </SectionCard>
+
+        {/* Zone Profitability — from fact_parcel_revenue × dim_zone */}
+        <SectionCard title={p.sectionZoneProfit}>
+          {!chartsReady ? <div className="h-[280px]" /> : zoneProfit.length === 0 ? <EmptyChartState /> : (
+            <ReactECharts
+              option={buildZoneProfitOption(zoneProfit, ct)}
               style={{ height: 280 }}
               notMerge
               lazyUpdate

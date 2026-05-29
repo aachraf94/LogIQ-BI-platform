@@ -561,6 +561,16 @@ export const parcelDeliveryApi = {
       `/analytics/parcel-delivery/region-flow/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
+  regionProfit: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelRegionProfitItem[]>(
+      `/analytics/parcel-delivery/region-profit/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
+    ),
+
+  zoneProfit: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelZoneProfitItem[]>(
+      `/analytics/parcel-delivery/zone-profit/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
+    ),
+
   // Cost & Profitability
   costKpis: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelCostKpis>(

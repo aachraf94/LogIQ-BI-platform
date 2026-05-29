@@ -39,6 +39,26 @@ export interface ParcelRegionFlowItem {
   nbr_colis: number
 }
 
+export interface ParcelRegionProfitItem {
+  origin: string
+  destination: string
+  nbr_colis: number
+  total_fees: number
+  cout_total: number
+  marge_brute: number
+  marge_pct: number
+}
+
+export interface ParcelZoneProfitItem {
+  zone_num: number
+  fee_range: string
+  nbr_colis: number
+  total_fees: number
+  cout_total: number
+  marge_brute: number
+  marge_pct: number
+}
+
 export interface ParcelStatusItem {
   status_name: string
   nbr_colis: number

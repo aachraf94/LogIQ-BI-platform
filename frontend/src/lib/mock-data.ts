@@ -949,7 +949,7 @@ export const mockParcelClaimsTypes: ParcelClaimsType[] = [
 ]
 
 // ─── Region-to-region parcel flow matrix ─────────────────────────────────────
-import type { ParcelRegionFlowItem } from "@/types/parcel_delivery"
+import type { ParcelRegionFlowItem, ParcelRegionProfitItem, ParcelZoneProfitItem } from "@/types/parcel_delivery"
 
 export const REGION_FLOW_REGIONS = ["Alger", "Oran", "Constantine", "Annaba", "Sétif", "Batna", "Blida"]
 
@@ -1010,6 +1010,66 @@ export const mockParcelRegionFlow: ParcelRegionFlowItem[] = [
   { origin: "Blida", destination: "Sétif",         nbr_colis: 480  },
   { origin: "Blida", destination: "Batna",         nbr_colis: 320  },
   { origin: "Blida", destination: "Blida",         nbr_colis: 1_680 },
+]
+
+// ─── Region-to-region margin heatmap (fact_parcel_revenue × dim_zone × dim_wilaya) ──
+// avg_fee ≈ avg of dim_zone.fee_range; cost derived from fact_charges allocation per region
+function _rProfit(nbr: number, avgFee: number, costRatio: number): Omit<ParcelRegionProfitItem, "origin" | "destination"> {
+  const total_fees = Math.round(nbr * avgFee)
+  const cout_total = Math.round(total_fees * costRatio)
+  const marge_brute = total_fees - cout_total
+  return { nbr_colis: nbr, total_fees, cout_total, marge_brute, marge_pct: Math.round((marge_brute / total_fees) * 100 * 10) / 10 }
+}
+
+const _rp = (o: string, d: string, n: number, fee: number, cr: number): ParcelRegionProfitItem =>
+  ({ origin: o, destination: d, ..._rProfit(n, fee, cr) })
+
+export const mockParcelRegionProfit: ParcelRegionProfitItem[] = [
+  // From Alger (hub — lowest cost ratio due to scale)
+  _rp("Alger","Alger",       8_420, 430, 0.62), _rp("Alger","Oran",         4_180, 590, 0.68),
+  _rp("Alger","Constantine",  3_650, 590, 0.66), _rp("Alger","Annaba",       2_340, 820, 0.70),
+  _rp("Alger","Sétif",        2_910, 590, 0.65), _rp("Alger","Batna",        1_820, 820, 0.72),
+  _rp("Alger","Blida",        3_200, 430, 0.60),
+  // From Oran
+  _rp("Oran","Alger",         2_860, 590, 0.70), _rp("Oran","Oran",          3_540, 430, 0.64),
+  _rp("Oran","Constantine",     840, 820, 0.74), _rp("Oran","Annaba",          520, 820, 0.76),
+  _rp("Oran","Sétif",           680, 820, 0.73), _rp("Oran","Batna",           410, 820, 0.77),
+  _rp("Oran","Blida",           720, 590, 0.69),
+  // From Constantine
+  _rp("Constantine","Alger",  2_140, 590, 0.68), _rp("Constantine","Oran",      620, 820, 0.75),
+  _rp("Constantine","Constantine",2_890,430,0.63),_rp("Constantine","Annaba",  1_240, 590, 0.67),
+  _rp("Constantine","Sétif",    980, 590, 0.66), _rp("Constantine","Batna",     860, 590, 0.68),
+  _rp("Constantine","Blida",    480, 820, 0.74),
+  // From Annaba
+  _rp("Annaba","Alger",       1_280, 820, 0.71), _rp("Annaba","Oran",           340, 820, 0.78),
+  _rp("Annaba","Constantine",   940, 590, 0.68), _rp("Annaba","Annaba",       1_560, 430, 0.64),
+  _rp("Annaba","Sétif",         620, 590, 0.69), _rp("Annaba","Batna",          480, 590, 0.71),
+  _rp("Annaba","Blida",         280, 820, 0.76),
+  // From Sétif
+  _rp("Sétif","Alger",        1_640, 590, 0.67), _rp("Sétif","Oran",            480, 820, 0.74),
+  _rp("Sétif","Constantine",  1_120, 590, 0.66), _rp("Sétif","Annaba",          680, 590, 0.70),
+  _rp("Sétif","Sétif",        1_840, 430, 0.63), _rp("Sétif","Batna",           720, 590, 0.68),
+  _rp("Sétif","Blida",          340, 820, 0.73),
+  // From Batna
+  _rp("Batna","Alger",          980, 820, 0.72), _rp("Batna","Oran",            280, 820, 0.78),
+  _rp("Batna","Constantine",    840, 590, 0.68), _rp("Batna","Annaba",          520, 590, 0.70),
+  _rp("Batna","Sétif",          680, 590, 0.68), _rp("Batna","Batna",         1_240, 430, 0.65),
+  _rp("Batna","Blida",          240, 820, 0.76),
+  // From Blida
+  _rp("Blida","Alger",        2_840, 430, 0.61), _rp("Blida","Oran",            680, 590, 0.69),
+  _rp("Blida","Constantine",    560, 820, 0.74), _rp("Blida","Annaba",          340, 820, 0.76),
+  _rp("Blida","Sétif",          480, 590, 0.68), _rp("Blida","Batna",           320, 820, 0.75),
+  _rp("Blida","Blida",        1_680, 430, 0.60),
+]
+
+// ─── Zone profitability (fact_parcel_revenue aggregated by dim_zone) ───────────
+// Zone 0 = local (cheap, high volume); Zone 4 = long-distance (high fee, lower volume)
+export const mockParcelZoneProfit: ParcelZoneProfitItem[] = [
+  { zone_num: 0, fee_range: "350–500",    nbr_colis: 8_820,  total_fees: 3_704_400, cout_total: 2_556_036, marge_brute: 1_148_364, marge_pct: 31.0 },
+  { zone_num: 1, fee_range: "500–700",    nbr_colis: 12_640, total_fees: 7_346_080, cout_total: 4_938_074, marge_brute: 2_408_006, marge_pct: 32.8 },
+  { zone_num: 2, fee_range: "700–950",    nbr_colis: 10_820, total_fees: 8_765_800, cout_total: 6_133_660, marge_brute: 2_632_140, marge_pct: 30.0 },
+  { zone_num: 3, fee_range: "950–1 200",  nbr_colis: 6_300,  total_fees: 6_845_400, cout_total: 4_990_542, marge_brute: 1_854_858, marge_pct: 27.1 },
+  { zone_num: 4, fee_range: "1 200–1 600",nbr_colis: 3_600,  total_fees: 4_968_000, cout_total: 3_776_880, marge_brute: 1_191_120, marge_pct: 24.0 },
 ]
 
 export const mockParcelsPaginated: ParcelsPaginatedResponse = {

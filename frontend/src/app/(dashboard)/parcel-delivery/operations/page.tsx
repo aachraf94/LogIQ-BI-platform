@@ -286,7 +286,7 @@ export default function OperationsPage() {
     .map((s) => ({ name: s.status_name, value: s.nbr_colis }));
 
   const zoneBarData = zones.map((z) => ({
-    name: `Z${z.zone_num} — ${z.fee_range}`,
+    name: `Zone ${z.zone_num}`,
     value: z.nbr_colis,
   }));
 

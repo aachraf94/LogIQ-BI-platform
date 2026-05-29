@@ -309,6 +309,8 @@ export interface Translations {
       sectionCostStructure: string
       sectionCostByNature: string
       sectionTariffGapDist: string
+      sectionRegionProfit: string
+      sectionZoneProfit: string
       kpiDeliveryRatePerf: string
       kpiUnderTariff: string
       kpiCompliance: string
@@ -791,6 +793,8 @@ const fr: Translations = {
       sectionCostStructure: 'Structure des coûts opérationnels',
       sectionCostByNature: 'Dépenses par nature (DZD)',
       sectionTariffGapDist: 'Distribution des écarts tarifaires (PCC)',
+      sectionRegionProfit: 'Flux régional — Marge par trajet (DZD)',
+      sectionZoneProfit: 'Rentabilité par zone de livraison',
       kpiDeliveryRatePerf: 'Taux de livraison',
       kpiUnderTariff: 'Taux sous-tarif (PCC)',
       kpiCompliance: 'Conformité tarifaire',
@@ -1280,6 +1284,8 @@ const en: Translations = {
       sectionCostStructure: 'Operational Cost Structure',
       sectionCostByNature: 'Expenses by Category (DZD)',
       sectionTariffGapDist: 'Tariff Gap Distribution (PCC)',
+      sectionRegionProfit: 'Regional Flow — Margin by Route (DZD)',
+      sectionZoneProfit: 'Profitability by Delivery Zone',
       kpiDeliveryRatePerf: 'Delivery Rate',
       kpiUnderTariff: 'Under-Tariff Rate (PCC)',
       kpiCompliance: 'Tariff Compliance',
@@ -1769,6 +1775,8 @@ const ar: Translations = {
       sectionCostStructure: 'هيكل التكاليف التشغيلية',
       sectionCostByNature: 'النفقات حسب الطبيعة (دج)',
       sectionTariffGapDist: 'توزيع الفجوات التعريفية (PCC)',
+      sectionRegionProfit: 'التدفق الإقليمي — الهامش حسب المسار (دج)',
+      sectionZoneProfit: 'الربحية حسب منطقة التسليم',
       kpiDeliveryRatePerf: 'معدل التسليم',
       kpiUnderTariff: 'معدل ما دون التعريفة (PCC)',
       kpiCompliance: 'الامتثال التعريفي',
