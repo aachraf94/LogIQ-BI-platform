@@ -100,6 +100,13 @@ warehouse/
 When `commune_id` is set → navigate `commune_id → dim_commune → dim_wilaya → dim_region`.  
 When `commune_id` is NULL (transport deps) → use `wilaya_id` directly (always populated as fallback).
 
+### Denormalization Exceptions — `dim_employee`
+
+`dim_employee` carries two columns that are technically reachable via JOIN chains but are copied directly for stability:
+
+- **`hire_date_id`** — not sourced from `dim_contract.hire_date_id` because `contract_key` is nullable (employees with no payslips) and changes across SCD2 versions (new contract → new `hire_date_id` in the contract row). The column on `dim_employee` is the employee's fixed original hire date.
+- **`company_id`** — not sourced via `dim_agence.company_id` because `agence_key` is nullable (unassigned employees) and `dim_agence` is SCD2: an agency re-assigned to a different company would produce the wrong company via the join chain. The direct column is immune to that drift.
+
 ---
 
 ## Key Constraints
