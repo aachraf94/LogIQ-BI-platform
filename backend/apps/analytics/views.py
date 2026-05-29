@@ -11,16 +11,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from .queries import transport as tq
 from .queries import parcel_delivery as pdq
 
 logger = logging.getLogger(__name__)
-
-
-# ─── On-demand Transport ────────────────────────────────────────────────────────────────
-
-
-
 
 
 # ─── Parcel Delivery analytics (date-range based) ────────────────────────────

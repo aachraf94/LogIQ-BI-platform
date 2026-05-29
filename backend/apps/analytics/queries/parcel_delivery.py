@@ -148,16 +148,21 @@ def get_ops_kpis(start_date, end_date, delivery_type=None):
     prev_ret  = p_retours / p_nbr * 100 if p_nbr else 0.0
 
     return {
-        **curr,
-        "taux_livraison_pct": round(curr_rate, 1),
-        "taux_retour_pct":    round(curr_ret, 1),
-        "pop_colis":          _pop(nbr, p_nbr),
-        "pop_livraison":      _pop(curr_rate, prev_rate),
-        "pop_retour":         _pop(curr_ret, prev_ret),
-        "pop_echecs":         _pop(curr.get("nbr_echecs") or 0,     prev.get("nbr_echecs") or 0),
-        "pop_en_transit":     _pop(curr.get("nbr_en_transit") or 0, prev.get("nbr_en_transit") or 0),
-        "pop_duree":          _pop(curr.get("avg_duree_livraison_h") or 0,
-                                   prev.get("avg_duree_livraison_h") or 0),
+        "nbr_colis":              nbr,
+        "nbr_livres":             livres,
+        "nbr_retours":            retours,
+        "nbr_echecs":             int(curr.get("nbr_echecs") or 0),
+        "nbr_en_transit":         int(curr.get("nbr_en_transit") or 0),
+        "avg_duree_livraison_h":  round(float(curr.get("avg_duree_livraison_h") or 0), 1),
+        "taux_livraison_pct":     round(curr_rate, 1),
+        "taux_retour_pct":        round(curr_ret, 1),
+        "pop_colis":              _pop(nbr, p_nbr),
+        "pop_livraison":          _pop(curr_rate, prev_rate),
+        "pop_retour":             _pop(curr_ret, prev_ret),
+        "pop_echecs":             _pop(curr.get("nbr_echecs") or 0,     prev.get("nbr_echecs") or 0),
+        "pop_en_transit":         _pop(curr.get("nbr_en_transit") or 0, prev.get("nbr_en_transit") or 0),
+        "pop_duree":              _pop(curr.get("avg_duree_livraison_h") or 0,
+                                       prev.get("avg_duree_livraison_h") or 0),
     }
 
 
