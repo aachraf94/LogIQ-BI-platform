@@ -51,7 +51,7 @@ Before materializing assets:
 | Group | Count | Description |
 |---|---|---|
 | `staging` | 18 assets | Raw API data → staging tables |
-| `dimensions` | 7 assets | Staging → dimension tables |
+| `dimensions` | 28 assets | Staging → dimension tables (SCD2 for agence + employee) |
 | `facts` | 7 assets | Staging + dims → fact tables |
 | `aggregates` | 8 assets | REFRESH MATERIALIZED VIEW CONCURRENTLY |
 
