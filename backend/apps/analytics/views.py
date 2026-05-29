@@ -326,18 +326,18 @@ class ParcelDeliveryClaimsTypesView(APIView):
     """
     GET /api/analytics/parcel-delivery/claims-types/
 
-    Params: start_date, end_date
+    Params: start_date, end_date, delivery_type
     Returns: [{sinistre_type, nbr_sinistres}] for the pie chart.
-    Source: dim_remboursement × dim_sinistre_type.
+    Source: dim_remboursement → dim_parcel (via colis_tracking) → dim_sinistre_type.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        start, end, _ = _pd_filters(request)
+        start, end, dt = _pd_filters(request)
         if not start or not end:
             return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            return Response(pdq.get_claims_types(start, end))
+            return Response(pdq.get_claims_types(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)

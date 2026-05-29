@@ -768,12 +768,9 @@ import type {
   ParcelTrendPoint,
   ParcelStatusItem,
   ParcelZoneItem,
-  ParcelDeliveryTypeKpis,
   ParcelCostKpis,
   ParcelRevenueCostPoint,
-  ParcelCostStructure,
   ParcelCostNatureItem,
-  ParcelEcartBucket,
   ParcelPerfKpis,
   ParcelPerfTrendPoint,
   ParcelDurationBucket,
@@ -809,7 +806,6 @@ export const mockParcelOpsTrend: ParcelTrendPoint[] = Array.from({ length: 30 },
     date: date.toISOString().split("T")[0],
     nbr_livres,
     nbr_retours,
-    nbr_echecs: Math.round(base * 0.03),
     nbr_en_transit: Math.round(base * (0.05 + Math.random() * 0.02)),
   }
 })
@@ -829,17 +825,6 @@ export const mockParcelZoneBreakdown: ParcelZoneItem[] = [
   { zone_num: 2, fee_range: "700–950 DZD",    nbr_colis: 10_820, nbr_livres: 7_900, taux_livraison_pct: 73.0 },
   { zone_num: 3, fee_range: "950–1 200 DZD",  nbr_colis: 6_300,  nbr_livres: 4_350, taux_livraison_pct: 69.0 },
   { zone_num: 4, fee_range: "1 200–1 600 DZD", nbr_colis: 3_600, nbr_livres: 2_430, taux_livraison_pct: 67.5 },
-]
-
-export const mockParcelByDeliveryTypeNew: ParcelDeliveryTypeKpis[] = [
-  {
-    delivery_type: "HD", nbr_colis: 29_200, nbr_livres: 21_024, nbr_retours: 5_256,
-    taux_livraison_pct: 72.0, taux_retour_pct: 18.0, avg_fee_dzd: 618.0, avg_duree_livree_h: 33.0,
-  },
-  {
-    delivery_type: "SD", nbr_colis: 12_980, nbr_livres: 10_189, nbr_retours: 2_336,
-    taux_livraison_pct: 78.5, taux_retour_pct: 18.0, avg_fee_dzd: 524.0, avg_duree_livree_h: 25.7,
-  },
 ]
 
 export const mockParcelCostKpis: ParcelCostKpis = {
@@ -871,13 +856,6 @@ export const mockParcelRevenueCostTrend: ParcelRevenueCostPoint[] = Array.from({
   }
 })
 
-export const mockParcelCostStructureNew: ParcelCostStructure = {
-  total_salaires: 6_900_000,
-  total_depenses: 4_100_000,
-  total_freelance: 2_200_000,
-  total_sinistres: 642_000,
-}
-
 export const mockParcelCostNature: ParcelCostNatureItem[] = [
   { nature_name: "Salaires livreurs",    total_dzd: 4_100_000 },
   { nature_name: "Paiements freelance",  total_dzd: 2_200_000 },
@@ -887,15 +865,6 @@ export const mockParcelCostNature: ParcelCostNatureItem[] = [
   { nature_name: "Maintenance véhicules",total_dzd:   900_000 },
   { nature_name: "Loyers agences",       total_dzd:   700_000 },
   { nature_name: "Remboursements",       total_dzd:   642_000 },
-]
-
-export const mockParcelEcartBuckets: ParcelEcartBucket[] = [
-  { bucket: "< −500 DZD",           bucket_order: 0, nbr_colis: 1_240, sum_ecart_dzd: -942_000 },
-  { bucket: "−500 à −100 DZD",      bucket_order: 1, nbr_colis: 3_060, sum_ecart_dzd: -984_000 },
-  { bucket: "−100 à −1 DZD",        bucket_order: 2, nbr_colis: 1_655, sum_ecart_dzd: -91_000  },
-  { bucket: "Au tarif exactement",   bucket_order: 3, nbr_colis: 4_460, sum_ecart_dzd: 0        },
-  { bucket: "+1 à +100 DZD",        bucket_order: 4, nbr_colis: 2_620, sum_ecart_dzd: 143_000  },
-  { bucket: "Sans tarif théorique",  bucket_order: 5, nbr_colis: 18_145, sum_ecart_dzd: 0       },
 ]
 
 export const mockParcelPerfKpis: ParcelPerfKpis = {

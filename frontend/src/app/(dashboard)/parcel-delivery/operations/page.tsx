@@ -286,7 +286,7 @@ export default function OperationsPage() {
     .map((s) => ({ name: s.status_name, value: s.nbr_colis }));
 
   const zoneBarData = zones.map((z) => ({
-    name: `Zone ${z.zone_num}`,
+    name: z.zone_num != null ? `Zone ${z.zone_num}` : "Non assignés",
     value: z.nbr_colis,
   }));
 

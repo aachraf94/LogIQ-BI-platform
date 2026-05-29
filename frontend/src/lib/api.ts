@@ -625,11 +625,6 @@ export const parcelDeliveryApi = {
       `/analytics/parcel-delivery/status-breakdown/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
-  byDeliveryType: (f: ParcelDeliveryFilters) =>
-    request<import("@/types/parcel_delivery").ParcelDeliveryTypeKpis[]>(
-      `/analytics/parcel-delivery/by-delivery-type/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
-    ),
-
   zoneBreakdown: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelZoneItem[]>(
       `/analytics/parcel-delivery/zone-breakdown/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
@@ -661,19 +656,9 @@ export const parcelDeliveryApi = {
       `/analytics/parcel-delivery/revenue-cost-trend/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
-  costStructure: (f: ParcelDeliveryFilters) =>
-    request<import("@/types/parcel_delivery").ParcelCostStructure>(
-      `/analytics/parcel-delivery/cost-structure/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
-    ),
-
   costByNature: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelCostNatureItem[]>(
       `/analytics/parcel-delivery/cost-by-nature/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
-    ),
-
-  ecartDistribution: (f: ParcelDeliveryFilters) =>
-    request<import("@/types/parcel_delivery").ParcelEcartBucket[]>(
-      `/analytics/parcel-delivery/ecart-distribution/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   // Performance

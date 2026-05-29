@@ -1,11 +1,3 @@
-// ─── Filter params ────────────────────────────────────────────────────────────
-
-export interface ParcelDeliveryFilters {
-  start_date: string   // YYYY-MM-DD
-  end_date: string     // YYYY-MM-DD
-  delivery_type?: string
-}
-
 // ─── Operations ───────────────────────────────────────────────────────────────
 
 export interface ParcelOpsKpis {
@@ -29,7 +21,6 @@ export interface ParcelTrendPoint {
   date: string       // YYYY-MM-DD (daily) or YYYY-WXX (weekly)
   nbr_livres: number
   nbr_retours: number
-  nbr_echecs: number
   nbr_en_transit: number
 }
 
@@ -65,22 +56,11 @@ export interface ParcelStatusItem {
 }
 
 export interface ParcelZoneItem {
-  zone_num: number
+  zone_num: number | null
   fee_range: string
   nbr_colis: number
   nbr_livres: number
   taux_livraison_pct: number
-}
-
-export interface ParcelDeliveryTypeKpis {
-  delivery_type: string     // "HD" | "SD"
-  nbr_colis: number
-  nbr_livres: number
-  nbr_retours: number
-  taux_livraison_pct: number
-  taux_retour_pct: number
-  avg_fee_dzd: number
-  avg_duree_livree_h: number
 }
 
 // ─── Cost & Profitability ─────────────────────────────────────────────────────
@@ -106,23 +86,9 @@ export interface ParcelRevenueCostPoint {
   marge_brute: number
 }
 
-export interface ParcelCostStructure {
-  total_salaires: number
-  total_depenses: number
-  total_freelance: number
-  total_sinistres: number
-}
-
 export interface ParcelCostNatureItem {
   nature_name: string
   total_dzd: number
-}
-
-export interface ParcelEcartBucket {
-  bucket: string
-  bucket_order: number
-  nbr_colis: number
-  sum_ecart_dzd: number
 }
 
 // ─── Performance ──────────────────────────────────────────────────────────────

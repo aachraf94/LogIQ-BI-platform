@@ -169,7 +169,7 @@ def get_ops_kpis(start_date, end_date, delivery_type=None):
 def get_ops_trend(start_date, end_date, delivery_type=None):
     """
     Daily volume trend grouped by parcel creation date.
-    Each row: { date, nbr_livres, nbr_retours, nbr_echecs, nbr_en_transit }.
+    Each row: { date, nbr_livres, nbr_retours, nbr_en_transit }.
     """
     dt_sql, dt_args = _dt_filter(delivery_type)
 
@@ -178,7 +178,6 @@ def get_ops_trend(start_date, end_date, delivery_type=None):
             dp.date_creation_id::text                                                       AS date,
             COUNT(*) FILTER (WHERE dp.current_status_id = 13)    AS nbr_livres,
             COUNT(*) FILTER (WHERE dp.current_status_id = 19)    AS nbr_retours,
-            COUNT(*) FILTER (WHERE dp.current_status_id = 14)    AS nbr_echecs,
             COUNT(*) FILTER (WHERE ps.is_terminal = FALSE)        AS nbr_en_transit
         FROM warehouse.dim_parcel dp
         JOIN  warehouse.dim_parcels_status   ps  ON dp.current_status_id = ps.status_id
@@ -248,13 +247,17 @@ def get_region_flow(start_date, end_date, delivery_type=None):
 
 
 def get_zone_breakdown(start_date, end_date, delivery_type=None):
-    """Zone distribution: volume + delivery rate per pricing zone."""
+    """Zone distribution: volume + delivery rate per pricing zone.
+
+    Uses LEFT JOIN so parcels with zone_id=NULL (not yet through Centre checkpoint)
+    are included in a 'Non assignés' row, keeping the total consistent with ops KPIs.
+    """
     dt_sql, dt_args = _dt_filter(delivery_type)
 
     sql = f"""
         SELECT
             dz.zone_num,
-            dz.fee_range_dzd                                                                AS fee_range,
+            COALESCE(dz.fee_range_dzd, 'Non assignés')                                     AS fee_range,
             COUNT(*)                                                                        AS nbr_colis,
             COUNT(*) FILTER (WHERE dp.current_status_id = 13)                              AS nbr_livres,
             ROUND(
@@ -263,12 +266,12 @@ def get_zone_breakdown(start_date, end_date, delivery_type=None):
                 1
             )                                                                               AS taux_livraison_pct
         FROM warehouse.dim_parcel dp
-        JOIN  warehouse.dim_zone          dz  ON dp.zone_id        = dz.zone_id
+        LEFT JOIN warehouse.dim_zone          dz  ON dp.zone_id        = dz.zone_id
         LEFT JOIN warehouse.dim_delivery_type ddt ON dp.delivery_type_id = ddt.delivery_type_id
         WHERE dp.date_creation_id >= %s AND dp.date_creation_id <= %s
           {dt_sql}
         GROUP BY dz.zone_id, dz.zone_num, dz.fee_range_dzd
-        ORDER BY dz.zone_num
+        ORDER BY dz.zone_num NULLS LAST
     """
     return _run(sql, [start_date, end_date] + dt_args)
 
@@ -400,7 +403,7 @@ def get_revenue_cost_trend(start_date, end_date, delivery_type=None):
     return result
 
 
-def get_cost_by_nature(start_date, end_date, delivery_type=None):
+def get_cost_by_nature(start_date, end_date):
     """
     Operational expense breakdown by nature name for the horizontal bar chart.
 
@@ -713,16 +716,22 @@ def get_claims_types(start_date, end_date, delivery_type=None):
     """
     Claims (reimbursements) grouped by sinistre type for the pie chart.
 
-    delivery_type has no dimension in dim_remboursement — filter is ignored.
+    Joins to dim_parcel via colis_tracking to support optional delivery_type filter
+    (dim_remboursement → dim_parcel.tracking → dim_delivery_type).
     """
-    sql = """
+    dt_sql, dt_args = _dt_filter(delivery_type)
+
+    sql = f"""
         SELECT
             dst.sinistre_type,
             COUNT(*) AS nbr_sinistres
         FROM warehouse.dim_remboursement   dr
-        JOIN  warehouse.dim_sinistre_type  dst ON dr.sinistre_type_id = dst.sinistre_type_id
+        JOIN  warehouse.dim_sinistre_type  dst ON dr.sinistre_type_id  = dst.sinistre_type_id
+        LEFT JOIN warehouse.dim_parcel        dp  ON dr.colis_tracking   = dp.tracking
+        LEFT JOIN warehouse.dim_delivery_type ddt ON dp.delivery_type_id = ddt.delivery_type_id
         WHERE dr.date_remboursement_id >= %s AND dr.date_remboursement_id <= %s
+          {dt_sql}
         GROUP BY dst.sinistre_type_id, dst.sinistre_type
         ORDER BY nbr_sinistres DESC
     """
-    return _run(sql, [start_date, end_date])
+    return _run(sql, [start_date, end_date] + dt_args)
