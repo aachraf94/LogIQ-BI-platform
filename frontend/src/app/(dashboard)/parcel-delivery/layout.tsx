@@ -229,8 +229,10 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
         </div>
       </div>
 
-      {/* ── Sub-page content ── */}
-      {children}
+      {/* ── Sub-page content — pt-3 ensures consistent gap from filter bar ── */}
+      <div className="pt-3">
+        {children}
+      </div>
     </div>
   );
 }
