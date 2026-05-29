@@ -375,27 +375,27 @@ export interface TransportFilters {
 export const transportApi = {
   summary: (f: TransportFilters = {}) =>
     request<import("@/types/transport").TransportSummary>(
-      `/analytics/transport/summary/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/transport/summary/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   trends: (f: { service_type?: string; company_id?: number | null; from_year_month?: string; to_year_month?: string } = {}) =>
     request<import("@/types/transport").TransportTrendPoint[]>(
-      `/analytics/transport/trends/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/transport/trends/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   costBreakdown: (f: { year?: number | null; month?: number | null; service_type?: string } = {}) =>
     request<import("@/types/transport").TransportCostBreakdown>(
-      `/analytics/transport/cost-breakdown/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/transport/cost-breakdown/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   byService: (f: { year?: number | null; month?: number | null } = {}) =>
     request<import("@/types/transport").TransportServiceData[]>(
-      `/analytics/transport/by-service/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/transport/by-service/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   byVehicle: (f: { year?: number | null; month?: number | null; service_type?: string } = {}) =>
     request<import("@/types/transport").TransportVehicleData[]>(
-      `/analytics/transport/by-vehicle/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/transport/by-vehicle/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   corridors: (f: {
@@ -404,22 +404,22 @@ export const transportApi = {
     limit?: number; sort_by?: string
   } = {}) =>
     request<import("@/types/transport").TransportCorridor[]>(
-      `/analytics/transport/corridors/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/transport/corridors/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   odMatrix: (f: { year?: number | null; month?: number | null } = {}) =>
     request<import("@/types/transport").ODMatrixCell[]>(
-      `/analytics/transport/od-matrix/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/transport/od-matrix/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   byAgency: (f: { year?: number | null; month?: number | null; region?: string; service_type?: string } = {}) =>
     request<import("@/types/transport").TransportAgencyData[]>(
-      `/analytics/transport/by-agency/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/transport/by-agency/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   delayDistribution: (f: { year?: number | null; month?: number | null; service_type?: string } = {}) =>
     request<import("@/types/transport").DelayBucket[]>(
-      `/analytics/transport/delay-distribution/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/transport/delay-distribution/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 }
 
@@ -437,7 +437,7 @@ export interface ParcelCostsFilters {
 export const parcelCostsApi = {
   summary: (f: ParcelCostsFilters = {}) =>
     request<import("@/types/parcel_costs").ParcelCostsSummaryData>(
-      `/analytics/parcel-costs/summary/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/summary/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   trends: (f: {
@@ -445,12 +445,12 @@ export const parcelCostsApi = {
     delivery_type?: string; agence_id?: number | null
   } = {}) =>
     request<import("@/types/parcel_costs").ParcelCostsTrendPoint[]>(
-      `/analytics/parcel-costs/trends/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/trends/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   pccSummary: (f: ParcelCostsFilters = {}) =>
     request<import("@/types/parcel_costs").ParcelPCCSummary>(
-      `/analytics/parcel-costs/pcc-summary/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/pcc-summary/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   pccByAgency: (f: {
@@ -458,57 +458,57 @@ export const parcelCostsApi = {
     region?: string; delivery_type?: string; sort_by?: string; limit?: number
   } = {}) =>
     request<import("@/types/parcel_costs").ParcelPCCAgency[]>(
-      `/analytics/parcel-costs/pcc-by-agency/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/pcc-by-agency/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   ecartDistribution: (f: { year: number; month: number; agence_id?: number | null }) =>
     request<import("@/types/parcel_costs").EcartBucketItem[]>(
-      `/analytics/parcel-costs/ecart-distribution/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/ecart-distribution/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   pccByWilaya: (f: { year: number; month: number; agence_id?: number | null }) =>
     request<import("@/types/parcel_costs").PCCByWilayaItem[]>(
-      `/analytics/parcel-costs/pcc-by-wilaya/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/pcc-by-wilaya/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   costStructure: (f: ParcelCostsFilters = {}) =>
     request<import("@/types/parcel_costs").CostStructureData>(
-      `/analytics/parcel-costs/cost-structure/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/cost-structure/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   costByNature: (f: { year?: number | null; month?: number | null; agence_id?: number | null } = {}) =>
     request<import("@/types/parcel_costs").CostByNatureItem[]>(
-      `/analytics/parcel-costs/cost-by-nature/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/cost-by-nature/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   byAgency: (f: { year?: number | null; month?: number | null; region?: string; delivery_type?: string } = {}) =>
     request<import("@/types/parcel_costs").ParcelAgencyData[]>(
-      `/analytics/parcel-costs/by-agency/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/by-agency/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   byDeliveryType: (f: { year?: number | null; month?: number | null; agence_id?: number | null } = {}) =>
     request<import("@/types/parcel_costs").ParcelDeliveryTypeData[]>(
-      `/analytics/parcel-costs/by-delivery-type/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/by-delivery-type/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   dailyVolume: (f: { year?: number | null; month?: number | null; agence_id?: number | null } = {}) =>
     request<import("@/types/parcel_costs").DailyVolumePoint[]>(
-      `/analytics/parcel-costs/daily-volume/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/daily-volume/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   durationDistribution: (f: { year: number; month: number; agence_id?: number | null; delivery_type?: string }) =>
     request<import("@/types/parcel_costs").DurationBucket[]>(
-      `/analytics/parcel-costs/duration-distribution/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/duration-distribution/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   sinistres: (f: { year?: number | null; month?: number | null; agence_id?: number | null } = {}) =>
     request<import("@/types/parcel_costs").SinistresData>(
-      `/analytics/parcel-costs/sinistres/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/sinistres/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   freelanceEfficiency: (f: { year?: number | null; month?: number | null; agence_id?: number | null } = {}) =>
     request<import("@/types/parcel_costs").FreelanceEfficiencyItem[]>(
-      `/analytics/parcel-costs/freelance-efficiency/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/freelance-efficiency/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   parcels: (f: {
@@ -517,7 +517,7 @@ export const parcelCostsApi = {
     ecart_direction?: string; sort_by?: string; page?: number; page_size?: number
   }) =>
     request<import("@/types/parcel_costs").ParcelsPaginatedResponse>(
-      `/analytics/parcel-costs/parcels/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-costs/parcels/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 }
 
@@ -533,79 +533,79 @@ export const parcelDeliveryApi = {
   // Operations
   opsKpis: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelOpsKpis>(
-      `/analytics/parcel-delivery/ops-kpis/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/ops-kpis/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   opsTrend: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelTrendPoint[]>(
-      `/analytics/parcel-delivery/ops-trend/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/ops-trend/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   statusBreakdown: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelStatusItem[]>(
-      `/analytics/parcel-delivery/status-breakdown/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/status-breakdown/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   byDeliveryType: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelDeliveryTypeKpis[]>(
-      `/analytics/parcel-delivery/by-delivery-type/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/by-delivery-type/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   zoneBreakdown: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelZoneItem[]>(
-      `/analytics/parcel-delivery/zone-breakdown/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/zone-breakdown/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   // Cost & Profitability
   costKpis: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelCostKpis>(
-      `/analytics/parcel-delivery/cost-kpis/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/cost-kpis/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   revenueCostTrend: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelRevenueCostPoint[]>(
-      `/analytics/parcel-delivery/revenue-cost-trend/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/revenue-cost-trend/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   costStructure: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelCostStructure>(
-      `/analytics/parcel-delivery/cost-structure/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/cost-structure/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   costByNature: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelCostNatureItem[]>(
-      `/analytics/parcel-delivery/cost-by-nature/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/cost-by-nature/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   ecartDistribution: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelEcartBucket[]>(
-      `/analytics/parcel-delivery/ecart-distribution/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/ecart-distribution/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   // Performance
   perfKpis: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelPerfKpis>(
-      `/analytics/parcel-delivery/perf-kpis/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/perf-kpis/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   perfTrend: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelPerfTrendPoint[]>(
-      `/analytics/parcel-delivery/perf-trend/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/perf-trend/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   durationDistribution: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelDurationBucket[]>(
-      `/analytics/parcel-delivery/duration-distribution/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/duration-distribution/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   agencyPCCRanking: (f: ParcelDeliveryFilters & { limit?: number }) =>
     request<import("@/types/parcel_delivery").ParcelAgencyPCC[]>(
-      `/analytics/parcel-delivery/agency-pcc-ranking/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/agency-pcc-ranking/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   claimsTypes: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelClaimsType[]>(
-      `/analytics/parcel-delivery/claims-types/${_qs(f as Record<string, string | number | undefined | null>)}`
+      `/analytics/parcel-delivery/claims-types/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 }
 
