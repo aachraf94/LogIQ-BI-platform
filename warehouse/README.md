@@ -21,7 +21,7 @@ Re-run safe: all `CREATE TABLE` use `IF NOT EXISTS`, seed inserts use `ON CONFLI
 | Layer | Count | Description |
 |---|---|---|
 | Staging | 18 tables | Raw API data — one table per source endpoint, no transformations |
-| Dimensions | 49 tables | Snowflake dims; 2 SCD Type 2, 2 junk dims, 1 calendar spine |
+| Dimensions | 55 tables | Snowflake dims; 2 SCD Type 2, 2 junk dims, 1 calendar spine |
 | Facts | 7 tables | One row per business event — see table below |
 | Aggregates | 8 views | Materialized views — primary source for dashboard KPIs |
 
@@ -138,6 +138,40 @@ REFRESH MATERIALIZED VIEW CONCURRENTLY warehouse.agg_profitabilite_colis;
 ```
 
 The Dagster `aggregates_job` runs this automatically after each ETL pipeline.
+
+---
+
+## Maintenance Scripts
+
+### `validate.sql` — Consistency checks
+
+Verifies staging → dim → fact consistency: row counts, SCD2 integrity, coverage ratios, business rules, and NULL checks.
+
+```bash
+# Docker (from logiq/)
+docker compose exec -T warehouse-db \
+  psql -U logiq_warehouse_user -d logiq_warehouse < warehouse/validate.sql
+
+# Local
+psql -h localhost -p 5433 -U logiq_warehouse_user -d logiq_warehouse \
+  -f warehouse/validate.sql
+```
+
+### `clear_data.sql` — Truncate all ETL data
+
+Truncates every staging, ETL-managed dimension, and fact table in FK-safe order. Sequences are reset. Preserved tables (seeded by `init.sql`): `dim_date`, `dim_region`, `dim_delivery_type`, `dim_parcel_type`, `dim_zone`, `dim_distance_category`, `dim_complexity_category`.
+
+```bash
+# Docker (from logiq/)
+docker compose exec -T warehouse-db \
+  psql -U logiq_warehouse_user -d logiq_warehouse < warehouse/clear_data.sql
+
+# Local
+psql -h localhost -p 5433 -U logiq_warehouse_user -d logiq_warehouse \
+  -f warehouse/clear_data.sql
+```
+
+After clearing, re-run the full ETL pipeline from Dagster to repopulate all tables.
 
 ---
 
