@@ -6,9 +6,10 @@ function yesterday() {
   return d.toISOString().split("T")[0]
 }
 
-function firstOfCurrentMonth() {
+function sevenDaysAgo() {
   const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split("T")[0]
+  d.setDate(d.getDate() - 7)
+  return d.toISOString().split("T")[0]
 }
 
 interface TransportFilterState {
@@ -24,7 +25,7 @@ interface TransportFilterState {
 }
 
 export const useTransportStore = create<TransportFilterState>((set, get) => ({
-  startDate: firstOfCurrentMonth(),
+  startDate: sevenDaysAgo(),
   endDate: yesterday(),
   serviceType: "all",
   usingMock: false,

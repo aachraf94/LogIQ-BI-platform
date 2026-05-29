@@ -1,18 +1,15 @@
 import { create } from "zustand"
 
-function today() {
-  return new Date().toISOString().split("T")[0]
-}
-
 function yesterday() {
   const d = new Date()
   d.setDate(d.getDate() - 1)
   return d.toISOString().split("T")[0]
 }
 
-function firstOfCurrentMonth() {
+function subDays(n: number): string {
   const d = new Date()
-  return new Date(d.getFullYear(), d.getMonth(), 1).toISOString().split("T")[0]
+  d.setDate(d.getDate() - n)
+  return d.toISOString().split("T")[0]
 }
 
 interface ParcelDeliveryFilterState {
@@ -28,7 +25,7 @@ interface ParcelDeliveryFilterState {
 }
 
 export const useParcelDeliveryStore = create<ParcelDeliveryFilterState>((set, get) => ({
-  startDate: firstOfCurrentMonth(),
+  startDate: subDays(7),
   endDate: yesterday(),
   deliveryType: "all",
   usingMock: false,

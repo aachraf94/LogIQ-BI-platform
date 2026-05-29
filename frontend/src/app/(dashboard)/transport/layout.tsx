@@ -38,7 +38,7 @@ export default function TransportLayout({ children }: { children: React.ReactNod
 
   const [pendingStart, setPendingStart] = useState(startDate);
   const [pendingEnd, setPendingEnd] = useState(endDate);
-  const [activeQuick, setActiveQuick] = useState<string | null>(null);
+  const [activeQuick, setActiveQuick] = useState<string | null>("7D");
 
   const yesterday = getYesterdayStr();
   const isDirty = pendingStart !== startDate || pendingEnd !== endDate;

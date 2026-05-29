@@ -38,7 +38,7 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
 
   const [pendingStart, setPendingStart] = useState(startDate);
   const [pendingEnd, setPendingEnd] = useState(endDate);
-  const [activeQuick, setActiveQuick] = useState<string | null>(null);
+  const [activeQuick, setActiveQuick] = useState<string | null>("7D");
 
   const yesterday = getYesterdayStr();
   const isDirty = pendingStart !== startDate || pendingEnd !== endDate;
