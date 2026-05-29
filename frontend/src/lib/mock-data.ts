@@ -12,6 +12,7 @@ import type {
 } from "@/types/parcel";
 import type { Route, NetworkNode, NetworkLink } from "@/types/route";
 import type { Alert, User } from "@/types/user";
+import type { ParcelRegionFlowItem, ParcelRegionProfitItem, ParcelZoneProfitItem } from "@/types/parcel_delivery";
 
 // ─── Algerian cities with real approximate GPS coordinates ───────────────────
 export const ALGERIAN_CITIES: Record<string, { lat: number; lng: number }> = {
@@ -949,7 +950,6 @@ export const mockParcelClaimsTypes: ParcelClaimsType[] = [
 ]
 
 // ─── Region-to-region parcel flow matrix ─────────────────────────────────────
-import type { ParcelRegionFlowItem, ParcelRegionProfitItem, ParcelZoneProfitItem } from "@/types/parcel_delivery"
 
 export const REGION_FLOW_REGIONS = ["Alger", "Oran", "Constantine", "Annaba", "Sétif", "Batna", "Blida"]
 

@@ -7,7 +7,7 @@ import { Sidebar } from '@/components/ui/Sidebar'
 import { Topbar } from '@/components/ui/Topbar'
 import { ToastContainer } from '@/components/ui/ToastContainer'
 import { OnboardingModal } from '@/components/ui/OnboardingModal'
-import { motion, AnimatePresence } from 'framer-motion'
+import { motion } from 'framer-motion'
 import { useAuthStore } from '@/stores/authStore'
 import { useNotifications } from '@/hooks/useNotifications'
 import { meApi } from '@/lib/api'
@@ -110,18 +110,15 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
       <Sidebar />
       <div className="flex-1 flex flex-col" style={isRTL ? { marginRight: 240 } : { marginLeft: 240 }}>
         <Topbar title={pageTitle(pathname, t)} />
-        <AnimatePresence mode="wait">
-          <motion.main
-            key={'/' + (pathname.split('/')[1] || '')}
-            initial={{ opacity: 0, y: 8 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -4 }}
-            transition={{ duration: 0.15, ease: 'easeOut' }}
-            className="flex-1 p-6 max-w-[1600px] w-full mx-auto"
-          >
-            {children}
-          </motion.main>
-        </AnimatePresence>
+        <motion.main
+          key={pathname}
+          initial={{ opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.18, ease: 'easeOut' }}
+          className="flex-1 p-6 max-w-[1600px] w-full mx-auto"
+        >
+          {children}
+        </motion.main>
       </div>
 
       <ToastContainer />
