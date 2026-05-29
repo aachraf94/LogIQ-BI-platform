@@ -46,6 +46,7 @@ function NotificationsInit() {
 }
 
 function pageTitle(pathname: string, t: ReturnType<typeof useTranslation>['t']): string {
+  if (pathname.startsWith('/parcel-delivery')) return t.nav.parcelDelivery
   const map: Record<string, string> = {
     '/overview':    t.nav.overview,
     '/transport':   t.nav.transport,
@@ -111,11 +112,11 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
         <Topbar title={pageTitle(pathname, t)} />
         <AnimatePresence mode="wait">
           <motion.main
-            key={pathname}
-            initial={{ opacity: 0, y: 12 }}
+            key={'/' + (pathname.split('/')[1] || '')}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -8 }}
-            transition={{ duration: 0.28, ease: 'easeOut' }}
+            exit={{ opacity: 0, y: -4 }}
+            transition={{ duration: 0.15, ease: 'easeOut' }}
             className="flex-1 p-6 max-w-[1600px] w-full mx-auto"
           >
             {children}

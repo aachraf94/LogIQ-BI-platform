@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
 import { TrendingUp, AlertTriangle, ShieldCheck, Clock, FileWarning } from "lucide-react";
@@ -43,26 +43,6 @@ function SectionCard({ title, children, className = "" }: {
   );
 }
 
-function Skeleton({ h = "h-[280px]" }: { h?: string }) {
-  return (
-    <div className={`relative ${h}`}>
-      <div className="absolute top-0 left-0 flex gap-2 items-center">
-        <div className="h-3 w-24 bg-[var(--surface-secondary)] animate-pulse rounded" />
-        <div className="h-3 w-16 bg-[var(--surface-secondary)] animate-pulse rounded opacity-60" />
-      </div>
-      <div className="absolute inset-0 top-8 flex items-end gap-1.5">
-        {[45, 72, 58, 88, 62, 78, 52, 70].map((v, i) => (
-          <div
-            key={i}
-            className="flex-1 bg-[var(--surface-secondary)] animate-pulse rounded-t"
-            style={{ height: `${v}%` }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function EmptyChartState() {
   return (
     <div className="h-[280px] flex flex-col items-center justify-center gap-2 text-[var(--text-muted)] select-none">
@@ -86,8 +66,6 @@ function buildPerfTrendOption(
   ct: ReturnType<typeof useChartTheme>
 ) {
   const cats = trend.map((d) => d.period);
-
-  // Dynamic y-axis min: compress near-zero ranges to improve line visibility
   const allValues = trend.flatMap((d) => [d.taux_livraison_pct, d.taux_sous_tarif_pct]);
   const minVal = allValues.length ? Math.min(...allValues) : 0;
   const yMin = Math.max(0, Math.floor(minVal - 10));
@@ -222,9 +200,20 @@ const MOCK: PageData = {
 };
 
 export default function PerformancePage() {
-  const [loading, setLoading] = useState(true);
-  const [usingMock, setUsingMock] = useState(false);
   const [data, setData] = useState<PageData>(MOCK);
+  const [usingMock, setUsingMock] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  // Defer all ECharts initialization until after first paint
+  const [chartsReady, setChartsReady] = useState(false);
+  const raf = useRef<number | null>(null);
+
+  useEffect(() => {
+    // Two frames to let KPI cards paint first, then mount heavy charts
+    raf.current = requestAnimationFrame(() =>
+      requestAnimationFrame(() => setChartsReady(true))
+    );
+    return () => { if (raf.current) cancelAnimationFrame(raf.current); };
+  }, []);
 
   const { t } = useTranslation();
   const p = t.pages.parcelDelivery;
@@ -241,7 +230,7 @@ export default function PerformancePage() {
   };
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    setFetching(true);
     try {
       const [kpis, perfTrend, durationBuckets, agencyPCC, claimsTypes] = await Promise.all([
         parcelDeliveryApi.perfKpis(filters),
@@ -256,7 +245,7 @@ export default function PerformancePage() {
       setData(MOCK);
       setUsingMock(true);
     } finally {
-      setLoading(false);
+      setFetching(false);
     }
   }, [startDate, endDate, deliveryType]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -274,86 +263,54 @@ export default function PerformancePage() {
 
   return (
     <div className="space-y-5">
-      {/* Mock data badge — sticky so it's always visible while scrolling */}
-      {usingMock && (
+      {/* Animated progress bar during background fetch */}
+      {fetching && (
+        <div className="h-0.5 rounded-full overflow-hidden bg-[var(--surface-secondary)]">
+          <motion.div
+            className="h-full bg-gradient-to-r from-primary/40 via-primary to-primary/40"
+            initial={{ x: "-100%" }}
+            animate={{ x: "100%" }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+      )}
+
+      {usingMock && !fetching && (
         <div className="sticky top-0 z-10 text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg w-fit">
           {p.demoData}
         </div>
       )}
 
-      {/* ── Row 1: 5 KPI cards ── */}
+      {/* ── Row 1: KPI cards — paint immediately, no deferral needed ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard
-          title={p.kpiDeliveryRatePerf}
-          value={formatPercent(kpis.taux_livraison_pct)}
-          trend={kpis.pop_livraison}
-          trendLabel={trendLabel}
-          icon={<TrendingUp size={16} />}
-          index={0}
-        />
-        <KpiCard
-          title={p.kpiUnderTariff}
-          value={formatPercent(kpis.taux_sous_tarif_pct)}
-          trend={-kpis.pop_sous_tarif}
-          trendLabel={trendLabel}
-          icon={<AlertTriangle size={16} />}
-          index={1}
-        />
-        <KpiCard
-          title={p.kpiCompliance}
-          value={formatPercent(kpis.taux_compliance_pct)}
-          trend={kpis.pop_compliance}
-          trendLabel={trendLabel}
-          icon={<ShieldCheck size={16} />}
-          index={2}
-        />
-        <KpiCard
-          title={p.kpiAvgDurationPerf}
-          value={`${kpis.avg_duree_livraison_h.toFixed(1)} ${p.durationUnit}`}
-          trend={-kpis.pop_duree}
-          trendLabel={trendLabel}
-          icon={<Clock size={16} />}
-          index={3}
-        />
-        <KpiCard
-          title={p.kpiClaimsCount}
-          value={formatNumber(kpis.nbr_sinistres)}
-          trend={-kpis.pop_sinistres}
-          trendLabel={trendLabel}
-          icon={<FileWarning size={16} />}
-          index={4}
-        />
+        <KpiCard title={p.kpiDeliveryRatePerf}  value={formatPercent(kpis.taux_livraison_pct)}                    trend={kpis.pop_livraison}   trendLabel={trendLabel} icon={<TrendingUp size={15} />}  index={0} />
+        <KpiCard title={p.kpiUnderTariff}        value={formatPercent(kpis.taux_sous_tarif_pct)}                   trend={-kpis.pop_sous_tarif} trendLabel={trendLabel} icon={<AlertTriangle size={15} />} index={1} />
+        <KpiCard title={p.kpiCompliance}         value={formatPercent(kpis.taux_compliance_pct)}                   trend={kpis.pop_compliance}  trendLabel={trendLabel} icon={<ShieldCheck size={15} />}  index={2} />
+        <KpiCard title={p.kpiAvgDurationPerf}    value={`${kpis.avg_duree_livraison_h.toFixed(1)} ${p.durationUnit}`} trend={-kpis.pop_duree}  trendLabel={trendLabel} icon={<Clock size={15} />}        index={3} />
+        <KpiCard title={p.kpiClaimsCount}        value={formatNumber(kpis.nbr_sinistres)}                          trend={-kpis.pop_sinistres}  trendLabel={trendLabel} icon={<FileWarning size={15} />}   index={4} />
       </div>
 
       {/* ── Row 2: Perf trend + Duration distribution ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <SectionCard title={p.sectionDeliveryPCCTrend}>
-          {loading ? <Skeleton /> : perfTrend.length === 0 ? <EmptyChartState /> : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
-              <ReactECharts
-                option={buildPerfTrendOption(
-                  perfTrend,
-                  { deliveryRate: p.seriesDeliveryRate, underTariff: p.seriesUnderTariff },
-                  ct
-                )}
-                style={{ height: 280 }}
-                notMerge
-                lazyUpdate
-              />
-            </motion.div>
+          {!chartsReady ? <div className="h-[280px]" /> : perfTrend.length === 0 ? <EmptyChartState /> : (
+            <ReactECharts
+              option={buildPerfTrendOption(perfTrend, { deliveryRate: p.seriesDeliveryRate, underTariff: p.seriesUnderTariff }, ct)}
+              style={{ height: 280 }}
+              notMerge
+              lazyUpdate
+            />
           )}
         </SectionCard>
 
         <SectionCard title={p.sectionDurationDist}>
-          {loading ? <Skeleton /> : durationBuckets.length === 0 ? <EmptyChartState /> : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
-              <ReactECharts
-                option={buildDurationDistOption(durationBuckets, p.kpiAvgDurationPerf, ct)}
-                style={{ height: 280 }}
-                notMerge
-                lazyUpdate
-              />
-            </motion.div>
+          {!chartsReady ? <div className="h-[280px]" /> : durationBuckets.length === 0 ? <EmptyChartState /> : (
+            <ReactECharts
+              option={buildDurationDistOption(durationBuckets, p.kpiAvgDurationPerf, ct)}
+              style={{ height: 280 }}
+              notMerge
+              lazyUpdate
+            />
           )}
         </SectionCard>
       </div>
@@ -361,7 +318,7 @@ export default function PerformancePage() {
       {/* ── Row 3: Agency PCC Ranking + Claims by Type ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <SectionCard title={p.sectionAgencyPCCRanking}>
-          {loading ? <Skeleton /> : (
+          {!chartsReady ? <div className="h-[280px]" /> : (
             <BarChart
               data={agencyBarData}
               height={280}
@@ -374,7 +331,7 @@ export default function PerformancePage() {
         </SectionCard>
 
         <SectionCard title={p.sectionClaimsType}>
-          {loading ? <Skeleton /> : <PieChart data={claimsPieData} height={280} />}
+          {!chartsReady ? <div className="h-[280px]" /> : <PieChart data={claimsPieData} height={280} />}
         </SectionCard>
       </div>
     </div>

@@ -6,7 +6,7 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useParcelDeliveryStore } from "@/stores/parcelDeliveryStore";
 import { useTranslation } from "@/lib/i18n";
-import { Package, ChevronDown, CalendarDays } from "lucide-react";
+import { ChevronDown, CalendarDays, ArrowRight, Activity, TrendingUp, Gauge } from "lucide-react";
 import { motion } from "framer-motion";
 
 const MIN_DATE = "2023-01-01";
@@ -55,16 +55,16 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
   }
 
   const quickSelects = [
-    { label: "7D",  s: subDays(6),     e: today },
-    { label: "30D", s: subDays(29),    e: today },
-    { label: "90D", s: subDays(89),    e: today },
-    { label: "YTD", s: startOfYear(),  e: today },
+    { label: "7D",  s: subDays(6),    e: today },
+    { label: "30D", s: subDays(29),   e: today },
+    { label: "90D", s: subDays(89),   e: today },
+    { label: "YTD", s: startOfYear(), e: today },
   ];
 
   const tabs = [
-    { label: p.tabOperations,  href: "/parcel-delivery/operations"         },
-    { label: p.tabCostProfit,  href: "/parcel-delivery/cost-profitability" },
-    { label: p.tabPerformance, href: "/parcel-delivery/performance"        },
+    { label: p.tabOperations,  href: "/parcel-delivery/operations",         Icon: Activity   },
+    { label: p.tabCostProfit,  href: "/parcel-delivery/cost-profitability", Icon: TrendingUp },
+    { label: p.tabPerformance, href: "/parcel-delivery/performance",        Icon: Gauge      },
   ];
 
   const deliveryTypes = [
@@ -75,22 +75,10 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
 
   return (
     <div className="space-y-0">
-      {/* Page header */}
-      <div className="flex items-center gap-3 mb-5">
-        <div className="p-2 rounded-lg bg-primary/10 text-primary">
-          <Package size={20} />
-        </div>
-        <div>
-          <h1 className="text-xl font-bold text-[var(--text-primary)]">{t.nav.parcelDelivery}</h1>
-          <p className="text-xs text-[var(--text-muted)] mt-0.5">
-            {t.dashboard.parcels}
-          </p>
-        </div>
-      </div>
 
-      {/* Tab navigation */}
+      {/* ── Tab navigation ── */}
       <div className="border-b border-[var(--border)] mb-5">
-        <nav className="flex gap-1">
+        <nav className="flex gap-0.5">
           {tabs.map((tab) => {
             const active = pathname === tab.href || pathname.startsWith(tab.href + "/");
             return (
@@ -98,18 +86,19 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
                 key={tab.href}
                 href={tab.href}
                 className={cn(
-                  "relative px-4 py-3 text-sm font-medium transition-colors",
+                  "relative flex items-center gap-1.5 px-4 py-3 text-sm font-medium transition-colors rounded-t-lg",
                   active
-                    ? "text-primary"
-                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+                    ? "text-primary bg-primary/5"
+                    : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--surface-secondary)]"
                 )}
               >
+                <tab.Icon size={14} className="shrink-0" />
                 {tab.label}
                 {active && (
                   <motion.div
-                    layoutId="parcel-delivery-tab-indicator"
-                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary rounded-t"
-                    transition={{ duration: 0.3, ease: "easeOut" }}
+                    layoutId="parcel-tab-indicator"
+                    className="absolute bottom-0 left-0 right-0 h-0.5 bg-primary"
+                    transition={{ duration: 0.2, ease: "easeOut" }}
                   />
                 )}
               </Link>
@@ -118,20 +107,21 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
         </nav>
       </div>
 
-      {/* Filter bar */}
-      <div className="flex flex-col sm:flex-row sm:flex-wrap sm:items-center gap-3 mb-6 p-4 bg-[var(--surface)] border border-[var(--border)] rounded-xl">
+      {/* ── Futuristic filter bar ── */}
+      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 mb-5
+        bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
 
         {/* Quick-select pills */}
-        <div className="flex items-center gap-1.5">
+        <div className="flex items-center gap-1 px-3 py-2.5">
           {quickSelects.map((qs) => (
             <button
               key={qs.label}
               onClick={() => applyQuick(qs.label, qs.s, qs.e)}
               className={cn(
-                "px-2.5 py-1 text-xs font-medium rounded-full border transition-colors",
+                "px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200",
                 activeQuick === qs.label
-                  ? "bg-primary/15 text-primary border-primary/40"
-                  : "bg-transparent text-[var(--text-muted)] border-[var(--border)] hover:border-primary/30 hover:text-[var(--text-secondary)]"
+                  ? "bg-primary/15 border-primary/50 text-primary shadow-[0_0_10px_rgba(99,102,241,0.2)]"
+                  : "bg-transparent border-transparent text-[var(--text-muted)] hover:border-[var(--border)] hover:text-[var(--text-secondary)]"
               )}
             >
               {qs.label}
@@ -139,66 +129,97 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
           ))}
         </div>
 
-        <div className="hidden sm:block w-px h-5 bg-[var(--border)]" />
+        {/* Separator */}
+        <div className="hidden sm:block w-px h-8 bg-[var(--border)] shrink-0" />
+        <div className="sm:hidden h-px w-full bg-[var(--border)]" />
 
-        {/* From date */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--text-muted)] font-medium shrink-0">{p.filterFrom}</span>
-          <div className="relative flex items-center">
-            <CalendarDays size={13} className="absolute left-2.5 text-[var(--text-muted)] pointer-events-none z-10" />
+        {/* Date range */}
+        <div className="flex items-center gap-2 px-3 py-2 sm:py-0">
+          {/* From */}
+          <div className="relative flex items-center group">
+            <CalendarDays
+              size={13}
+              className="absolute left-2.5 text-[var(--text-muted)] group-focus-within:text-primary pointer-events-none z-10 transition-colors"
+            />
             <input
               type="date"
               value={pendingStart}
               min={MIN_DATE}
               max={pendingEnd}
               onChange={(e) => { setPendingStart(e.target.value); setActiveQuick(null); }}
-              className="bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--text-primary)] text-sm rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-primary/60 cursor-pointer w-full sm:w-auto"
+              className={cn(
+                "bg-[var(--surface-secondary)] border text-[var(--text-primary)] text-xs font-mono",
+                "rounded-xl pl-8 pr-2 py-1.5 w-[138px] cursor-pointer transition-all",
+                "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
+                "hover:border-primary/30",
+                isDirty && (pendingStart !== startDate)
+                  ? "border-primary/40 text-primary"
+                  : "border-[var(--border)]"
+              )}
             />
           </div>
-        </div>
 
-        {/* To date */}
-        <div className="flex items-center gap-2">
-          <span className="text-xs text-[var(--text-muted)] font-medium shrink-0">{p.filterTo}</span>
-          <div className="relative flex items-center">
-            <CalendarDays size={13} className="absolute left-2.5 text-[var(--text-muted)] pointer-events-none z-10" />
+          <ArrowRight size={12} className="text-[var(--text-muted)] shrink-0" />
+
+          {/* To */}
+          <div className="relative flex items-center group">
+            <CalendarDays
+              size={13}
+              className="absolute left-2.5 text-[var(--text-muted)] group-focus-within:text-primary pointer-events-none z-10 transition-colors"
+            />
             <input
               type="date"
               value={pendingEnd}
               min={pendingStart}
               max={today}
               onChange={(e) => { setPendingEnd(e.target.value); setActiveQuick(null); }}
-              className="bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--text-primary)] text-sm rounded-lg pl-8 pr-3 py-1.5 focus:outline-none focus:border-primary/60 cursor-pointer w-full sm:w-auto"
+              className={cn(
+                "bg-[var(--surface-secondary)] border text-[var(--text-primary)] text-xs font-mono",
+                "rounded-xl pl-8 pr-2 py-1.5 w-[138px] cursor-pointer transition-all",
+                "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
+                "hover:border-primary/30",
+                isDirty && (pendingEnd !== endDate)
+                  ? "border-primary/40 text-primary"
+                  : "border-[var(--border)]"
+              )}
             />
           </div>
+
+          {/* Apply */}
+          {isDirty && (
+            <motion.button
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              onClick={applyDates}
+              className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-primary text-white
+                hover:bg-primary/90 transition-colors shadow-[0_0_12px_rgba(99,102,241,0.25)] shrink-0"
+            >
+              Appliquer
+            </motion.button>
+          )}
         </div>
 
-        {/* Apply button — only visible when dates differ from committed values */}
-        {isDirty && (
-          <button
-            onClick={applyDates}
-            className="px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors shrink-0"
-          >
-            Appliquer
-          </button>
-        )}
+        {/* Right separator + delivery type — pushed to end */}
+        <div className="hidden sm:block w-px h-8 bg-[var(--border)] shrink-0 ml-auto" />
+        <div className="sm:hidden h-px w-full bg-[var(--border)]" />
 
-        {/* Delivery type */}
-        <div className="relative sm:ml-auto">
+        <div className="relative px-3 py-2 sm:py-0">
           <select
             value={deliveryType}
             onChange={(e) => setDeliveryType(e.target.value as "all" | "HD" | "SD")}
-            className="appearance-none bg-[var(--surface-secondary)] border border-[var(--border)] text-[var(--text-primary)] text-sm rounded-lg pl-3 pr-8 py-1.5 focus:outline-none focus:border-primary/60 cursor-pointer w-full sm:w-auto"
+            className="appearance-none bg-transparent text-[var(--text-primary)] text-xs font-medium
+              pl-2 pr-7 py-1.5 focus:outline-none cursor-pointer w-full sm:w-auto"
           >
             {deliveryTypes.map((dt) => (
               <option key={dt.value} value={dt.value}>{dt.label}</option>
             ))}
           </select>
-          <ChevronDown size={13} className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+          <ChevronDown size={12} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
         </div>
       </div>
 
-      {/* Sub-page content */}
+      {/* ── Sub-page content ── */}
       {children}
     </div>
   );

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
 import { DollarSign, TrendingUp, TrendingDown, BarChart2, Layers } from "lucide-react";
@@ -39,26 +39,6 @@ function SectionCard({ title, children, className = "" }: {
         <h3 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h3>
       </div>
       {children}
-    </div>
-  );
-}
-
-function Skeleton({ h = "h-[280px]" }: { h?: string }) {
-  return (
-    <div className={`relative ${h}`}>
-      <div className="absolute top-0 left-0 flex gap-2 items-center">
-        <div className="h-3 w-24 bg-[var(--surface-secondary)] animate-pulse rounded" />
-        <div className="h-3 w-16 bg-[var(--surface-secondary)] animate-pulse rounded opacity-60" />
-      </div>
-      <div className="absolute inset-0 top-8 flex items-end gap-1.5">
-        {[45, 72, 58, 88, 62, 78, 52, 70].map((v, i) => (
-          <div
-            key={i}
-            className="flex-1 bg-[var(--surface-secondary)] animate-pulse rounded-t"
-            style={{ height: `${v}%` }}
-          />
-        ))}
-      </div>
     </div>
   );
 }
@@ -115,7 +95,7 @@ function buildRevenueCostOption(
       axisLabel: { color: ct.labelColor, fontSize: 11 },
     },
     series: [
-      // Cost is first so it renders behind revenue
+      // Cost drawn first (behind revenue)
       {
         name: labels.cost,
         type: "line" as const,
@@ -127,7 +107,6 @@ function buildRevenueCostOption(
         itemStyle: { color: "#EF4444" },
         areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(239,68,68,0.2)" }, { offset: 1, color: "rgba(239,68,68,0)" }] } },
       },
-      // Revenue on top of cost
       {
         name: labels.revenue,
         type: "line" as const,
@@ -149,10 +128,7 @@ function buildRevenueCostOption(
           silent: true,
           symbol: ["none", "none"] as [string, string],
           lineStyle: { type: "dashed" as const, color: ct.labelColor, width: 1, opacity: 0.5 },
-          data: [{
-            yAxis: 0,
-            label: { formatter: "Break-even", position: "insideEndTop" as const, fontSize: 9, color: ct.labelColor },
-          }],
+          data: [{ yAxis: 0, label: { formatter: "Break-even", position: "insideEndTop" as const, fontSize: 9, color: ct.labelColor } }],
         },
       },
     ],
@@ -188,7 +164,6 @@ function buildEcartHistogramOption(
       data: cats,
       axisLine: { lineStyle: { color: ct.axisColor } },
       axisTick: { show: false },
-      // Increased rotation to 35° and reduced font to 9px to prevent overlap
       axisLabel: { color: ct.labelColor, fontSize: 9, rotate: 35 },
     },
     yAxis: [
@@ -252,9 +227,16 @@ const MOCK: PageData = {
 };
 
 export default function CostProfitabilityPage() {
-  const [loading, setLoading] = useState(true);
-  const [usingMock, setUsingMock] = useState(false);
   const [data, setData] = useState<PageData>(MOCK);
+  const [usingMock, setUsingMock] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  const [chartsReady, setChartsReady] = useState(false);
+  const raf = useRef<number | null>(null);
+
+  useEffect(() => {
+    raf.current = requestAnimationFrame(() => setChartsReady(true));
+    return () => { if (raf.current) cancelAnimationFrame(raf.current); };
+  }, []);
 
   const { t } = useTranslation();
   const p = t.pages.parcelDelivery;
@@ -271,7 +253,7 @@ export default function CostProfitabilityPage() {
   };
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    setFetching(true);
     try {
       const [kpis, revenueCostTrend, costStructure, costByNature, ecartBuckets] = await Promise.all([
         parcelDeliveryApi.costKpis(filters),
@@ -286,7 +268,7 @@ export default function CostProfitabilityPage() {
       setData(MOCK);
       setUsingMock(true);
     } finally {
-      setLoading(false);
+      setFetching(false);
     }
   }, [startDate, endDate, deliveryType]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -307,8 +289,18 @@ export default function CostProfitabilityPage() {
 
   return (
     <div className="space-y-5">
-      {/* Mock data badge — sticky so it's always visible while scrolling */}
-      {usingMock && (
+      {fetching && (
+        <div className="h-0.5 rounded-full overflow-hidden bg-[var(--surface-secondary)]">
+          <motion.div
+            className="h-full bg-gradient-to-r from-primary/40 via-primary to-primary/40"
+            initial={{ x: "-100%" }}
+            animate={{ x: "100%" }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+      )}
+
+      {usingMock && !fetching && (
         <div className="sticky top-0 z-10 text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg w-fit">
           {p.demoData}
         </div>
@@ -316,100 +308,47 @@ export default function CostProfitabilityPage() {
 
       {/* ── Row 1: 5 KPI cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard
-          title={p.kpiFeesCollected}
-          value={formatDZD(kpis.total_fees)}
-          trend={kpis.pop_fees}
-          trendLabel={trendLabel}
-          icon={<DollarSign size={16} />}
-          index={0}
-        />
-        <KpiCard
-          title={p.kpiTotalCost}
-          value={formatDZD(kpis.cout_total)}
-          trend={-kpis.pop_cout}
-          trendLabel={trendLabel}
-          icon={<TrendingDown size={16} />}
-          index={1}
-        />
-        <KpiCard
-          title={p.kpiGrossMargin}
-          value={formatPercent(kpis.marge_pct)}
-          trend={kpis.pop_marge}
-          trendLabel={trendLabel}
-          icon={<TrendingUp size={16} />}
-          index={2}
-        />
-        <KpiCard
-          title={p.kpiAvgFee}
-          value={`${formatNumber(kpis.avg_fee_par_colis)} DZD`}
-          trend={kpis.pop_avg_fee}
-          trendLabel={trendLabel}
-          icon={<BarChart2 size={16} />}
-          index={3}
-        />
-        <KpiCard
-          title={p.kpiCostPerDelivery}
-          value={`${formatNumber(kpis.cout_par_colis_livre)} DZD`}
-          trend={-kpis.pop_cout_par_livre}
-          trendLabel={trendLabel}
-          icon={<Layers size={16} />}
-          index={4}
-        />
+        <KpiCard title={p.kpiFeesCollected}    value={formatDZD(kpis.total_fees)}                       trend={kpis.pop_fees}           trendLabel={trendLabel} icon={<DollarSign size={15} />}  index={0} />
+        <KpiCard title={p.kpiTotalCost}        value={formatDZD(kpis.cout_total)}                       trend={-kpis.pop_cout}          trendLabel={trendLabel} icon={<TrendingDown size={15} />} index={1} />
+        <KpiCard title={p.kpiGrossMargin}      value={formatPercent(kpis.marge_pct)}                    trend={kpis.pop_marge}          trendLabel={trendLabel} icon={<TrendingUp size={15} />}   index={2} />
+        <KpiCard title={p.kpiAvgFee}           value={`${formatNumber(kpis.avg_fee_par_colis)} DZD`}    trend={kpis.pop_avg_fee}        trendLabel={trendLabel} icon={<BarChart2 size={15} />}    index={3} />
+        <KpiCard title={p.kpiCostPerDelivery}  value={`${formatNumber(kpis.cout_par_colis_livre)} DZD`} trend={-kpis.pop_cout_par_livre} trendLabel={trendLabel} icon={<Layers size={15} />}      index={4} />
       </div>
 
       {/* ── Row 2: Revenue vs Cost trend + Cost Structure ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <SectionCard title={p.sectionRevenueCostTrend}>
-          {loading ? <Skeleton /> : revenueCostTrend.length === 0 ? <EmptyChartState /> : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
-              <ReactECharts
-                option={buildRevenueCostOption(
-                  revenueCostTrend,
-                  { revenue: p.seriesRevenue, cost: p.seriesCost, margin: p.kpiGrossMargin },
-                  ct
-                )}
-                style={{ height: 280 }}
-                notMerge
-                lazyUpdate
-              />
-            </motion.div>
+          {!chartsReady ? <div className="h-[280px]" /> : revenueCostTrend.length === 0 ? <EmptyChartState /> : (
+            <ReactECharts
+              option={buildRevenueCostOption(revenueCostTrend, { revenue: p.seriesRevenue, cost: p.seriesCost, margin: p.kpiGrossMargin }, ct)}
+              style={{ height: 280 }}
+              notMerge
+              lazyUpdate
+            />
           )}
         </SectionCard>
 
         <SectionCard title={p.sectionCostStructure}>
-          {loading ? <Skeleton /> : <PieChart data={costStructurePieData} height={280} />}
+          {!chartsReady ? <div className="h-[280px]" /> : <PieChart data={costStructurePieData} height={280} />}
         </SectionCard>
       </div>
 
       {/* ── Row 3: Cost by Nature + Tariff Gap Distribution ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <SectionCard title={p.sectionCostByNature}>
-          {loading ? <Skeleton /> : (
-            <BarChart
-              data={costNatureBarData}
-              height={280}
-              color="#10B981"
-              horizontal
-              label="DZD"
-            />
+          {!chartsReady ? <div className="h-[280px]" /> : (
+            <BarChart data={costNatureBarData} height={280} color="#10B981" horizontal label="DZD" />
           )}
         </SectionCard>
 
         <SectionCard title={p.sectionTariffGapDist}>
-          {loading ? <Skeleton /> : ecartBuckets.length === 0 ? <EmptyChartState /> : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
-              <ReactECharts
-                option={buildEcartHistogramOption(
-                  ecartBuckets,
-                  { parcels: p.seriesDelivered, sumEcart: "Écart DZD" },
-                  ct
-                )}
-                style={{ height: 280 }}
-                notMerge
-                lazyUpdate
-              />
-            </motion.div>
+          {!chartsReady ? <div className="h-[280px]" /> : ecartBuckets.length === 0 ? <EmptyChartState /> : (
+            <ReactECharts
+              option={buildEcartHistogramOption(ecartBuckets, { parcels: p.seriesDelivered, sumEcart: "Écart DZD" }, ct)}
+              style={{ height: 280 }}
+              notMerge
+              lazyUpdate
+            />
           )}
         </SectionCard>
       </div>

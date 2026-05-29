@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
 import { Package, TrendingUp, TrendingDown, Clock, AlertTriangle } from "lucide-react";
@@ -43,26 +43,6 @@ function SectionCard({ title, children, className = "" }: {
   );
 }
 
-function Skeleton({ h = "h-[280px]" }: { h?: string }) {
-  return (
-    <div className={`relative ${h}`}>
-      <div className="absolute top-0 left-0 flex gap-2 items-center">
-        <div className="h-3 w-24 bg-[var(--surface-secondary)] animate-pulse rounded" />
-        <div className="h-3 w-16 bg-[var(--surface-secondary)] animate-pulse rounded opacity-60" />
-      </div>
-      <div className="absolute inset-0 top-8 flex items-end gap-1.5">
-        {[45, 72, 58, 88, 62, 78, 52, 70].map((v, i) => (
-          <div
-            key={i}
-            className="flex-1 bg-[var(--surface-secondary)] animate-pulse rounded-t"
-            style={{ height: `${v}%` }}
-          />
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function EmptyChartState() {
   return (
     <div className="h-[280px] flex flex-col items-center justify-center gap-2 text-[var(--text-muted)] select-none">
@@ -85,7 +65,7 @@ function buildVolumeTrendOption(
   labels: { delivered: string; returned: string; failed: string },
   ct: ReturnType<typeof useChartTheme>
 ) {
-  const cats = trend.map((d) => d.date.slice(5));  // MM-DD
+  const cats = trend.map((d) => d.date.slice(5));
   return {
     backgroundColor: "transparent",
     tooltip: {
@@ -154,9 +134,7 @@ function buildHDvsSDOption(
     { name: labels.avgFee,       values: byType.map((d) => d.avg_fee_dzd),        suffix: " DZD" },
     { name: labels.avgDuration,  values: byType.map((d) => d.avg_duree_livree_h), suffix: labels.durationUnit },
   ];
-
   const COLORS = ["#6366F1", "#22D3EE", "#10B981", "#F59E0B"];
-
   return {
     backgroundColor: "transparent",
     tooltip: {
@@ -215,9 +193,18 @@ const MOCK: PageData = {
 };
 
 export default function OperationsPage() {
-  const [loading, setLoading] = useState(true);
-  const [usingMock, setUsingMock] = useState(false);
+  // Start with mock data visible immediately — no blocking skeleton on mount
   const [data, setData] = useState<PageData>(MOCK);
+  const [usingMock, setUsingMock] = useState(false);
+  const [fetching, setFetching] = useState(false);
+  // Defer ECharts initialization until after first paint
+  const [chartsReady, setChartsReady] = useState(false);
+  const raf = useRef<number | null>(null);
+
+  useEffect(() => {
+    raf.current = requestAnimationFrame(() => setChartsReady(true));
+    return () => { if (raf.current) cancelAnimationFrame(raf.current); };
+  }, []);
 
   const { t } = useTranslation();
   const p = t.pages.parcelDelivery;
@@ -234,7 +221,7 @@ export default function OperationsPage() {
   };
 
   const fetchData = useCallback(async () => {
-    setLoading(true);
+    setFetching(true);
     try {
       const [kpis, trend, statusBreakdown, byDeliveryType, zones] = await Promise.all([
         parcelDeliveryApi.opsKpis(filters),
@@ -249,7 +236,7 @@ export default function OperationsPage() {
       setData(MOCK);
       setUsingMock(true);
     } finally {
-      setLoading(false);
+      setFetching(false);
     }
   }, [startDate, endDate, deliveryType]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -268,8 +255,20 @@ export default function OperationsPage() {
 
   return (
     <div className="space-y-5">
-      {/* Mock data badge — sticky so it's always visible while scrolling */}
-      {usingMock && (
+      {/* Thin progress bar during background fetch */}
+      {fetching && (
+        <div className="h-0.5 rounded-full overflow-hidden bg-[var(--surface-secondary)]">
+          <motion.div
+            className="h-full bg-gradient-to-r from-primary/40 via-primary to-primary/40"
+            initial={{ x: "-100%" }}
+            animate={{ x: "100%" }}
+            transition={{ duration: 1.2, repeat: Infinity, ease: "easeInOut" }}
+          />
+        </div>
+      )}
+
+      {/* Mock data badge */}
+      {usingMock && !fetching && (
         <div className="sticky top-0 z-10 text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg w-fit">
           {p.demoData}
         </div>
@@ -277,77 +276,36 @@ export default function OperationsPage() {
 
       {/* ── Row 1: 5 KPI cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard
-          title={p.kpiTotalParcels}
-          value={formatNumber(kpis.nbr_colis)}
-          trend={kpis.pop_colis}
-          trendLabel={trendLabel}
-          icon={<Package size={16} />}
-          index={0}
-        />
-        <KpiCard
-          title={p.kpiDeliveryRate}
-          value={formatPercent(kpis.taux_livraison_pct)}
-          trend={kpis.pop_livraison}
-          trendLabel={trendLabel}
-          icon={<TrendingUp size={16} />}
-          index={1}
-        />
-        <KpiCard
-          title={p.kpiReturnRate}
-          value={formatPercent(kpis.taux_retour_pct)}
-          trend={-kpis.pop_retour}
-          trendLabel={trendLabel}
-          icon={<TrendingDown size={16} />}
-          index={2}
-        />
-        <KpiCard
-          title={p.kpiFailedParcels}
-          value={formatNumber(kpis.nbr_echecs)}
-          trend={-kpis.pop_echecs}
-          trendLabel={trendLabel}
-          icon={<AlertTriangle size={16} />}
-          index={3}
-        />
-        <KpiCard
-          title={p.kpiAvgDuration}
-          value={`${kpis.avg_duree_livraison_h.toFixed(1)} ${p.durationUnit}`}
-          trend={-kpis.pop_duree}
-          trendLabel={trendLabel}
-          icon={<Clock size={16} />}
-          index={4}
-        />
+        <KpiCard title={p.kpiTotalParcels}  value={formatNumber(kpis.nbr_colis)}              trend={kpis.pop_colis}      trendLabel={trendLabel} icon={<Package size={15} />}       index={0} />
+        <KpiCard title={p.kpiDeliveryRate}  value={formatPercent(kpis.taux_livraison_pct)}    trend={kpis.pop_livraison}  trendLabel={trendLabel} icon={<TrendingUp size={15} />}    index={1} />
+        <KpiCard title={p.kpiReturnRate}    value={formatPercent(kpis.taux_retour_pct)}       trend={-kpis.pop_retour}    trendLabel={trendLabel} icon={<TrendingDown size={15} />}  index={2} />
+        <KpiCard title={p.kpiFailedParcels} value={formatNumber(kpis.nbr_echecs)}             trend={-kpis.pop_echecs}    trendLabel={trendLabel} icon={<AlertTriangle size={15} />} index={3} />
+        <KpiCard title={p.kpiAvgDuration}   value={`${kpis.avg_duree_livraison_h.toFixed(1)} ${p.durationUnit}`} trend={-kpis.pop_duree} trendLabel={trendLabel} icon={<Clock size={15} />} index={4} />
       </div>
 
       {/* ── Row 2: Volume trend + Status breakdown ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <SectionCard title={p.sectionVolumeTrend}>
-          {loading ? <Skeleton /> : trend.length === 0 ? <EmptyChartState /> : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
-              <ReactECharts
-                option={buildVolumeTrendOption(
-                  trend,
-                  { delivered: p.seriesDelivered, returned: p.seriesReturned, failed: p.seriesFailed },
-                  ct
-                )}
-                style={{ height: 280 }}
-                notMerge
-                lazyUpdate
-              />
-            </motion.div>
+          {!chartsReady ? <div className="h-[280px]" /> : trend.length === 0 ? <EmptyChartState /> : (
+            <ReactECharts
+              option={buildVolumeTrendOption(trend, { delivered: p.seriesDelivered, returned: p.seriesReturned, failed: p.seriesFailed }, ct)}
+              style={{ height: 280 }}
+              notMerge
+              lazyUpdate
+            />
           )}
         </SectionCard>
 
         <SectionCard title={p.sectionStatusBreakdown}>
-          {loading ? <Skeleton /> : <PieChart data={statusPieData} height={280} />}
+          {!chartsReady ? <div className="h-[280px]" /> : <PieChart data={statusPieData} height={280} />}
         </SectionCard>
       </div>
 
       {/* ── Row 3: HD vs SD + Zone distribution ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <SectionCard title={p.sectionDeliveryTypeComp}>
-          {loading ? <Skeleton /> : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
+          {!chartsReady ? <div className="h-[360px]" /> : (
+            <div>
               {/* HD vs SD metric cards */}
               <div className="grid grid-cols-2 gap-3 mb-4">
                 {byDeliveryType.map((dt) => (
@@ -377,35 +335,22 @@ export default function OperationsPage() {
                   </div>
                 ))}
               </div>
-
-              {/* Divider between cards block and mini chart */}
               <hr className="border-t border-[var(--border)] mb-4" />
-
               {byDeliveryType.length === 0 ? <EmptyChartState /> : (
                 <ReactECharts
-                  option={buildHDvsSDOption(
-                    byDeliveryType,
-                    { deliveryRate: p.hdDeliveryRate, returnRate: p.hdReturnRate, avgFee: p.hdAvgFee, avgDuration: p.hdAvgDuration, durationUnit: p.durationUnit },
-                    ct
-                  )}
+                  option={buildHDvsSDOption(byDeliveryType, { deliveryRate: p.hdDeliveryRate, returnRate: p.hdReturnRate, avgFee: p.hdAvgFee, avgDuration: p.hdAvgDuration, durationUnit: p.durationUnit }, ct)}
                   style={{ height: 160 }}
                   notMerge
                   lazyUpdate
                 />
               )}
-            </motion.div>
+            </div>
           )}
         </SectionCard>
 
         <SectionCard title={p.sectionZoneDist}>
-          {loading ? <Skeleton /> : (
-            <BarChart
-              data={zoneBarData}
-              height={280}
-              color="#6366F1"
-              horizontal
-              label="colis"
-            />
+          {!chartsReady ? <div className="h-[280px]" /> : (
+            <BarChart data={zoneBarData} height={280} color="#6366F1" horizontal label="colis" />
           )}
         </SectionCard>
       </div>
