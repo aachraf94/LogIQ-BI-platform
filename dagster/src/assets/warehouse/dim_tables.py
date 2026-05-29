@@ -532,6 +532,47 @@ def dim_contract(
     context: AssetExecutionContext,
     warehouse_db: WarehousePostgresResource,
 ) -> MaterializeResult:
+    # Dynamic upsert for lookup dims — insert new values from staging before resolving
+    with warehouse_db.get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO warehouse.dim_contract_type (contract_type_id, contract_type)
+                SELECT
+                    (SELECT COALESCE(MAX(contract_type_id), 0) FROM warehouse.dim_contract_type)
+                    + ROW_NUMBER() OVER (ORDER BY contract_type),
+                    contract_type
+                FROM (
+                    SELECT DISTINCT contract_type
+                    FROM warehouse.stg_paie_bulletins
+                    WHERE contract_type IS NOT NULL
+                      AND contract_type NOT IN (SELECT contract_type FROM warehouse.dim_contract_type)
+                ) new_vals
+            """)
+            if cur.rowcount:
+                context.log.info(f"dim_contract_type: inserted {cur.rowcount} new rows")
+            cur.execute("""
+                INSERT INTO warehouse.dim_contract_regime (regime_id, regime)
+                SELECT
+                    (SELECT COALESCE(MAX(regime_id), 0) FROM warehouse.dim_contract_regime)
+                    + ROW_NUMBER() OVER (ORDER BY regime),
+                    regime
+                FROM (
+                    SELECT DISTINCT regime
+                    FROM warehouse.stg_paie_bulletins
+                    WHERE regime IS NOT NULL
+                      AND regime NOT IN (SELECT regime FROM warehouse.dim_contract_regime)
+                ) new_vals
+            """)
+            if cur.rowcount:
+                context.log.info(f"dim_contract_regime: inserted {cur.rowcount} new rows")
+
+    contract_type_map = dict(warehouse_db.fetch_all(
+        "SELECT contract_type, contract_type_id FROM warehouse.dim_contract_type"
+    ))
+    regime_map = dict(warehouse_db.fetch_all(
+        "SELECT regime, regime_id FROM warehouse.dim_contract_regime"
+    ))
+
     rows = warehouse_db.fetch_all("""
         SELECT DISTINCT contract_type, regime, hire_date, work_hours_per_week
         FROM warehouse.stg_paie_bulletins
@@ -543,8 +584,8 @@ def dim_contract(
     skipped_unmapped = 0
     for row in rows:
         contract_type, regime, hire_date, work_hours = row
-        ct_id = _CONTRACT_TYPE_MAP.get(contract_type)
-        regime_id = _REGIME_MAP.get(regime)
+        ct_id = contract_type_map.get(contract_type)
+        regime_id = regime_map.get(regime)
         if not ct_id or not regime_id or not hire_date:
             skipped_unmapped += 1
             continue
@@ -589,6 +630,53 @@ def dim_employee(
     context: AssetExecutionContext,
     warehouse_db: WarehousePostgresResource,
 ) -> MaterializeResult:
+    # Dynamic upsert for lookup dims before resolving IDs
+    with warehouse_db.get_connection() as conn:
+        with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO warehouse.dim_role (role_id, role_name)
+                SELECT
+                    (SELECT COALESCE(MAX(role_id), 0) FROM warehouse.dim_role)
+                    + ROW_NUMBER() OVER (ORDER BY role),
+                    role
+                FROM (
+                    SELECT DISTINCT role
+                    FROM warehouse.stg_hrforce_users
+                    WHERE role IS NOT NULL
+                      AND role NOT IN (SELECT role_name FROM warehouse.dim_role)
+                ) new_vals
+            """)
+            if cur.rowcount:
+                context.log.info(f"dim_role: inserted {cur.rowcount} new rows")
+            cur.execute("""
+                INSERT INTO warehouse.dim_employee_status (employee_status_id, status_name)
+                SELECT
+                    (SELECT COALESCE(MAX(employee_status_id), 0) FROM warehouse.dim_employee_status)
+                    + ROW_NUMBER() OVER (ORDER BY status),
+                    status
+                FROM (
+                    SELECT DISTINCT status
+                    FROM warehouse.stg_hrforce_users
+                    WHERE status IS NOT NULL
+                      AND status NOT IN (SELECT status_name FROM warehouse.dim_employee_status)
+                ) new_vals
+            """)
+            if cur.rowcount:
+                context.log.info(f"dim_employee_status: inserted {cur.rowcount} new rows")
+
+    role_map = dict(warehouse_db.fetch_all(
+        "SELECT role_name, role_id FROM warehouse.dim_role"
+    ))
+    status_map_emp = dict(warehouse_db.fetch_all(
+        "SELECT status_name, employee_status_id FROM warehouse.dim_employee_status"
+    ))
+    contract_type_map = dict(warehouse_db.fetch_all(
+        "SELECT contract_type, contract_type_id FROM warehouse.dim_contract_type"
+    ))
+    regime_map = dict(warehouse_db.fetch_all(
+        "SELECT regime, regime_id FROM warehouse.dim_contract_regime"
+    ))
+
     # Lookup maps
     agence_rows = warehouse_db.fetch_all(
         "SELECT agency_id, agence_key, company_id FROM warehouse.dim_agence WHERE is_current = TRUE"
@@ -671,8 +759,8 @@ def dim_employee(
             skipped += 1
             continue  # no payslip data — cannot populate hire_date_id (NOT NULL)
 
-        role_id = _ROLE_MAP.get(role)
-        status_id = _STATUS_MAP.get(status)
+        role_id = role_map.get(role)
+        status_id = status_map_emp.get(status)
         if not role_id or not status_id:
             skipped += 1
             continue
@@ -689,8 +777,8 @@ def dim_employee(
         contract_key = None
         if uid in contract_lookup:
             ct, regime, hd, wh = contract_lookup[uid]
-            ct_id = _CONTRACT_TYPE_MAP.get(ct)
-            r_id = _REGIME_MAP.get(regime)
+            ct_id = contract_type_map.get(ct)
+            r_id = regime_map.get(regime)
             if ct_id and r_id:
                 contract_key = contract_key_map2.get((ct_id, r_id, hd, wh))
 
@@ -767,6 +855,21 @@ def dim_livreur_freelance(
 ) -> MaterializeResult:
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
+            cur.execute("""
+                INSERT INTO warehouse.dim_livreur_vehicule_type (vehicule_type_id, vehicule_type)
+                SELECT
+                    (SELECT COALESCE(MAX(vehicule_type_id), 0) FROM warehouse.dim_livreur_vehicule_type)
+                    + ROW_NUMBER() OVER (ORDER BY livreur_vehicule_type),
+                    livreur_vehicule_type
+                FROM (
+                    SELECT DISTINCT livreur_vehicule_type
+                    FROM warehouse.stg_cashbox_paiements_livreurs
+                    WHERE livreur_vehicule_type IS NOT NULL
+                      AND livreur_vehicule_type NOT IN (SELECT vehicule_type FROM warehouse.dim_livreur_vehicule_type)
+                ) new_vals
+            """)
+            if cur.rowcount:
+                context.log.info(f"dim_livreur_vehicule_type: inserted {cur.rowcount} new rows")
             cur.execute("""
                 INSERT INTO warehouse.dim_livreur_freelance
                 (livreur_id, nom, prenom, vehicule_type_id, agence_key)
