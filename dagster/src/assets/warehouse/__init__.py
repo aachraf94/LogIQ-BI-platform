@@ -28,6 +28,15 @@ from .dim_tables import (
     dim_transport,
     dim_parcel,
 )
+from .fact_tables import (
+    fact_parcel_revenue,
+    fact_parcel_performance,
+    fact_cost_salaire,
+    fact_charges,
+    fact_transport_cost,
+    fact_transport_billing,
+    fact_transport_performance,
+)
 
 warehouse_assets = [
     dim_agency_type,
@@ -58,4 +67,12 @@ warehouse_assets = [
     dim_transport_routing,
     dim_transport,
     dim_parcel,
+    # Facts
+    fact_parcel_revenue,
+    fact_parcel_performance,
+    fact_cost_salaire,
+    fact_charges,
+    fact_transport_cost,
+    fact_transport_billing,
+    fact_transport_performance,
 ]
