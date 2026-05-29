@@ -113,16 +113,16 @@ def get_ops_kpis(start_date, end_date, delivery_type=None):
 
     kpi_sql = f"""
         SELECT
-            COUNT(*)                                                                        AS nbr_colis,
-            COUNT(*) FILTER (WHERE dp.current_status_id = 13)                              AS nbr_livres,
-            COUNT(*) FILTER (WHERE dp.current_status_id = 19)                              AS nbr_retours,
-            COUNT(*) FILTER (WHERE dp.current_status_id = 14)                              AS nbr_echecs,
-            COUNT(*) FILTER (WHERE ps.is_terminal = FALSE AND dp.current_status_id != 14)  AS nbr_en_transit,
+            COUNT(*)                                                           AS nbr_colis,
+            COUNT(*) FILTER (WHERE dp.current_status_id = 13)                 AS nbr_livres,
+            COUNT(*) FILTER (WHERE dp.current_status_id = 19)                 AS nbr_retours,
+            COUNT(*) FILTER (WHERE dp.current_status_id = 14)                 AS nbr_echecs,
+            COUNT(*) FILTER (WHERE ps.is_terminal = FALSE)                     AS nbr_en_transit,
             COALESCE(
                 AVG(fpp.duree_totale_minutes) FILTER (WHERE dp.current_status_id = 13)
                 / 60.0,
                 0
-            )                                                                               AS avg_duree_livraison_h
+            )                                                                  AS avg_duree_livraison_h
         FROM warehouse.dim_parcel dp
         JOIN  warehouse.dim_parcels_status   ps  ON dp.current_status_id  = ps.status_id
         LEFT JOIN warehouse.dim_delivery_type ddt ON dp.delivery_type_id  = ddt.delivery_type_id
@@ -171,10 +171,10 @@ def get_ops_trend(start_date, end_date, delivery_type=None):
     sql = f"""
         SELECT
             dp.date_creation_id::text                                                       AS date,
-            COUNT(*) FILTER (WHERE dp.current_status_id = 13)                              AS nbr_livres,
-            COUNT(*) FILTER (WHERE dp.current_status_id = 19)                              AS nbr_retours,
-            COUNT(*) FILTER (WHERE dp.current_status_id = 14)                              AS nbr_echecs,
-            COUNT(*) FILTER (WHERE ps.is_terminal = FALSE AND dp.current_status_id != 14)  AS nbr_en_transit
+            COUNT(*) FILTER (WHERE dp.current_status_id = 13)    AS nbr_livres,
+            COUNT(*) FILTER (WHERE dp.current_status_id = 19)    AS nbr_retours,
+            COUNT(*) FILTER (WHERE dp.current_status_id = 14)    AS nbr_echecs,
+            COUNT(*) FILTER (WHERE ps.is_terminal = FALSE)        AS nbr_en_transit
         FROM warehouse.dim_parcel dp
         JOIN  warehouse.dim_parcels_status   ps  ON dp.current_status_id = ps.status_id
         LEFT JOIN warehouse.dim_delivery_type ddt ON dp.delivery_type_id = ddt.delivery_type_id
