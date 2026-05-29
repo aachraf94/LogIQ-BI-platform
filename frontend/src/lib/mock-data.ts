@@ -12,7 +12,7 @@ import type {
 } from "@/types/parcel";
 import type { Route, NetworkNode, NetworkLink } from "@/types/route";
 import type { Alert, User } from "@/types/user";
-import type { ParcelRegionFlowItem, ParcelRegionProfitItem, ParcelZoneProfitItem } from "@/types/parcel_delivery";
+import type { ParcelRegionFlowItem, ParcelRegionProfitItem, ParcelZoneProfitItem, ParcelCenterExpedition } from "@/types/parcel_delivery";
 
 // ─── Algerian cities with real approximate GPS coordinates ───────────────────
 export const ALGERIAN_CITIES: Record<string, { lat: number; lng: number }> = {
@@ -777,7 +777,6 @@ import type {
   ParcelPerfKpis,
   ParcelPerfTrendPoint,
   ParcelDurationBucket,
-  ParcelAgencyPCC,
   ParcelClaimsType,
 } from "@/types/parcel_delivery"
 
@@ -901,13 +900,13 @@ export const mockParcelEcartBuckets: ParcelEcartBucket[] = [
 
 export const mockParcelPerfKpis: ParcelPerfKpis = {
   taux_livraison_pct: 74.0,
-  taux_sous_tarif_pct: 23.0,
-  taux_compliance_pct: 77.0,
+  avg_tentatives: 1.82,
+  taux_premier_essai_pct: 61.4,
   avg_duree_livraison_h: 30.4,
   nbr_sinistres: 170,
   pop_livraison: 1.8,
-  pop_sous_tarif: -2.3,
-  pop_compliance: 2.3,
+  pop_tentatives: -4.1,
+  pop_premier_essai: 2.7,
   pop_duree: -3.4,
   pop_sinistres: -8.2,
 }
@@ -918,7 +917,7 @@ export const mockParcelPerfTrend: ParcelPerfTrendPoint[] = Array.from({ length: 
   return {
     period: `${year}-${String(month).padStart(2, "0")}`,
     taux_livraison_pct: Math.round((70 + i * 0.4 + Math.sin(i * 0.5) * 1.5) * 10) / 10,
-    taux_sous_tarif_pct: Math.round((26 - i * 0.25 + Math.sin(i) * 1.2) * 10) / 10,
+    avg_duree_livraison_h: Math.round((34 - i * 0.3 + Math.sin(i * 0.8) * 1.8) * 10) / 10,
   }
 })
 
@@ -931,15 +930,15 @@ export const mockParcelDurationBuckets: ParcelDurationBucket[] = [
   { bucket: "> 5 jours",  bucket_order: 5, nbr_colis: 403    },
 ]
 
-export const mockParcelAgencyPCC: ParcelAgencyPCC[] = [
-  { agence_name: "Batna",         taux_sous_tarif_pct: 31.0, nbr_colis: 1_400 },
-  { agence_name: "Djelfa",        taux_sous_tarif_pct: 28.9, nbr_colis: 2_900 },
-  { agence_name: "Alger Centre",  taux_sous_tarif_pct: 26.0, nbr_colis: 9_100 },
-  { agence_name: "Oran",          taux_sous_tarif_pct: 25.0, nbr_colis: 6_200 },
-  { agence_name: "Constantine",   taux_sous_tarif_pct: 22.9, nbr_colis: 4_900 },
-  { agence_name: "Sétif",         taux_sous_tarif_pct: 22.1, nbr_colis: 3_800 },
-  { agence_name: "Annaba",        taux_sous_tarif_pct: 20.0, nbr_colis: 2_200 },
-  { agence_name: "Blida",         taux_sous_tarif_pct: 18.2, nbr_colis: 1_550 },
+export const mockParcelCenterExpedition: ParcelCenterExpedition[] = [
+  { center_code: "HUS1", center_name: "Alger Centre",  nbr_colis: 18_420 },
+  { center_code: "HOR1", center_name: "Oran",           nbr_colis: 12_850 },
+  { center_code: "HCT1", center_name: "Constantine",    nbr_colis: 10_340 },
+  { center_code: "HST1", center_name: "Sétif",          nbr_colis:  8_760 },
+  { center_code: "HBT1", center_name: "Batna",          nbr_colis:  7_230 },
+  { center_code: "HAN1", center_name: "Annaba",         nbr_colis:  6_140 },
+  { center_code: "HBL1", center_name: "Blida",          nbr_colis:  5_580 },
+  { center_code: "HTL1", center_name: "Tlemcen",        nbr_colis:  4_910 },
 ]
 
 export const mockParcelClaimsTypes: ParcelClaimsType[] = [

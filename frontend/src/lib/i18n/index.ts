@@ -312,13 +312,13 @@ export interface Translations {
       sectionRegionProfit: string
       sectionZoneProfit: string
       kpiDeliveryRatePerf: string
-      kpiUnderTariff: string
-      kpiCompliance: string
+      kpiAvgAttempts: string
+      kpiFirstAttemptRate: string
       kpiAvgDurationPerf: string
       kpiClaimsCount: string
-      sectionDeliveryPCCTrend: string
+      sectionDeliveryDurationTrend: string
       sectionDurationDist: string
-      sectionAgencyPCCRanking: string
+      sectionCenterExpeditionRanking: string
       sectionClaimsType: string
       seriesDelivered: string
       seriesReturned: string
@@ -328,7 +328,7 @@ export interface Translations {
       seriesRevenue: string
       seriesCost: string
       seriesDeliveryRate: string
-      seriesUnderTariff: string
+      seriesAvgDuration: string
       hdLabel: string
       sdLabel: string
       hdDeliveryRate: string
@@ -796,13 +796,13 @@ const fr: Translations = {
       sectionRegionProfit: 'Flux régional — Marge par trajet (DZD)',
       sectionZoneProfit: 'Rentabilité par zone de livraison',
       kpiDeliveryRatePerf: 'Taux de livraison',
-      kpiUnderTariff: 'Taux sous-tarif (PCC)',
-      kpiCompliance: 'Conformité tarifaire',
+      kpiAvgAttempts: 'Tentatives moy.',
+      kpiFirstAttemptRate: 'Succès 1ère tentative',
       kpiAvgDurationPerf: 'Durée moy. livraison',
       kpiClaimsCount: 'Sinistres déclarés',
-      sectionDeliveryPCCTrend: 'Livraison vs Sous-tarif — Tendance mensuelle (%)',
+      sectionDeliveryDurationTrend: 'Performance mensuelle — Livraison & Durée',
       sectionDurationDist: 'Distribution des délais de livraison',
-      sectionAgencyPCCRanking: 'Classement PCC par agence (taux sous-tarif)',
+      sectionCenterExpeditionRanking: 'Top 8 centres — Expéditions (colis envoyés)',
       sectionClaimsType: 'Sinistres — Répartition par type',
       seriesDelivered: 'Livrés',
       seriesReturned: 'Retours',
@@ -812,7 +812,7 @@ const fr: Translations = {
       seriesRevenue: 'Frais collectés',
       seriesCost: 'Coût total',
       seriesDeliveryRate: 'Taux livraison (%)',
-      seriesUnderTariff: 'Sous-tarif (%)',
+      seriesAvgDuration: 'Durée moy. (h)',
       hdLabel: 'Domicile (HD)',
       sdLabel: 'Stop Desk (SD)',
       hdDeliveryRate: 'Taux livraison',
@@ -1287,13 +1287,13 @@ const en: Translations = {
       sectionRegionProfit: 'Regional Flow — Margin by Route (DZD)',
       sectionZoneProfit: 'Profitability by Delivery Zone',
       kpiDeliveryRatePerf: 'Delivery Rate',
-      kpiUnderTariff: 'Under-Tariff Rate (PCC)',
-      kpiCompliance: 'Tariff Compliance',
+      kpiAvgAttempts: 'Avg Attempts',
+      kpiFirstAttemptRate: '1st Attempt Success',
       kpiAvgDurationPerf: 'Avg Delivery Duration',
       kpiClaimsCount: 'Claims Declared',
-      sectionDeliveryPCCTrend: 'Delivery vs Under-Tariff — Monthly Trend (%)',
+      sectionDeliveryDurationTrend: 'Monthly Performance — Delivery & Duration',
       sectionDurationDist: 'Delivery Duration Distribution',
-      sectionAgencyPCCRanking: 'PCC Ranking by Agency (under-tariff rate)',
+      sectionCenterExpeditionRanking: 'Top 8 Centers — Expeditions (parcels sent)',
       sectionClaimsType: 'Claims — Breakdown by Type',
       seriesDelivered: 'Delivered',
       seriesReturned: 'Returns',
@@ -1303,7 +1303,7 @@ const en: Translations = {
       seriesRevenue: 'Fees Collected',
       seriesCost: 'Total Cost',
       seriesDeliveryRate: 'Delivery Rate (%)',
-      seriesUnderTariff: 'Under-Tariff (%)',
+      seriesAvgDuration: 'Avg Duration (h)',
       hdLabel: 'Home Delivery (HD)',
       sdLabel: 'Stop Desk (SD)',
       hdDeliveryRate: 'Delivery rate',
@@ -1778,13 +1778,13 @@ const ar: Translations = {
       sectionRegionProfit: 'التدفق الإقليمي — الهامش حسب المسار (دج)',
       sectionZoneProfit: 'الربحية حسب منطقة التسليم',
       kpiDeliveryRatePerf: 'معدل التسليم',
-      kpiUnderTariff: 'معدل ما دون التعريفة (PCC)',
-      kpiCompliance: 'الامتثال التعريفي',
+      kpiAvgAttempts: 'متوسط المحاولات',
+      kpiFirstAttemptRate: 'نجاح المحاولة الأولى',
       kpiAvgDurationPerf: 'متوسط مدة التسليم',
       kpiClaimsCount: 'الحوادث المُبلَّغ عنها',
-      sectionDeliveryPCCTrend: 'التسليم مقابل ما دون التعريفة — الاتجاه الشهري (%)',
+      sectionDeliveryDurationTrend: 'الأداء الشهري — التسليم والمدة',
       sectionDurationDist: 'توزيع مدد التسليم',
-      sectionAgencyPCCRanking: 'ترتيب PCC حسب الوكالة (معدل ما دون التعريفة)',
+      sectionCenterExpeditionRanking: 'أفضل 8 مراكز — الإرساليات (الطرود المُرسَلة)',
       sectionClaimsType: 'الحوادث — التوزيع حسب النوع',
       seriesDelivered: 'مُسلَّمة',
       seriesReturned: 'مُرتجَعة',
@@ -1794,7 +1794,7 @@ const ar: Translations = {
       seriesRevenue: 'الرسوم المحصَّلة',
       seriesCost: 'التكلفة الإجمالية',
       seriesDeliveryRate: 'معدل التسليم (%)',
-      seriesUnderTariff: 'ما دون التعريفة (%)',
+      seriesAvgDuration: 'متوسط المدة (س)',
       hdLabel: 'توصيل منزلي (HD)',
       sdLabel: 'Stop Desk (SD)',
       hdDeliveryRate: 'معدل التسليم',

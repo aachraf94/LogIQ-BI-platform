@@ -613,9 +613,9 @@ export const parcelDeliveryApi = {
       `/analytics/parcel-delivery/duration-distribution/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
-  agencyPCCRanking: (f: ParcelDeliveryFilters & { limit?: number }) =>
-    request<import("@/types/parcel_delivery").ParcelAgencyPCC[]>(
-      `/analytics/parcel-delivery/agency-pcc-ranking/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
+  centerExpeditionRanking: (f: ParcelDeliveryFilters & { limit?: number }) =>
+    request<import("@/types/parcel_delivery").ParcelCenterExpedition[]>(
+      `/analytics/parcel-delivery/center-expedition-ranking/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
   claimsTypes: (f: ParcelDeliveryFilters) =>

@@ -129,13 +129,13 @@ export interface ParcelEcartBucket {
 
 export interface ParcelPerfKpis {
   taux_livraison_pct: number
-  taux_sous_tarif_pct: number
-  taux_compliance_pct: number
+  avg_tentatives: number           // avg delivery attempts per parcel
+  taux_premier_essai_pct: number   // % parcels delivered on first attempt
   avg_duree_livraison_h: number
   nbr_sinistres: number
   pop_livraison: number
-  pop_sous_tarif: number
-  pop_compliance: number
+  pop_tentatives: number
+  pop_premier_essai: number
   pop_duree: number
   pop_sinistres: number
 }
@@ -143,7 +143,7 @@ export interface ParcelPerfKpis {
 export interface ParcelPerfTrendPoint {
   period: string   // YYYY-MM
   taux_livraison_pct: number
-  taux_sous_tarif_pct: number
+  avg_duree_livraison_h: number
 }
 
 export interface ParcelDurationBucket {
@@ -152,9 +152,9 @@ export interface ParcelDurationBucket {
   nbr_colis: number
 }
 
-export interface ParcelAgencyPCC {
-  agence_name: string
-  taux_sous_tarif_pct: number
+export interface ParcelCenterExpedition {
+  center_code: string   // e.g. "HUS1"
+  center_name: string
   nbr_colis: number
 }
 
