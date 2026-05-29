@@ -745,6 +745,7 @@ def dim_employee(
     to_close, to_insert = [], []
     today = date.today()
     skipped = 0
+    skipped_no_hire_date = 0
 
     for row in source_rows:
         uid, full_name, email, role, status, company_id, agency_id, occ_name = row
@@ -757,7 +758,8 @@ def dim_employee(
         hire_date = hire_dates.get(uid)
         if not hire_date:
             skipped += 1
-            continue  # no payslip data — cannot populate hire_date_id (NOT NULL)
+            skipped_no_hire_date += 1
+            continue  # hire_date not in dim_date range — extend dim_date if pre-2015 hires exist
 
         role_id = role_map.get(role)
         status_id = status_map_emp.get(status)
@@ -834,8 +836,13 @@ def dim_employee(
                   )
             """)
 
+    if skipped_no_hire_date:
+        context.log.warning(
+            f"dim_employee: {skipped_no_hire_date} employees skipped — hire_date not in dim_date range. "
+            "If this is unexpectedly high, check that dim_date covers all hire dates in stg_paie_bulletins."
+        )
     context.log.info(
-        f"dim_employee: {len(to_close)} closed, {len(to_insert)} inserted, {skipped} skipped"
+        f"dim_employee: {len(to_close)} closed, {len(to_insert)} inserted, {skipped} skipped total"
     )
     return MaterializeResult(metadata={
         "closed": MetadataValue.int(len(to_close)),

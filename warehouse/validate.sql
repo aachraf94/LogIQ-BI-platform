@@ -271,7 +271,7 @@ SELECT check_name, violations,
 FROM (
     -- TEST company (id=9) must never appear in dims or facts
     SELECT 'dim_company: TEST company (id=9) present' AS check_name,
-           COUNT(*) FROM dim_company WHERE company_id = 9
+           COUNT(*) AS violations FROM dim_company WHERE company_id = 9
 
     UNION ALL
     SELECT 'dim_employee: employees from TEST company present',

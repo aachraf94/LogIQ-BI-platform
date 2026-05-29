@@ -1,7 +1,9 @@
 -- =============================================================================
 -- DIMENSION: dim_date
--- Grain     : One row per calendar day — 2022-01-01 → 2026-12-31 (1 826 rows)
+-- Grain     : One row per calendar day — 2015-01-01 → 2026-12-31 (4 383 rows)
 -- Source    : Static — arithmetic calendar spine, seeded once
+-- Note      : Extended back to 2015 to cover employee hire_date FKs from
+--             stg_hrforce_users pre-dating the analytics window (2022+).
 -- Algerian calendar: weekend = Friday (DOW=5) + Saturday (DOW=6)
 -- Ramadan/Eid dates are approximate Islamic calendar conversions.
 -- =============================================================================
@@ -62,6 +64,13 @@ SELECT
 
     -- Ramadan dates (approximate Islamic calendar)
     (
+        (d BETWEEN '2015-06-18' AND '2015-07-16') OR
+        (d BETWEEN '2016-06-06' AND '2016-07-05') OR
+        (d BETWEEN '2017-05-27' AND '2017-06-24') OR
+        (d BETWEEN '2018-05-16' AND '2018-06-14') OR
+        (d BETWEEN '2019-05-05' AND '2019-06-03') OR
+        (d BETWEEN '2020-04-23' AND '2020-05-23') OR
+        (d BETWEEN '2021-04-12' AND '2021-05-12') OR
         (d BETWEEN '2022-04-02' AND '2022-05-01') OR
         (d BETWEEN '2023-03-23' AND '2023-04-21') OR
         (d BETWEEN '2024-03-11' AND '2024-04-09') OR
@@ -72,6 +81,20 @@ SELECT
     -- Eid al-Fitr (end of Ramadan, 2 days) + Eid al-Adha (2 days)
     (
         d IN (
+            '2015-07-17', '2015-07-18',  -- Eid al-Fitr 2015
+            '2015-09-23', '2015-09-24',  -- Eid al-Adha 2015
+            '2016-07-06', '2016-07-07',  -- Eid al-Fitr 2016
+            '2016-09-11', '2016-09-12',  -- Eid al-Adha 2016
+            '2017-06-25', '2017-06-26',  -- Eid al-Fitr 2017
+            '2017-09-01', '2017-09-02',  -- Eid al-Adha 2017
+            '2018-06-15', '2018-06-16',  -- Eid al-Fitr 2018
+            '2018-08-21', '2018-08-22',  -- Eid al-Adha 2018
+            '2019-06-04', '2019-06-05',  -- Eid al-Fitr 2019
+            '2019-08-11', '2019-08-12',  -- Eid al-Adha 2019
+            '2020-05-24', '2020-05-25',  -- Eid al-Fitr 2020
+            '2020-07-31', '2020-08-01',  -- Eid al-Adha 2020
+            '2021-05-13', '2021-05-14',  -- Eid al-Fitr 2021
+            '2021-07-20', '2021-07-21',  -- Eid al-Adha 2021
             '2022-05-02', '2022-05-03',  -- Eid al-Fitr 2022
             '2022-07-09', '2022-07-10',  -- Eid al-Adha 2022
             '2023-04-21', '2023-04-22',  -- Eid al-Fitr 2023
@@ -87,6 +110,13 @@ SELECT
 
     -- Black Friday week (week containing last Friday of November)
     (
+        (d BETWEEN '2015-11-23' AND '2015-11-29') OR
+        (d BETWEEN '2016-11-21' AND '2016-11-27') OR
+        (d BETWEEN '2017-11-20' AND '2017-11-26') OR
+        (d BETWEEN '2018-11-19' AND '2018-11-25') OR
+        (d BETWEEN '2019-11-25' AND '2019-12-01') OR
+        (d BETWEEN '2020-11-23' AND '2020-11-29') OR
+        (d BETWEEN '2021-11-22' AND '2021-11-28') OR
         (d BETWEEN '2022-11-21' AND '2022-11-27') OR
         (d BETWEEN '2023-11-20' AND '2023-11-26') OR
         (d BETWEEN '2024-11-25' AND '2024-12-01') OR
@@ -97,6 +127,13 @@ SELECT
     -- Volume multiplier: Eid > Black Friday > Ramadan > Saturday > Friday > normal
     CASE
         WHEN d IN (
+            '2015-07-17','2015-07-18','2015-09-23','2015-09-24',
+            '2016-07-06','2016-07-07','2016-09-11','2016-09-12',
+            '2017-06-25','2017-06-26','2017-09-01','2017-09-02',
+            '2018-06-15','2018-06-16','2018-08-21','2018-08-22',
+            '2019-06-04','2019-06-05','2019-08-11','2019-08-12',
+            '2020-05-24','2020-05-25','2020-07-31','2020-08-01',
+            '2021-05-13','2021-05-14','2021-07-20','2021-07-21',
             '2022-05-02','2022-05-03','2022-07-09','2022-07-10',
             '2023-04-21','2023-04-22','2023-06-27','2023-06-28',
             '2024-04-10','2024-04-11','2024-06-16','2024-06-17',
@@ -104,6 +141,13 @@ SELECT
             '2026-03-20','2026-03-21','2026-05-27','2026-05-28'
         ) THEN 0.10
         WHEN (
+            (d BETWEEN '2015-11-23' AND '2015-11-29') OR
+            (d BETWEEN '2016-11-21' AND '2016-11-27') OR
+            (d BETWEEN '2017-11-20' AND '2017-11-26') OR
+            (d BETWEEN '2018-11-19' AND '2018-11-25') OR
+            (d BETWEEN '2019-11-25' AND '2019-12-01') OR
+            (d BETWEEN '2020-11-23' AND '2020-11-29') OR
+            (d BETWEEN '2021-11-22' AND '2021-11-28') OR
             (d BETWEEN '2022-11-21' AND '2022-11-27') OR
             (d BETWEEN '2023-11-20' AND '2023-11-26') OR
             (d BETWEEN '2024-11-25' AND '2024-12-01') OR
@@ -111,6 +155,13 @@ SELECT
             (d BETWEEN '2026-11-23' AND '2026-11-29')
         ) THEN 2.00
         WHEN (
+            (d BETWEEN '2015-06-18' AND '2015-07-16') OR
+            (d BETWEEN '2016-06-06' AND '2016-07-05') OR
+            (d BETWEEN '2017-05-27' AND '2017-06-24') OR
+            (d BETWEEN '2018-05-16' AND '2018-06-14') OR
+            (d BETWEEN '2019-05-05' AND '2019-06-03') OR
+            (d BETWEEN '2020-04-23' AND '2020-05-23') OR
+            (d BETWEEN '2021-04-12' AND '2021-05-12') OR
             (d BETWEEN '2022-04-02' AND '2022-05-01') OR
             (d BETWEEN '2023-03-23' AND '2023-04-21') OR
             (d BETWEEN '2024-03-11' AND '2024-04-09') OR
@@ -123,7 +174,7 @@ SELECT
     END AS volume_multiplier
 
 FROM generate_series(
-    '2022-01-01'::DATE,
+    '2015-01-01'::DATE,
     '2026-12-31'::DATE,
     '1 day'::INTERVAL
 ) AS d
