@@ -521,6 +521,94 @@ export const parcelCostsApi = {
     ),
 }
 
+// ─── Parcel Delivery analytics (date-range based) ────────────────────────────
+
+export interface ParcelDeliveryFilters {
+  start_date: string
+  end_date: string
+  delivery_type?: string
+}
+
+export const parcelDeliveryApi = {
+  // Operations
+  opsKpis: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelOpsKpis>(
+      `/analytics/parcel-delivery/ops-kpis/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  opsTrend: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelTrendPoint[]>(
+      `/analytics/parcel-delivery/ops-trend/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  statusBreakdown: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelStatusItem[]>(
+      `/analytics/parcel-delivery/status-breakdown/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  byDeliveryType: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelDeliveryTypeKpis[]>(
+      `/analytics/parcel-delivery/by-delivery-type/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  zoneBreakdown: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelZoneItem[]>(
+      `/analytics/parcel-delivery/zone-breakdown/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  // Cost & Profitability
+  costKpis: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelCostKpis>(
+      `/analytics/parcel-delivery/cost-kpis/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  revenueCostTrend: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelRevenueCostPoint[]>(
+      `/analytics/parcel-delivery/revenue-cost-trend/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  costStructure: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelCostStructure>(
+      `/analytics/parcel-delivery/cost-structure/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  costByNature: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelCostNatureItem[]>(
+      `/analytics/parcel-delivery/cost-by-nature/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  ecartDistribution: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelEcartBucket[]>(
+      `/analytics/parcel-delivery/ecart-distribution/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  // Performance
+  perfKpis: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelPerfKpis>(
+      `/analytics/parcel-delivery/perf-kpis/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  perfTrend: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelPerfTrendPoint[]>(
+      `/analytics/parcel-delivery/perf-trend/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  durationDistribution: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelDurationBucket[]>(
+      `/analytics/parcel-delivery/duration-distribution/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  agencyPCCRanking: (f: ParcelDeliveryFilters & { limit?: number }) =>
+    request<import("@/types/parcel_delivery").ParcelAgencyPCC[]>(
+      `/analytics/parcel-delivery/agency-pcc-ranking/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+
+  claimsTypes: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelClaimsType[]>(
+      `/analytics/parcel-delivery/claims-types/${_qs(f as Record<string, string | number | undefined | null>)}`
+    ),
+}
+
 // ─── Admin — roles ────────────────────────────────────────────────────────────
 
 export const adminRolesApi = {

@@ -34,7 +34,7 @@ interface NavItem {
 const MAIN_NAV: NavItem[] = [
   { href: '/overview',     labelKey: 'overview',    icon: LayoutDashboard, dashboard: 'overview' },
   { href: '/transport',    labelKey: 'transport',   icon: Truck,           dashboard: 'transport' },
-  { href: '/parcel-costs', labelKey: 'parcelCosts', icon: Package,         dashboard: 'parcels' },
+  { href: '/parcel-delivery', labelKey: 'parcelDelivery', icon: Package,         dashboard: 'parcels' },
   { href: '/routes',       labelKey: 'routes',      icon: Route,           dashboard: 'routes' },
   { href: '/alerts',       labelKey: 'alerts',      icon: Bell },
   { href: '/settings',     labelKey: 'settings',    icon: Settings },

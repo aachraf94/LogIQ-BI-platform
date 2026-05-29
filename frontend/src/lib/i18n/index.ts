@@ -9,6 +9,7 @@ export interface Translations {
     overview: string
     transport: string
     parcelCosts: string
+    parcelDelivery: string
     routes: string
     alerts: string
     settings: string
@@ -279,6 +280,59 @@ export interface Translations {
       weekend: string
       returns: string
     }
+    parcelDelivery: {
+      demoData: string
+      loading: string
+      tabOperations: string
+      tabCostProfit: string
+      tabPerformance: string
+      filterFrom: string
+      filterTo: string
+      allTypes: string
+      homeDelivery: string
+      pickupPoint: string
+      kpiTotalParcels: string
+      kpiDeliveryRate: string
+      kpiReturnRate: string
+      kpiFailedParcels: string
+      kpiAvgDuration: string
+      sectionVolumeTrend: string
+      sectionStatusBreakdown: string
+      sectionDeliveryTypeComp: string
+      sectionZoneDist: string
+      kpiFeesCollected: string
+      kpiTotalCost: string
+      kpiGrossMargin: string
+      kpiAvgFee: string
+      kpiCostPerDelivery: string
+      sectionRevenueCostTrend: string
+      sectionCostStructure: string
+      sectionCostByNature: string
+      sectionTariffGapDist: string
+      kpiDeliveryRatePerf: string
+      kpiUnderTariff: string
+      kpiCompliance: string
+      kpiAvgDurationPerf: string
+      kpiClaimsCount: string
+      sectionDeliveryPCCTrend: string
+      sectionDurationDist: string
+      sectionAgencyPCCRanking: string
+      sectionClaimsType: string
+      seriesDelivered: string
+      seriesReturned: string
+      seriesFailed: string
+      seriesRevenue: string
+      seriesCost: string
+      seriesDeliveryRate: string
+      seriesUnderTariff: string
+      hdLabel: string
+      sdLabel: string
+      hdDeliveryRate: string
+      hdReturnRate: string
+      hdAvgFee: string
+      hdAvgDuration: string
+      durationUnit: string
+    }
     routes: {
       kpiTotalRoutes: string
       kpiAvgDistance: string
@@ -428,6 +482,7 @@ const fr: Translations = {
     overview: 'Aperçu',
     transport: 'Transport',
     parcelCosts: 'Coûts Colis',
+    parcelDelivery: 'Livraison Colis',
     routes: 'Analyse Routes',
     alerts: 'Alertes',
     settings: 'Paramètres',
@@ -705,6 +760,59 @@ const fr: Translations = {
       weekend: 'Weekend',
       returns: 'Retours',
     },
+    parcelDelivery: {
+      demoData: 'Données de démonstration — backend indisponible',
+      loading: 'Chargement…',
+      tabOperations: 'Opérations',
+      tabCostProfit: 'Coûts & Rentabilité',
+      tabPerformance: 'Performance',
+      filterFrom: 'Du',
+      filterTo: 'Au',
+      allTypes: 'HD + SD',
+      homeDelivery: 'Domicile (HD)',
+      pickupPoint: 'Stop Desk (SD)',
+      kpiTotalParcels: 'Colis traités',
+      kpiDeliveryRate: 'Taux de livraison',
+      kpiReturnRate: 'Taux de retour',
+      kpiFailedParcels: 'Échecs de livraison',
+      kpiAvgDuration: 'Durée moy. livraison',
+      sectionVolumeTrend: 'Volume quotidien — Livrés & Retours',
+      sectionStatusBreakdown: 'Répartition par statut',
+      sectionDeliveryTypeComp: 'HD vs SD — Comparaison',
+      sectionZoneDist: 'Distribution par zone de livraison',
+      kpiFeesCollected: 'Frais collectés',
+      kpiTotalCost: 'Coût opérationnel total',
+      kpiGrossMargin: 'Marge brute',
+      kpiAvgFee: 'Frais moy. / colis',
+      kpiCostPerDelivery: 'Coût / colis livré',
+      sectionRevenueCostTrend: 'Frais collectés vs Coût total (DZD)',
+      sectionCostStructure: 'Structure des coûts opérationnels',
+      sectionCostByNature: 'Dépenses par nature (DZD)',
+      sectionTariffGapDist: 'Distribution des écarts tarifaires (PCC)',
+      kpiDeliveryRatePerf: 'Taux de livraison',
+      kpiUnderTariff: 'Taux sous-tarif (PCC)',
+      kpiCompliance: 'Conformité tarifaire',
+      kpiAvgDurationPerf: 'Durée moy. livraison',
+      kpiClaimsCount: 'Sinistres déclarés',
+      sectionDeliveryPCCTrend: 'Livraison vs Sous-tarif — Tendance mensuelle (%)',
+      sectionDurationDist: 'Distribution des délais de livraison',
+      sectionAgencyPCCRanking: 'Classement PCC par agence (taux sous-tarif)',
+      sectionClaimsType: 'Sinistres — Répartition par type',
+      seriesDelivered: 'Livrés',
+      seriesReturned: 'Retours',
+      seriesFailed: 'Échecs',
+      seriesRevenue: 'Frais collectés',
+      seriesCost: 'Coût total',
+      seriesDeliveryRate: 'Taux livraison (%)',
+      seriesUnderTariff: 'Sous-tarif (%)',
+      hdLabel: 'Domicile (HD)',
+      sdLabel: 'Stop Desk (SD)',
+      hdDeliveryRate: 'Taux livraison',
+      hdReturnRate: 'Taux retour',
+      hdAvgFee: 'Frais moy.',
+      hdAvgDuration: 'Durée moy.',
+      durationUnit: 'h',
+    },
     routes: {
       kpiTotalRoutes: 'Total Routes',
       kpiAvgDistance: 'Distance moy.',
@@ -861,6 +969,7 @@ const en: Translations = {
     overview: 'Overview',
     transport: 'Transport',
     parcelCosts: 'Parcel Costs',
+    parcelDelivery: 'Parcel Delivery',
     routes: 'Route Analysis',
     alerts: 'Alerts',
     settings: 'Settings',
@@ -1138,6 +1247,59 @@ const en: Translations = {
       weekend: 'Weekend',
       returns: 'Returns',
     },
+    parcelDelivery: {
+      demoData: 'Demo data — backend unavailable',
+      loading: 'Loading…',
+      tabOperations: 'Operations',
+      tabCostProfit: 'Cost & Profitability',
+      tabPerformance: 'Performance',
+      filterFrom: 'From',
+      filterTo: 'To',
+      allTypes: 'HD + SD',
+      homeDelivery: 'Home Delivery (HD)',
+      pickupPoint: 'Stop Desk (SD)',
+      kpiTotalParcels: 'Parcels Handled',
+      kpiDeliveryRate: 'Delivery Rate',
+      kpiReturnRate: 'Return Rate',
+      kpiFailedParcels: 'Failed Deliveries',
+      kpiAvgDuration: 'Avg Delivery Duration',
+      sectionVolumeTrend: 'Daily Volume — Delivered & Returns',
+      sectionStatusBreakdown: 'Parcel Status Breakdown',
+      sectionDeliveryTypeComp: 'HD vs SD — Comparison',
+      sectionZoneDist: 'Distribution by Delivery Zone',
+      kpiFeesCollected: 'Fees Collected',
+      kpiTotalCost: 'Total Operational Cost',
+      kpiGrossMargin: 'Gross Margin',
+      kpiAvgFee: 'Avg Fee / Parcel',
+      kpiCostPerDelivery: 'Cost / Delivered Parcel',
+      sectionRevenueCostTrend: 'Fees Collected vs Total Cost (DZD)',
+      sectionCostStructure: 'Operational Cost Structure',
+      sectionCostByNature: 'Expenses by Category (DZD)',
+      sectionTariffGapDist: 'Tariff Gap Distribution (PCC)',
+      kpiDeliveryRatePerf: 'Delivery Rate',
+      kpiUnderTariff: 'Under-Tariff Rate (PCC)',
+      kpiCompliance: 'Tariff Compliance',
+      kpiAvgDurationPerf: 'Avg Delivery Duration',
+      kpiClaimsCount: 'Claims Declared',
+      sectionDeliveryPCCTrend: 'Delivery vs Under-Tariff — Monthly Trend (%)',
+      sectionDurationDist: 'Delivery Duration Distribution',
+      sectionAgencyPCCRanking: 'PCC Ranking by Agency (under-tariff rate)',
+      sectionClaimsType: 'Claims — Breakdown by Type',
+      seriesDelivered: 'Delivered',
+      seriesReturned: 'Returns',
+      seriesFailed: 'Failed',
+      seriesRevenue: 'Fees Collected',
+      seriesCost: 'Total Cost',
+      seriesDeliveryRate: 'Delivery Rate (%)',
+      seriesUnderTariff: 'Under-Tariff (%)',
+      hdLabel: 'Home Delivery (HD)',
+      sdLabel: 'Stop Desk (SD)',
+      hdDeliveryRate: 'Delivery rate',
+      hdReturnRate: 'Return rate',
+      hdAvgFee: 'Avg fee',
+      hdAvgDuration: 'Avg duration',
+      durationUnit: 'h',
+    },
     routes: {
       kpiTotalRoutes: 'Total Routes',
       kpiAvgDistance: 'Avg Distance',
@@ -1294,6 +1456,7 @@ const ar: Translations = {
     overview: 'نظرة عامة',
     transport: 'الشحن',
     parcelCosts: 'تكاليف الطرود',
+    parcelDelivery: 'توصيل الطرود',
     routes: 'تحليل المسارات',
     alerts: 'التنبيهات',
     settings: 'الإعدادات',
@@ -1570,6 +1733,59 @@ const ar: Translations = {
       friday: 'الجمعة',
       weekend: 'نهاية الأسبوع',
       returns: 'المُرتجَعات',
+    },
+    parcelDelivery: {
+      demoData: 'بيانات تجريبية — الخادم غير متاح',
+      loading: 'جارٍ التحميل…',
+      tabOperations: 'العمليات',
+      tabCostProfit: 'التكاليف والربحية',
+      tabPerformance: 'الأداء',
+      filterFrom: 'من',
+      filterTo: 'إلى',
+      allTypes: 'HD + SD',
+      homeDelivery: 'توصيل منزلي (HD)',
+      pickupPoint: 'Stop Desk (SD)',
+      kpiTotalParcels: 'الطرود المعالجة',
+      kpiDeliveryRate: 'معدل التسليم',
+      kpiReturnRate: 'معدل الإرجاع',
+      kpiFailedParcels: 'فشل التسليم',
+      kpiAvgDuration: 'متوسط مدة التسليم',
+      sectionVolumeTrend: 'الحجم اليومي — المُسلَّمة والمُرتجَعة',
+      sectionStatusBreakdown: 'توزيع حالات الطرود',
+      sectionDeliveryTypeComp: 'HD مقابل SD — مقارنة',
+      sectionZoneDist: 'التوزيع حسب منطقة التسليم',
+      kpiFeesCollected: 'الرسوم المحصَّلة',
+      kpiTotalCost: 'إجمالي التكلفة التشغيلية',
+      kpiGrossMargin: 'الهامش الإجمالي',
+      kpiAvgFee: 'متوسط الرسوم / طرد',
+      kpiCostPerDelivery: 'التكلفة / طرد مُسلَّم',
+      sectionRevenueCostTrend: 'الرسوم المحصَّلة مقابل التكلفة الإجمالية (دج)',
+      sectionCostStructure: 'هيكل التكاليف التشغيلية',
+      sectionCostByNature: 'النفقات حسب الطبيعة (دج)',
+      sectionTariffGapDist: 'توزيع الفجوات التعريفية (PCC)',
+      kpiDeliveryRatePerf: 'معدل التسليم',
+      kpiUnderTariff: 'معدل ما دون التعريفة (PCC)',
+      kpiCompliance: 'الامتثال التعريفي',
+      kpiAvgDurationPerf: 'متوسط مدة التسليم',
+      kpiClaimsCount: 'الحوادث المُبلَّغ عنها',
+      sectionDeliveryPCCTrend: 'التسليم مقابل ما دون التعريفة — الاتجاه الشهري (%)',
+      sectionDurationDist: 'توزيع مدد التسليم',
+      sectionAgencyPCCRanking: 'ترتيب PCC حسب الوكالة (معدل ما دون التعريفة)',
+      sectionClaimsType: 'الحوادث — التوزيع حسب النوع',
+      seriesDelivered: 'مُسلَّمة',
+      seriesReturned: 'مُرتجَعة',
+      seriesFailed: 'فاشلة',
+      seriesRevenue: 'الرسوم المحصَّلة',
+      seriesCost: 'التكلفة الإجمالية',
+      seriesDeliveryRate: 'معدل التسليم (%)',
+      seriesUnderTariff: 'ما دون التعريفة (%)',
+      hdLabel: 'توصيل منزلي (HD)',
+      sdLabel: 'Stop Desk (SD)',
+      hdDeliveryRate: 'معدل التسليم',
+      hdReturnRate: 'معدل الإرجاع',
+      hdAvgFee: 'متوسط الرسوم',
+      hdAvgDuration: 'متوسط المدة',
+      durationUnit: 'س',
     },
     routes: {
       kpiTotalRoutes: 'إجمالي المسارات',

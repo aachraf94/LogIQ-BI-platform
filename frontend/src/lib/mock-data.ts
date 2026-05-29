@@ -760,6 +760,191 @@ export const mockFreelanceEfficiency: FreelanceEfficiencyItem[] = [
   { agence_id: 6, agence_nom: "Annaba",         wilaya_name: "Annaba",     nbr_livreurs: 4,  nbr_colis_livres: 210,  nbr_colis_echoues: 38,  total_paiements_dzd: 32_000,  cout_par_colis_livre: 152.4, taux_succes_freelance_pct: 84.7 },
 ];
 
+// ─── Parcel Delivery analytics mock data (date-range based) ──────────────────
+
+import type {
+  ParcelOpsKpis,
+  ParcelTrendPoint,
+  ParcelStatusItem,
+  ParcelZoneItem,
+  ParcelDeliveryTypeKpis,
+  ParcelCostKpis,
+  ParcelRevenueCostPoint,
+  ParcelCostStructure,
+  ParcelCostNatureItem,
+  ParcelEcartBucket,
+  ParcelPerfKpis,
+  ParcelPerfTrendPoint,
+  ParcelDurationBucket,
+  ParcelAgencyPCC,
+  ParcelClaimsType,
+} from "@/types/parcel_delivery"
+
+export const mockParcelOpsKpis: ParcelOpsKpis = {
+  nbr_colis: 42_180,
+  nbr_livres: 31_213,
+  nbr_retours: 7_592,
+  nbr_echecs: 3_375,
+  avg_duree_livraison_h: 30.4,
+  taux_livraison_pct: 74.0,
+  taux_retour_pct: 18.0,
+  pop_colis: 7.2,
+  pop_livraison: 1.8,
+  pop_retour: -0.5,
+  pop_echecs: -2.1,
+  pop_duree: -3.4,
+}
+
+export const mockParcelOpsTrend: ParcelTrendPoint[] = Array.from({ length: 30 }, (_, i) => {
+  const date = new Date(2025, 4, 1 + i)  // May 2025
+  const dow = date.getDay()
+  const isFriday = dow === 5
+  const isWeekend = dow === 0 || dow === 6
+  const base = isWeekend ? 180 : isFriday ? 310 : 1100 + Math.sin(i * 0.8) * 120
+  const nbr_livres = Math.round(base * (0.72 + Math.random() * 0.06))
+  const nbr_retours = Math.round(base * (0.17 + Math.random() * 0.03))
+  return {
+    date: date.toISOString().split("T")[0],
+    nbr_livres,
+    nbr_retours,
+    nbr_echecs: Math.round(base * 0.08),
+  }
+})
+
+export const mockParcelStatusBreakdown: ParcelStatusItem[] = [
+  { status_name: "Livré",               nbr_colis: 31_213 },
+  { status_name: "Retourné au vendeur", nbr_colis: 7_592  },
+  { status_name: "Sorti en livraison",  nbr_colis: 1_840  },
+  { status_name: "Tentative échouée",   nbr_colis: 1_120  },
+  { status_name: "En alerte",           nbr_colis: 415    },
+  { status_name: "Autres",              nbr_colis: 0      },
+]
+
+export const mockParcelZoneBreakdown: ParcelZoneItem[] = [
+  { zone_num: 0, fee_range: "350–500 DZD",    nbr_colis: 8_820,  nbr_livres: 7_050, taux_livraison_pct: 79.9 },
+  { zone_num: 1, fee_range: "500–700 DZD",    nbr_colis: 12_640, nbr_livres: 9_480, taux_livraison_pct: 75.0 },
+  { zone_num: 2, fee_range: "700–950 DZD",    nbr_colis: 10_820, nbr_livres: 7_900, taux_livraison_pct: 73.0 },
+  { zone_num: 3, fee_range: "950–1 200 DZD",  nbr_colis: 6_300,  nbr_livres: 4_350, taux_livraison_pct: 69.0 },
+  { zone_num: 4, fee_range: "1 200–1 600 DZD", nbr_colis: 3_600, nbr_livres: 2_430, taux_livraison_pct: 67.5 },
+]
+
+export const mockParcelByDeliveryTypeNew: ParcelDeliveryTypeKpis[] = [
+  {
+    delivery_type: "HD", nbr_colis: 29_200, nbr_livres: 21_024, nbr_retours: 5_256,
+    taux_livraison_pct: 72.0, taux_retour_pct: 18.0, avg_fee_dzd: 618.0, avg_duree_livree_h: 33.0,
+  },
+  {
+    delivery_type: "SD", nbr_colis: 12_980, nbr_livres: 10_189, nbr_retours: 2_336,
+    taux_livraison_pct: 78.5, taux_retour_pct: 18.0, avg_fee_dzd: 524.0, avg_duree_livree_h: 25.7,
+  },
+]
+
+export const mockParcelCostKpis: ParcelCostKpis = {
+  total_fees: 22_340_000,
+  cout_total: 13_200_000,
+  marge_brute: 9_140_000,
+  marge_pct: 40.9,
+  avg_fee_par_colis: 529.6,
+  cout_par_colis_livre: 423.0,
+  pop_fees: 9.1,
+  pop_cout: 4.2,
+  pop_marge: 12.8,
+  pop_avg_fee: 1.8,
+  pop_cout_par_livre: -2.6,
+}
+
+const RC_MONTHS_FR = ["Jan","Fév","Mar","Avr","Mai","Jun","Jul","Aoû","Sep","Oct","Nov","Déc"]
+
+export const mockParcelRevenueCostTrend: ParcelRevenueCostPoint[] = Array.from({ length: 12 }, (_, i) => {
+  const year = i < 6 ? 2024 : 2025
+  const month = i < 6 ? i + 7 : i - 5
+  const fees = Math.round(18_000_000 + i * 400_000 + Math.sin(i * 0.7) * 800_000)
+  const cost = Math.round(fees * (0.58 + Math.sin(i) * 0.02))
+  return {
+    period: `${year}-${String(month).padStart(2, "0")}`,
+    total_fees: fees,
+    cout_total: cost,
+    marge_brute: fees - cost,
+  }
+})
+
+export const mockParcelCostStructureNew: ParcelCostStructure = {
+  total_salaires: 6_900_000,
+  total_depenses: 4_100_000,
+  total_freelance: 2_200_000,
+  total_sinistres: 642_000,
+}
+
+export const mockParcelCostNature: ParcelCostNatureItem[] = [
+  { nature_name: "Salaires livreurs",    total_dzd: 4_100_000 },
+  { nature_name: "Paiements freelance",  total_dzd: 2_200_000 },
+  { nature_name: "Charges sociales",     total_dzd: 1_600_000 },
+  { nature_name: "Carburant",            total_dzd: 1_400_000 },
+  { nature_name: "Primes",               total_dzd: 1_200_000 },
+  { nature_name: "Maintenance véhicules",total_dzd:   900_000 },
+  { nature_name: "Loyers agences",       total_dzd:   700_000 },
+  { nature_name: "Remboursements",       total_dzd:   642_000 },
+]
+
+export const mockParcelEcartBuckets: ParcelEcartBucket[] = [
+  { bucket: "< −500 DZD",           bucket_order: 0, nbr_colis: 1_240, sum_ecart_dzd: -942_000 },
+  { bucket: "−500 à −100 DZD",      bucket_order: 1, nbr_colis: 3_060, sum_ecart_dzd: -984_000 },
+  { bucket: "−100 à −1 DZD",        bucket_order: 2, nbr_colis: 1_655, sum_ecart_dzd: -91_000  },
+  { bucket: "Au tarif exactement",   bucket_order: 3, nbr_colis: 4_460, sum_ecart_dzd: 0        },
+  { bucket: "+1 à +100 DZD",        bucket_order: 4, nbr_colis: 2_620, sum_ecart_dzd: 143_000  },
+  { bucket: "Sans tarif théorique",  bucket_order: 5, nbr_colis: 18_145, sum_ecart_dzd: 0       },
+]
+
+export const mockParcelPerfKpis: ParcelPerfKpis = {
+  taux_livraison_pct: 74.0,
+  taux_sous_tarif_pct: 23.0,
+  taux_compliance_pct: 77.0,
+  avg_duree_livraison_h: 30.4,
+  nbr_sinistres: 170,
+  pop_livraison: 1.8,
+  pop_sous_tarif: -2.3,
+  pop_compliance: 2.3,
+  pop_duree: -3.4,
+  pop_sinistres: -8.2,
+}
+
+export const mockParcelPerfTrend: ParcelPerfTrendPoint[] = Array.from({ length: 12 }, (_, i) => {
+  const year = i < 6 ? 2024 : 2025
+  const month = i < 6 ? i + 7 : i - 5
+  return {
+    period: `${year}-${String(month).padStart(2, "0")}`,
+    taux_livraison_pct: Math.round((70 + i * 0.4 + Math.sin(i * 0.5) * 1.5) * 10) / 10,
+    taux_sous_tarif_pct: Math.round((26 - i * 0.25 + Math.sin(i) * 1.2) * 10) / 10,
+  }
+})
+
+export const mockParcelDurationBuckets: ParcelDurationBucket[] = [
+  { bucket: "< 1h",       bucket_order: 0, nbr_colis: 710    },
+  { bucket: "1–4h",       bucket_order: 1, nbr_colis: 9_200  },
+  { bucket: "4–24h",      bucket_order: 2, nbr_colis: 14_300 },
+  { bucket: "1–2 jours",  bucket_order: 3, nbr_colis: 4_900  },
+  { bucket: "2–5 jours",  bucket_order: 4, nbr_colis: 1_700  },
+  { bucket: "> 5 jours",  bucket_order: 5, nbr_colis: 403    },
+]
+
+export const mockParcelAgencyPCC: ParcelAgencyPCC[] = [
+  { agence_name: "Batna",         taux_sous_tarif_pct: 31.0, nbr_colis: 1_400 },
+  { agence_name: "Djelfa",        taux_sous_tarif_pct: 28.9, nbr_colis: 2_900 },
+  { agence_name: "Alger Centre",  taux_sous_tarif_pct: 26.0, nbr_colis: 9_100 },
+  { agence_name: "Oran",          taux_sous_tarif_pct: 25.0, nbr_colis: 6_200 },
+  { agence_name: "Constantine",   taux_sous_tarif_pct: 22.9, nbr_colis: 4_900 },
+  { agence_name: "Sétif",         taux_sous_tarif_pct: 22.1, nbr_colis: 3_800 },
+  { agence_name: "Annaba",        taux_sous_tarif_pct: 20.0, nbr_colis: 2_200 },
+  { agence_name: "Blida",         taux_sous_tarif_pct: 18.2, nbr_colis: 1_550 },
+]
+
+export const mockParcelClaimsTypes: ParcelClaimsType[] = [
+  { sinistre_type: "Perte",          nbr_sinistres: 70  },
+  { sinistre_type: "Dommage",        nbr_sinistres: 60  },
+  { sinistre_type: "Vol",            nbr_sinistres: 25  },
+  { sinistre_type: "Retard excessif",nbr_sinistres: 15  },
+]
+
 export const mockParcelsPaginated: ParcelsPaginatedResponse = {
   results: [
     { tracking: "YLI-2025-384291", date_creation: "2025-03-15", agence_id: 1, agence_nom: "Alger Centre",  wilaya_destination: "Alger",       delivery_type: "HD", statut_actuel: "Livré",        delivery_fee: 520,  tarif_theorique: 680,  ecart_tarif_dzd: -160,  duree_livraison_minutes: 980,  nbr_evenements: 4 },
