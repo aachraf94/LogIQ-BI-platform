@@ -119,7 +119,7 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
       </div>
 
       {/* ── Futuristic filter bar ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-0 mb-5
+      <div className="flex flex-col sm:flex-row sm:items-center gap-0 mb-8
         bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-x-0 sm:divide-x divide-[var(--border)]">
 
         {/* Quick-select pills */}
