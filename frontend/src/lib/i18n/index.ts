@@ -202,7 +202,6 @@ export interface Translations {
       kpiAvgDistance: string
       kpiTotalCost: string
       kpiMarginPct: string
-      kpiCollectionRate: string
       kpiAvgDuration: string
       kpiAvgDelay: string
       kpiNightShiftRate: string
@@ -211,7 +210,7 @@ export interface Translations {
       sectionDistanceCategory: string
       sectionRevCostTrend: string
       sectionCostCategories: string
-      sectionServiceMargin: string
+      sectionCostPerKm: string
       sectionTopCorridors: string
       sectionOnTimeTrend: string
       sectionDelayBuckets: string
@@ -719,7 +718,6 @@ const fr: Translations = {
       kpiAvgDistance: 'Distance moy. (km)',
       kpiTotalCost: 'Coût total',
       kpiMarginPct: 'Marge (%)',
-      kpiCollectionRate: 'Taux d\'encaissement',
       kpiAvgDuration: 'Durée moy. (h)',
       kpiAvgDelay: 'Retard arrivée moy.',
       kpiNightShiftRate: 'Taux nuit',
@@ -728,7 +726,7 @@ const fr: Translations = {
       sectionDistanceCategory: 'Répartition par catégorie de distance',
       sectionRevCostTrend: 'Tendance mensuelle — Revenus vs Coûts (DZD)',
       sectionCostCategories: 'Décomposition des coûts par catégorie',
-      sectionServiceMargin: 'Marge brute par type de service',
+      sectionCostPerKm: 'Coût par kilomètre — par type de véhicule',
       sectionTopCorridors: 'Top 8 corridors — Marge (%)',
       sectionOnTimeTrend: 'Tendance mensuelle — Ponctualité & Durée',
       sectionDelayBuckets: 'Distribution des retards à l\'arrivée',
@@ -1243,7 +1241,6 @@ const en: Translations = {
       kpiAvgDistance: 'Avg Distance (km)',
       kpiTotalCost: 'Total Cost',
       kpiMarginPct: 'Margin (%)',
-      kpiCollectionRate: 'Collection Rate',
       kpiAvgDuration: 'Avg Duration (h)',
       kpiAvgDelay: 'Avg Arrival Delay',
       kpiNightShiftRate: 'Night Shift Rate',
@@ -1252,7 +1249,7 @@ const en: Translations = {
       sectionDistanceCategory: 'Breakdown by Distance Category',
       sectionRevCostTrend: 'Monthly Trend — Revenue vs Cost (DZD)',
       sectionCostCategories: 'Cost Breakdown by Category',
-      sectionServiceMargin: 'Gross Margin by Service Type',
+      sectionCostPerKm: 'Cost per Kilometre — by Vehicle Type',
       sectionTopCorridors: 'Top 8 Corridors — Margin (%)',
       sectionOnTimeTrend: 'Monthly Trend — On-Time Rate & Duration',
       sectionDelayBuckets: 'Arrival Delay Distribution',
@@ -1767,7 +1764,6 @@ const ar: Translations = {
       kpiAvgDistance: 'متوسط المسافة (كم)',
       kpiTotalCost: 'التكلفة الإجمالية',
       kpiMarginPct: 'الهامش (%)',
-      kpiCollectionRate: 'معدل التحصيل',
       kpiAvgDuration: 'متوسط المدة (س)',
       kpiAvgDelay: 'متوسط التأخر عند الوصول',
       kpiNightShiftRate: 'معدل الوردية الليلية',
@@ -1776,7 +1772,7 @@ const ar: Translations = {
       sectionDistanceCategory: 'التوزيع حسب فئة المسافة',
       sectionRevCostTrend: 'الاتجاه الشهري — الإيرادات مقابل التكاليف (دج)',
       sectionCostCategories: 'تفصيل التكاليف حسب الفئة',
-      sectionServiceMargin: 'الهامش الإجمالي حسب نوع الخدمة',
+      sectionCostPerKm: 'التكلفة لكل كيلومتر — حسب نوع المركبة',
       sectionTopCorridors: 'أفضل 8 ممرات — الهامش (%)',
       sectionOnTimeTrend: 'الاتجاه الشهري — الانتظام والمدة',
       sectionDelayBuckets: 'توزيع التأخيرات عند الوصول',

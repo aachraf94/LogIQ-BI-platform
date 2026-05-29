@@ -12,620 +12,339 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .queries import transport as tq
-from .queries import parcel_costs as pq
+from .queries import parcel_delivery as pdq
 
 logger = logging.getLogger(__name__)
 
 
-# ─── Transport ────────────────────────────────────────────────────────────────
+# ─── On-demand Transport ────────────────────────────────────────────────────────────────
 
-class TransportSummaryView(APIView):
+
+
+
+
+# ─── Parcel Delivery analytics (date-range based) ────────────────────────────
+#
+# All views accept:
+#   start_date (required) — YYYY-MM-DD
+#   end_date   (required) — YYYY-MM-DD
+#   delivery_type (optional) — 'HD' | 'SD'
+#
+# Endpoints are mounted at /api/analytics/parcel-delivery/...
+
+
+def _pd_filters(request):
+    return (
+        request.query_params.get("start_date"),
+        request.query_params.get("end_date"),
+        request.query_params.get("delivery_type"),
+    )
+
+
+class ParcelDeliveryOpsKpisView(APIView):
     """
-    GET /api/analytics/transport/summary/
+    GET /api/analytics/parcel-delivery/ops-kpis/
 
-    Params: year, month, service_type, company_id
-    Returns: KPI cards for the selected period with MoM deltas.
+    Params: start_date, end_date, delivery_type
+    Returns: volume KPIs (nbr_colis, livres, retours, echecs, en_transit,
+             avg_duree_h) + period-over-period % deltas.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = tq.get_summary(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                service_type=request.query_params.get("service_type"),
-                company_id=request.query_params.get("company_id"),
-            )
-            return Response(data)
+            return Response(pdq.get_ops_kpis(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class TransportTrendsView(APIView):
+class ParcelDeliveryOpsTrendView(APIView):
     """
-    GET /api/analytics/transport/trends/
+    GET /api/analytics/parcel-delivery/ops-trend/
 
-    Params: service_type, company_id, from_year_month (YYYY-MM), to_year_month
-    Returns: Monthly time-series for volume, revenue, cost, margin, on-time rate.
+    Params: start_date, end_date, delivery_type
+    Returns: daily series [{date, nbr_livres, nbr_retours, nbr_echecs, nbr_en_transit}].
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = tq.get_trends(
-                service_type=request.query_params.get("service_type"),
-                company_id=request.query_params.get("company_id"),
-                from_year_month=request.query_params.get("from_year_month"),
-                to_year_month=request.query_params.get("to_year_month"),
-            )
-            return Response(data)
+            return Response(pdq.get_ops_trend(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class TransportCostBreakdownView(APIView):
+class ParcelDeliveryStatusBreakdownView(APIView):
     """
-    GET /api/analytics/transport/cost-breakdown/
+    GET /api/analytics/parcel-delivery/status-breakdown/
 
-    Params: year, month, service_type
-    Returns: DZD amounts for each cost component (base, distance, insurance,
-             fuel, handling, autres) for the selected period.
+    Params: start_date, end_date, delivery_type
+    Returns: [{status_name, nbr_colis}] ordered by volume desc.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = tq.get_cost_breakdown(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                service_type=request.query_params.get("service_type"),
-            )
-            return Response(data)
+            return Response(pdq.get_status_breakdown(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class TransportByServiceView(APIView):
+class ParcelDeliveryRegionFlowView(APIView):
     """
-    GET /api/analytics/transport/by-service/
+    GET /api/analytics/parcel-delivery/region-flow/
 
-    Params: year, month
-    Returns: Volume, revenue, margin, and performance per service type
-             (course_dediee, courrier, manutention) and sub-type.
+    Params: start_date, end_date, delivery_type
+    Returns: [{origin, destination, nbr_colis}] — wilaya-level flow matrix (≤200 rows).
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = tq.get_by_service(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-            )
-            return Response(data)
+            return Response(pdq.get_region_flow(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class TransportByVehicleView(APIView):
+class ParcelDeliveryZoneBreakdownView(APIView):
     """
-    GET /api/analytics/transport/by-vehicle/
+    GET /api/analytics/parcel-delivery/zone-breakdown/
 
-    Params: year, month
-    Returns: Cost efficiency (DZD/km) and performance per vehicle type.
+    Params: start_date, end_date, delivery_type
+    Returns: [{zone_num, fee_range, nbr_colis, nbr_livres, taux_livraison_pct}].
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = tq.get_by_vehicle(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                service_type=request.query_params.get("service_type"),
-            )
-            return Response(data)
+            return Response(pdq.get_zone_breakdown(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class TransportCorridorsView(APIView):
+class ParcelDeliveryCostKpisView(APIView):
     """
-    GET /api/analytics/transport/corridors/
+    GET /api/analytics/parcel-delivery/cost-kpis/
 
-    Params: year, month, service_type, client_type,
-            limit (default 15), sort_by (nbr_requests|total_revenue|taux_marge_pct|avg_distance_km)
-    Returns: Top OD corridors with cost, margin, and distance KPIs.
+    Params: start_date, end_date, delivery_type
+    Returns: revenue/cost/margin KPIs with period-over-period % deltas.
+    Revenue from date_terminal_id; costs from expense/payroll dates.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = tq.get_corridors(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                service_type=request.query_params.get("service_type"),
-                client_type=request.query_params.get("client_type"),
-                limit=request.query_params.get("limit", 15),
-                sort_by=request.query_params.get("sort_by", "nbr_requests"),
-            )
-            return Response(data)
+            return Response(pdq.get_cost_kpis(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class TransportODMatrixView(APIView):
+class ParcelDeliveryRevenueCostTrendView(APIView):
     """
-    GET /api/analytics/transport/od-matrix/
+    GET /api/analytics/parcel-delivery/revenue-cost-trend/
 
-    Params: year, month
-    Returns: Region-level origin × destination matrix (Nord / Hauts Plateaux / Sud).
+    Params: start_date, end_date, delivery_type
+    Returns: monthly [{period, total_fees, cout_total, marge_brute}].
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = tq.get_od_matrix(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-            )
-            return Response(data)
+            return Response(pdq.get_revenue_cost_trend(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class TransportByAgencyView(APIView):
+class ParcelDeliveryCostByNatureView(APIView):
     """
-    GET /api/analytics/transport/by-agency/
+    GET /api/analytics/parcel-delivery/cost-by-nature/
 
-    Params: year, month, region, service_type
-    Returns: Agency performance ranking (completion rate, on-time, margin, cost/km).
+    Params: start_date, end_date
+    Returns: [{nature_name, total_dzd}] ordered by amount desc.
+    Source: fact_charges (validated) grouped by dim_nature.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, _ = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = tq.get_by_agency(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                region=request.query_params.get("region"),
-                service_type=request.query_params.get("service_type"),
-            )
-            return Response(data)
+            return Response(pdq.get_cost_by_nature(start, end))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class TransportDelayDistributionView(APIView):
+class ParcelDeliveryRegionProfitView(APIView):
     """
-    GET /api/analytics/transport/delay-distribution/
+    GET /api/analytics/parcel-delivery/region-profit/
 
-    Params: year, month, service_type
-    Returns: Arrival-delay histogram in 5 bands (À l'heure, 1-15, 16-30, 31-60, >60 min).
-    Source: warehouse.fact_transport (raw fact table — not pre-aggregated).
+    Params: start_date, end_date, delivery_type
+    Returns: [{origin, destination, nbr_colis, total_fees, cout_total, marge_brute, marge_pct}].
+    Costs allocated proportionally to each flow's revenue share.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = tq.get_delay_distribution(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                service_type=request.query_params.get("service_type"),
-            )
-            return Response(data)
+            return Response(pdq.get_region_profit(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-# ─── Parcel costs ─────────────────────────────────────────────────────────────
-
-class ParcelCostsSummaryView(APIView):
+class ParcelDeliveryZoneProfitView(APIView):
     """
-    GET /api/analytics/parcel-costs/summary/
+    GET /api/analytics/parcel-delivery/zone-profit/
 
-    Params: year, month, company_id, agence_id, delivery_type
-    Returns: KPI cards (volume, delivery rate, revenue, PCC compliance, cost per parcel)
-             with MoM deltas.
+    Params: start_date, end_date, delivery_type
+    Returns: [{zone_num, fee_range, nbr_colis, total_fees, cout_total, marge_brute, marge_pct}].
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = pq.get_summary(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                company_id=request.query_params.get("company_id"),
-                agence_id=request.query_params.get("agence_id"),
-                delivery_type=request.query_params.get("delivery_type"),
-            )
-            return Response(data)
+            return Response(pdq.get_zone_profit(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class ParcelCostsTrendsView(APIView):
+class ParcelDeliveryPerfKpisView(APIView):
     """
-    GET /api/analytics/parcel-costs/trends/
+    GET /api/analytics/parcel-delivery/perf-kpis/
 
-    Params: from_year_month (YYYY-MM), to_year_month, company_id, agence_id,
-            delivery_type
-    Returns: Monthly time-series combining delivery performance, PCC compliance,
-             and total operational cost per parcel.
+    Params: start_date, end_date, delivery_type
+    Returns: taux_livraison_pct, avg_tentatives, taux_premier_essai_pct,
+             avg_duree_livraison_h, nbr_sinistres + pop_* deltas.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = pq.get_trends(
-                from_year_month=request.query_params.get("from_year_month"),
-                to_year_month=request.query_params.get("to_year_month"),
-                company_id=request.query_params.get("company_id"),
-                agence_id=request.query_params.get("agence_id"),
-                delivery_type=request.query_params.get("delivery_type"),
-            )
-            return Response(data)
+            return Response(pdq.get_perf_kpis(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class ParcelCostsPCCSummaryView(APIView):
+class ParcelDeliveryPerfTrendView(APIView):
     """
-    GET /api/analytics/parcel-costs/pcc-summary/
+    GET /api/analytics/parcel-delivery/perf-trend/
 
-    Params: year, month, company_id, agence_id, delivery_type
-    Returns: Detailed PCC metrics — nbr_sous_tarif, total_ecart_dzd, avg_ecart_dzd,
-             taux_sous_tarif_pct, taux_ecart_global_pct.
-    Source: warehouse.agg_profitabilite_colis
+    Params: start_date, end_date, delivery_type
+    Returns: monthly [{period, taux_livraison_pct, avg_duree_livraison_h}].
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = pq.get_pcc_summary(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                company_id=request.query_params.get("company_id"),
-                agence_id=request.query_params.get("agence_id"),
-                delivery_type=request.query_params.get("delivery_type"),
-            )
-            return Response(data)
+            return Response(pdq.get_perf_trend(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class ParcelCostsPCCByAgencyView(APIView):
+class ParcelDeliveryDurationDistributionView(APIView):
     """
-    GET /api/analytics/parcel-costs/pcc-by-agency/
+    GET /api/analytics/parcel-delivery/duration-distribution/
 
-    Params: year, month, region, delivery_type,
-            sort_by (nbr_sous_tarif|taux_sous_tarif_pct|total_ecart_dzd|nbr_colis_total),
-            limit (default 20)
-    Returns: Agency PCC compliance ranking.
-    Source: warehouse.agg_profitabilite_colis
+    Params: start_date, end_date, delivery_type
+    Returns: [{bucket, bucket_order, nbr_colis}] — 6-bucket histogram (delivered parcels).
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = pq.get_pcc_by_agency(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                region=request.query_params.get("region"),
-                delivery_type=request.query_params.get("delivery_type"),
-                sort_by=request.query_params.get("sort_by", "nbr_sous_tarif"),
-                limit=request.query_params.get("limit", 20),
-            )
-            return Response(data)
+            return Response(pdq.get_duration_distribution(start, end, dt))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class ParcelCostsEcartDistributionView(APIView):
+class ParcelDeliveryCenterExpeditionRankingView(APIView):
     """
-    GET /api/analytics/parcel-costs/ecart-distribution/
+    GET /api/analytics/parcel-delivery/center-expedition-ranking/
 
-    Params: year (required), month (required), agence_id (optional)
-    Returns: Ecart tarif histogram in 6 bands (< -500 DZD → > +100 DZD).
-    Source: warehouse.fact_livraisons — year and month are mandatory.
+    Params: start_date, end_date, delivery_type, limit (default 8)
+    Returns: [{center_code, center_name, nbr_colis}] top N departure centers.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        year  = request.query_params.get("year")
-        month = request.query_params.get("month")
-        if not year or not month:
-            return Response(
-                {"error": "year and month are required for this endpoint"},
-                status=400,
-            )
+        start, end, dt = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = pq.get_ecart_distribution(
-                year=year,
-                month=month,
-                agence_id=request.query_params.get("agence_id"),
-            )
-            return Response(data)
+            return Response(pdq.get_center_expedition_ranking(
+                start, end, dt,
+                limit=request.query_params.get("limit", 8),
+            ))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)
 
 
-class ParcelCostsPCCByWilayaView(APIView):
+class ParcelDeliveryClaimsTypesView(APIView):
     """
-    GET /api/analytics/parcel-costs/pcc-by-wilaya/
+    GET /api/analytics/parcel-delivery/claims-types/
 
-    Params: year (required), month (required), agence_id (optional)
-    Returns: Under-pricing rate and ecart by destination wilaya (max 58 wilayas).
-    Source: warehouse.fact_livraisons — year and month are mandatory.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        year  = request.query_params.get("year")
-        month = request.query_params.get("month")
-        if not year or not month:
-            return Response(
-                {"error": "year and month are required for this endpoint"},
-                status=400,
-            )
-        try:
-            data = pq.get_pcc_by_wilaya(
-                year=year,
-                month=month,
-                agence_id=request.query_params.get("agence_id"),
-            )
-            return Response(data)
-        except Exception as exc:
-            logger.exception("Analytics query failed: %s", exc)
-            return Response({"error": str(exc)}, status=503)
-
-
-class ParcelCostsCostStructureView(APIView):
-    """
-    GET /api/analytics/parcel-costs/cost-structure/
-
-    Params: year, month, company_id, agence_id
-    Returns: Cost breakdown — depenses, salaires, freelance, sinistres, cout_total.
-    Sources: warehouse.agg_cout_total_mensuel + warehouse.fact_remboursements
+    Params: start_date, end_date
+    Returns: [{sinistre_type, nbr_sinistres}] for the pie chart.
+    Source: dim_remboursement × dim_sinistre_type.
     """
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
+        start, end, _ = _pd_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
         try:
-            data = pq.get_cost_structure(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                company_id=request.query_params.get("company_id"),
-                agence_id=request.query_params.get("agence_id"),
-            )
-            return Response(data)
-        except Exception as exc:
-            logger.exception("Analytics query failed: %s", exc)
-            return Response({"error": str(exc)}, status=503)
-
-
-class ParcelCostsCostByNatureView(APIView):
-    """
-    GET /api/analytics/parcel-costs/cost-by-nature/
-
-    Params: year, month, agence_id
-    Returns: Operational expense breakdown by category and nature, sorted by DZD.
-    Source: warehouse.agg_depenses_mensuelles
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        try:
-            data = pq.get_cost_by_nature(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                agence_id=request.query_params.get("agence_id"),
-            )
-            return Response(data)
-        except Exception as exc:
-            logger.exception("Analytics query failed: %s", exc)
-            return Response({"error": str(exc)}, status=503)
-
-
-class ParcelCostsByAgencyView(APIView):
-    """
-    GET /api/analytics/parcel-costs/by-agency/
-
-    Params: year, month, region, delivery_type
-    Returns: Agency scorecard joining performance + PCC + cost aggregates.
-             Powers the quadrant scatter (taux_livraison vs taux_sous_tarif)
-             and the sortable agency table.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        try:
-            data = pq.get_by_agency(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                region=request.query_params.get("region"),
-                delivery_type=request.query_params.get("delivery_type"),
-            )
-            return Response(data)
-        except Exception as exc:
-            logger.exception("Analytics query failed: %s", exc)
-            return Response({"error": str(exc)}, status=503)
-
-
-class ParcelCostsByDeliveryTypeView(APIView):
-    """
-    GET /api/analytics/parcel-costs/by-delivery-type/
-
-    Params: year, month, agence_id
-    Returns: HD vs SD comparison — volume, delivery rate, avg fee, avg duration.
-    Source: warehouse.agg_performance_livraison grouped by delivery_type.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        try:
-            data = pq.get_by_delivery_type(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                agence_id=request.query_params.get("agence_id"),
-            )
-            return Response(data)
-        except Exception as exc:
-            logger.exception("Analytics query failed: %s", exc)
-            return Response({"error": str(exc)}, status=503)
-
-
-class ParcelCostsDailyVolumeView(APIView):
-    """
-    GET /api/analytics/parcel-costs/daily-volume/
-
-    Params: year, month, agence_id
-    Returns: Daily delivery series for calendar heatmap
-             (nbr_colis, nbr_livres, taux_livraison_pct, day_of_week flags).
-    Source: warehouse.agg_livraisons_journalieres
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        try:
-            data = pq.get_daily_volume(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                agence_id=request.query_params.get("agence_id"),
-            )
-            return Response(data)
-        except Exception as exc:
-            logger.exception("Analytics query failed: %s", exc)
-            return Response({"error": str(exc)}, status=503)
-
-
-class ParcelCostsDurationDistributionView(APIView):
-    """
-    GET /api/analytics/parcel-costs/duration-distribution/
-
-    Params: year (required), month (required), agence_id (optional),
-            delivery_type (HD|SD)
-    Returns: Delivery duration histogram for successfully delivered parcels
-             in 6 bands (< 1h → > 5 jours).
-    Source: warehouse.fact_livraisons — year and month are mandatory.
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        year  = request.query_params.get("year")
-        month = request.query_params.get("month")
-        if not year or not month:
-            return Response(
-                {"error": "year and month are required for this endpoint"},
-                status=400,
-            )
-        try:
-            data = pq.get_duration_distribution(
-                year=year,
-                month=month,
-                agence_id=request.query_params.get("agence_id"),
-                delivery_type=request.query_params.get("delivery_type"),
-            )
-            return Response(data)
-        except Exception as exc:
-            logger.exception("Analytics query failed: %s", exc)
-            return Response({"error": str(exc)}, status=503)
-
-
-class ParcelCostsSinistresView(APIView):
-    """
-    GET /api/analytics/parcel-costs/sinistres/
-
-    Params: year, month, agence_id
-    Returns: { summary, by_type, by_agency } — reimbursement claims analysis.
-    Source: warehouse.fact_remboursements (small table, direct query).
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        try:
-            data = pq.get_sinistres(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                agence_id=request.query_params.get("agence_id"),
-            )
-            return Response(data)
-        except Exception as exc:
-            logger.exception("Analytics query failed: %s", exc)
-            return Response({"error": str(exc)}, status=503)
-
-
-class ParcelCostsFreelanceEfficiencyView(APIView):
-    """
-    GET /api/analytics/parcel-costs/freelance-efficiency/
-
-    Params: year, month, agence_id
-    Returns: Per-agency freelance driver cost efficiency
-             (total_paiements, nbr_colis_livres, cout_par_colis, taux_succes).
-    Source: warehouse.fact_paiements_livreurs (small table, direct query).
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        try:
-            data = pq.get_freelance_efficiency(
-                year=request.query_params.get("year"),
-                month=request.query_params.get("month"),
-                agence_id=request.query_params.get("agence_id"),
-            )
-            return Response(data)
-        except Exception as exc:
-            logger.exception("Analytics query failed: %s", exc)
-            return Response({"error": str(exc)}, status=503)
-
-
-class ParcelCostsParcelsView(APIView):
-    """
-    GET /api/analytics/parcel-costs/parcels/
-
-    Params: year (required), month (required), agence_id, delivery_type (HD|SD),
-            ecart_direction (sous-tarif|sur-tarif|au-tarif|all),
-            sort_by (ecart_tarif_dzd|delivery_fee|duree_livraison_minutes|
-                     nbr_evenements|date_creation),
-            page (default 1), page_size (default 25, max 100)
-    Returns: { results, count, page, pages } — paginated parcel drill-down table.
-    Source: warehouse.fact_livraisons — year and month are mandatory.
-    Default sort: ecart_tarif_dzd ASC NULLS LAST (worst under-billing first).
-    """
-    permission_classes = [IsAuthenticated]
-
-    def get(self, request):
-        year  = request.query_params.get("year")
-        month = request.query_params.get("month")
-        if not year or not month:
-            return Response(
-                {"error": "year and month are required for this endpoint"},
-                status=400,
-            )
-        try:
-            data = pq.get_parcels(
-                year=year,
-                month=month,
-                agence_id=request.query_params.get("agence_id"),
-                delivery_type=request.query_params.get("delivery_type"),
-                ecart_direction=request.query_params.get("ecart_direction"),
-                sort_by=request.query_params.get("sort_by", "ecart_tarif_dzd"),
-                page=request.query_params.get("page", 1),
-                page_size=request.query_params.get("page_size", 25),
-            )
-            return Response(data)
+            return Response(pdq.get_claims_types(start, end))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)

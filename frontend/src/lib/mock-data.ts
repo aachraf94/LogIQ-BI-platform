@@ -1082,7 +1082,7 @@ import type {
   TransportCostKpis,
   TransportRevCostTrendPoint,
   TransportCostCategoryItem,
-  TransportServiceMarginItem,
+  TransportCostPerKmItem,
   TransportCorridorItem,
   TransportPerfKpis,
   TransportOnTimeTrendPoint,
@@ -1143,16 +1143,16 @@ export const mockTransportDistanceCategory: TransportDistanceCategoryItem[] = [
 ]
 
 export const mockTransportCostKpis: TransportCostKpis = {
-  total_revenue:      9_840_000,
-  total_cost:         6_888_000,
-  marge_brute_dzd:    2_952_000,
-  marge_brute_pct:    30.0,
-  collection_rate_pct: 91.4,
-  pop_revenue:    8.2,
-  pop_cost:       5.1,
-  pop_margin_dzd: 14.8,
-  pop_margin_pct:  1.9,
-  pop_collection: -0.6,
+  total_revenue:   9_840_000,
+  total_cost:      6_888_000,
+  marge_brute_dzd: 2_952_000,
+  marge_brute_pct: 30.0,
+  cout_par_km:     38.4,
+  pop_revenue:     8.2,
+  pop_cost:         5.1,
+  pop_margin_dzd:  14.8,
+  pop_margin_pct:   1.9,
+  pop_cout_par_km: -3.2,
 }
 
 export const mockTransportRevCostTrend: TransportRevCostTrendPoint[] = Array.from({ length: 12 }, (_, i) => {
@@ -1180,10 +1180,12 @@ export const mockTransportCostCategories: TransportCostCategoryItem[] = [
   { category: "cout_tarif_nuit",    label: "Tarif nuit",           total_dzd:   120_000 },
 ]
 
-export const mockTransportServiceMargin: TransportServiceMarginItem[] = [
-  { service_type: "course_dediee", label: "Course dédiée", total_revenue: 6_540_000, total_cost: 4_440_000, marge_brute_pct: 32.1 },
-  { service_type: "courrier",      label: "Courrier",      total_revenue: 2_160_000, total_cost: 1_620_000, marge_brute_pct: 25.0 },
-  { service_type: "manutention",   label: "Manutention",  total_revenue: 1_140_000, total_cost:   828_000, marge_brute_pct: 27.4 },
+export const mockTransportCostPerKm: TransportCostPerKmItem[] = [
+  { vehicle_type: "Moto",        total_cost:   284_000, total_km:  14_200, cout_par_km: 20.0, nbr_requests:  38 },
+  { vehicle_type: "Citadine",    total_cost:   682_000, total_km:  24_360, cout_par_km: 28.0, nbr_requests:  62 },
+  { vehicle_type: "Break",       total_cost: 1_218_000, total_km:  33_550, cout_par_km: 36.3, nbr_requests:  84 },
+  { vehicle_type: "Camionnette", total_cost: 2_960_000, total_km:  67_270, cout_par_km: 44.0, nbr_requests: 148 },
+  { vehicle_type: "Camion",      total_cost: 1_744_000, total_km:  38_420, cout_par_km: 45.4, nbr_requests:  80 },
 ]
 
 export const mockTransportTopCorridors: TransportCorridorItem[] = [

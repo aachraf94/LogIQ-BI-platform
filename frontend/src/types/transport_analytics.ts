@@ -54,12 +54,12 @@ export interface TransportCostKpis {
   total_cost: number
   marge_brute_dzd: number
   marge_brute_pct: number
-  collection_rate_pct: number
+  cout_par_km: number
   pop_revenue: number
   pop_cost: number
   pop_margin_dzd: number
   pop_margin_pct: number
-  pop_collection: number
+  pop_cout_par_km: number
 }
 
 export interface TransportRevCostTrendPoint {
@@ -76,12 +76,12 @@ export interface TransportCostCategoryItem {
   total_dzd: number
 }
 
-export interface TransportServiceMarginItem {
-  service_type: string
-  label: string
-  total_revenue: number
+export interface TransportCostPerKmItem {
+  vehicle_type: string
   total_cost: number
-  marge_brute_pct: number
+  total_km: number
+  cout_par_km: number
+  nbr_requests: number
 }
 
 export interface TransportCorridorItem {

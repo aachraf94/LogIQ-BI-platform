@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
-import { DollarSign, Receipt, TrendingUp, Percent, Wallet } from "lucide-react";
+import { DollarSign, Receipt, TrendingUp, Percent, Gauge } from "lucide-react";
 
 import { KpiCard } from "@/components/ui/KpiCard";
 import { useTranslation } from "@/lib/i18n";
@@ -15,14 +15,14 @@ import {
   mockTransportCostKpis,
   mockTransportRevCostTrend,
   mockTransportCostCategories,
-  mockTransportServiceMargin,
+  mockTransportCostPerKm,
   mockTransportTopCorridors,
 } from "@/lib/mock-data";
 import type {
   TransportCostKpis,
   TransportRevCostTrendPoint,
   TransportCostCategoryItem,
-  TransportServiceMarginItem,
+  TransportCostPerKmItem,
   TransportCorridorItem,
 } from "@/types/transport_analytics";
 
@@ -54,7 +54,7 @@ function EmptyChartState() {
   );
 }
 
-// ─── Revenue vs Cost monthly trend (grouped bars + margin% line) ──────────────
+// ─── Revenue vs Cost monthly trend ───────────────────────────────────────────
 
 function buildRevCostTrendOption(
   trend: TransportRevCostTrendPoint[],
@@ -126,8 +126,7 @@ function buildRevCostTrendOption(
         yAxisIndex: 1,
         data: trend.map((d) => d.marge_brute_pct),
         smooth: true,
-        symbol: "circle",
-        symbolSize: 5,
+        symbol: "circle", symbolSize: 5,
         lineStyle: { color: "#F59E0B", width: 2 },
         itemStyle: { color: "#F59E0B" },
       },
@@ -202,20 +201,14 @@ function buildCostCategoriesOption(
   };
 }
 
-// ─── Service margin grouped bars + margin% line ───────────────────────────────
+// ─── Cost per KM by vehicle type ─────────────────────────────────────────────
 
-const SERVICE_LABELS: Record<string, string> = {
-  course_dediee: "Course dédiée",
-  courrier: "Courrier",
-  manutention: "Manutention",
-};
-
-function buildServiceMarginOption(
-  data: TransportServiceMarginItem[],
-  labels: { revenue: string; cost: string; marginPct: string },
+function buildCostPerKmOption(
+  data: TransportCostPerKmItem[],
   ct: ReturnType<typeof useChartTheme>
 ) {
-  const cats = data.map((d) => d.label || SERVICE_LABELS[d.service_type] || d.service_type);
+  const sorted = [...data].sort((a, b) => a.cout_par_km - b.cout_par_km);
+
   return {
     backgroundColor: "transparent",
     tooltip: {
@@ -224,70 +217,54 @@ function buildServiceMarginOption(
       borderColor: ct.borderColor,
       textStyle: { color: ct.textColor, fontSize: 12 },
       axisPointer: { type: "shadow" as const },
+      formatter: (params: Array<{ name: string; value: number; marker: string }>) => {
+        const p = params[0];
+        const item = data.find((d) => d.vehicle_type === p.name);
+        return [
+          `${p.marker} ${p.name}`,
+          `Coût/km: <b>${p.value} DZD</b>`,
+          `Distance totale: ${item ? (item.total_km / 1000).toFixed(1) : 0}k km`,
+          `${item?.nbr_requests ?? 0} demandes`,
+        ].join("<br/>");
+      },
     },
-    legend: {
-      top: 0, right: 0,
-      textStyle: { color: ct.legendColor, fontSize: 11 },
-      itemWidth: 10, itemHeight: 10,
-    },
-    grid: { left: 16, right: 52, top: 36, bottom: 0, containLabel: true },
+    grid: { left: 16, right: 48, top: 8, bottom: 0, containLabel: true },
     xAxis: {
+      type: "value" as const,
+      axisLine: { show: false },
+      splitLine: { lineStyle: { color: ct.splitColor, type: "dashed" as const } },
+      axisLabel: { color: ct.labelColor, fontSize: 10, formatter: (v: number) => `${v} DZD` },
+    },
+    yAxis: {
       type: "category" as const,
-      data: cats,
+      data: sorted.map((d) => d.vehicle_type),
       axisLine: { lineStyle: { color: ct.axisColor } },
       axisTick: { show: false },
       axisLabel: { color: ct.labelColor, fontSize: 11 },
     },
-    yAxis: [
-      {
-        type: "value" as const,
-        axisLine: { show: false },
-        splitLine: { lineStyle: { color: ct.splitColor, type: "dashed" as const } },
-        axisLabel: {
-          color: ct.labelColor, fontSize: 10,
-          formatter: (v: number) => v >= 1_000_000 ? `${(v / 1_000_000).toFixed(1)}M` : `${(v / 1_000).toFixed(0)}k`,
-        },
-      },
-      {
-        type: "value" as const,
-        min: 0, max: 50,
-        axisLine: { show: false },
-        splitLine: { show: false },
-        axisLabel: { color: ct.labelColor, fontSize: 10, formatter: (v: number) => `${v}%` },
-      },
-    ],
     series: [
       {
-        name: labels.revenue,
         type: "bar" as const,
-        yAxisIndex: 0,
-        data: data.map((d) => d.total_revenue),
-        itemStyle: { color: "#10B981", borderRadius: [3, 3, 0, 0] },
-        barMaxWidth: 40,
-        barGap: "20%",
-      },
-      {
-        name: labels.cost,
-        type: "bar" as const,
-        yAxisIndex: 0,
-        data: data.map((d) => d.total_cost),
-        itemStyle: { color: "#EF4444", borderRadius: [3, 3, 0, 0] },
-        barMaxWidth: 40,
-      },
-      {
-        name: labels.marginPct,
-        type: "line" as const,
-        yAxisIndex: 1,
-        data: data.map((d) => d.marge_brute_pct),
-        symbol: "circle", symbolSize: 8,
-        lineStyle: { color: "#F59E0B", width: 2 },
-        itemStyle: { color: "#F59E0B" },
+        data: sorted.map((d) => d.cout_par_km),
+        itemStyle: {
+          color: (params: { dataIndex: number }) => {
+            const item = sorted[params.dataIndex];
+            const ratio = item ? item.cout_par_km / 50 : 0;
+            const r = Math.round(16 + ratio * (239 - 16));
+            const g = Math.round(185 - ratio * (185 - 68));
+            const b = Math.round(129 - ratio * (129 - 68));
+            return `rgb(${r},${g},${b})`;
+          },
+          borderRadius: [0, 4, 4, 0],
+        },
+        barMaxWidth: 28,
         label: {
           show: true,
-          formatter: (p: { value: number }) => `${p.value}%`,
-          color: "#F59E0B",
+          position: "right" as const,
+          color: ct.legendColor,
           fontSize: 11,
           fontWeight: 600,
+          formatter: (p: { value: number }) => `${p.value} DZD`,
         },
       },
     ],
@@ -363,7 +340,7 @@ interface PageData {
   kpis: TransportCostKpis
   revCostTrend: TransportRevCostTrendPoint[]
   costCategories: TransportCostCategoryItem[]
-  serviceMargin: TransportServiceMarginItem[]
+  costPerKm: TransportCostPerKmItem[]
   topCorridors: TransportCorridorItem[]
 }
 
@@ -371,7 +348,7 @@ const MOCK: PageData = {
   kpis: mockTransportCostKpis,
   revCostTrend: mockTransportRevCostTrend,
   costCategories: mockTransportCostCategories,
-  serviceMargin: mockTransportServiceMargin,
+  costPerKm: mockTransportCostPerKm,
   topCorridors: mockTransportTopCorridors,
 };
 
@@ -405,14 +382,14 @@ export default function TransportCostPage() {
   const fetchData = useCallback(async () => {
     setFetching(true);
     try {
-      const [kpis, revCostTrend, costCategories, serviceMargin, topCorridors] = await Promise.all([
+      const [kpis, revCostTrend, costCategories, costPerKm, topCorridors] = await Promise.all([
         transportAnalyticsApi.costKpis(filters),
         transportAnalyticsApi.revCostTrend(filters),
         transportAnalyticsApi.costCategories(filters),
-        transportAnalyticsApi.serviceMargin(filters),
+        transportAnalyticsApi.costPerKm(filters),
         transportAnalyticsApi.topCorridors({ ...filters, limit: 8 }),
       ]);
-      setData({ kpis, revCostTrend, costCategories, serviceMargin, topCorridors });
+      setData({ kpis, revCostTrend, costCategories, costPerKm, topCorridors });
       setUsingMock(false);
     } catch {
       setData(MOCK);
@@ -424,7 +401,7 @@ export default function TransportCostPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const { kpis, revCostTrend, costCategories, serviceMargin, topCorridors } = data;
+  const { kpis, revCostTrend, costCategories, costPerKm, topCorridors } = data;
 
   return (
     <div className="space-y-5">
@@ -441,11 +418,11 @@ export default function TransportCostPage() {
 
       {/* ── Row 1: KPIs ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard title={p.kpiTotalRevenue}    value={formatDZD(kpis.total_revenue)}                trend={kpis.pop_revenue}    trendLabel={trendLabel} icon={<DollarSign size={15} />}  index={0} />
-        <KpiCard title={p.kpiTotalCost}       value={formatDZD(kpis.total_cost)}                   trend={-kpis.pop_cost}      trendLabel={trendLabel} icon={<Receipt size={15} />}      index={1} />
-        <KpiCard title={p.kpiGrossMargin}     value={formatDZD(kpis.marge_brute_dzd)}              trend={kpis.pop_margin_dzd} trendLabel={trendLabel} icon={<TrendingUp size={15} />}   index={2} />
-        <KpiCard title={p.kpiMarginPct}       value={`${kpis.marge_brute_pct.toFixed(1)}%`}        trend={kpis.pop_margin_pct} trendLabel={trendLabel} icon={<Percent size={15} />}      index={3} />
-        <KpiCard title={p.kpiCollectionRate}  value={`${kpis.collection_rate_pct.toFixed(1)}%`}    trend={kpis.pop_collection} trendLabel={trendLabel} icon={<Wallet size={15} />}       index={4} />
+        <KpiCard title={p.kpiTotalRevenue} value={formatDZD(kpis.total_revenue)}              trend={kpis.pop_revenue}      trendLabel={trendLabel} icon={<DollarSign size={15} />} index={0} />
+        <KpiCard title={p.kpiTotalCost}    value={formatDZD(kpis.total_cost)}                 trend={-kpis.pop_cost}        trendLabel={trendLabel} icon={<Receipt size={15} />}    index={1} />
+        <KpiCard title={p.kpiGrossMargin}  value={formatDZD(kpis.marge_brute_dzd)}            trend={kpis.pop_margin_dzd}   trendLabel={trendLabel} icon={<TrendingUp size={15} />} index={2} />
+        <KpiCard title={p.kpiMarginPct}    value={`${kpis.marge_brute_pct.toFixed(1)}%`}      trend={kpis.pop_margin_pct}   trendLabel={trendLabel} icon={<Percent size={15} />}    index={3} />
+        <KpiCard title={p.kpiCostPerKm}    value={`${kpis.cout_par_km.toFixed(1)} DZD/km`}   trend={-kpis.pop_cout_par_km} trendLabel={trendLabel} icon={<Gauge size={15} />}      index={4} />
       </div>
 
       {/* ── Row 2: Rev vs Cost trend + Cost categories ── */}
@@ -473,14 +450,12 @@ export default function TransportCostPage() {
         </SectionCard>
       </div>
 
-      {/* ── Row 3: Service margin + Top corridors ── */}
+      {/* ── Row 3: Cost per KM + Top corridors ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
-        <SectionCard title={p.sectionServiceMargin}>
-          {!chartsReady ? <div className="h-[280px]" /> : serviceMargin.length === 0 ? <EmptyChartState /> : (
+        <SectionCard title={p.sectionCostPerKm}>
+          {!chartsReady ? <div className="h-[280px]" /> : costPerKm.length === 0 ? <EmptyChartState /> : (
             <ReactECharts
-              option={buildServiceMarginOption(serviceMargin, {
-                revenue: p.seriesRevenue, cost: p.seriesCost, marginPct: p.seriesMarginPct,
-              }, ct)}
+              option={buildCostPerKmOption(costPerKm, ct)}
               style={{ height: 280 }}
               notMerge lazyUpdate
             />

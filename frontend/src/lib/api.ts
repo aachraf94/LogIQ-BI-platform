@@ -470,9 +470,9 @@ export const transportAnalyticsApi = {
     request<import("@/types/transport_analytics").TransportCostCategoryItem[]>(
       `/analytics/transport-analytics/cost-categories/${_ta(f)}`
     ),
-  serviceMargin: (f: TransportAnalyticsFilters) =>
-    request<import("@/types/transport_analytics").TransportServiceMarginItem[]>(
-      `/analytics/transport-analytics/service-margin/${_ta(f)}`
+  costPerKm: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportCostPerKmItem[]>(
+      `/analytics/transport-analytics/cost-per-km/${_ta(f)}`
     ),
   topCorridors: (f: TransportAnalyticsFilters & { limit?: number }) =>
     request<import("@/types/transport_analytics").TransportCorridorItem[]>(
