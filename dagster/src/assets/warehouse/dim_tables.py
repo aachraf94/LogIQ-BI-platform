@@ -742,10 +742,12 @@ def dim_employee(
         WHERE company_id != 9
     """)
 
+    _DEFAULT_HIRE_DATE = date(2019, 1, 1)
+
     to_close, to_insert = [], []
     today = date.today()
     skipped = 0
-    skipped_no_hire_date = 0
+    defaulted_hire_date = 0
 
     for row in source_rows:
         uid, full_name, email, role, status, company_id, agency_id, occ_name = row
@@ -757,9 +759,8 @@ def dim_employee(
 
         hire_date = hire_dates.get(uid)
         if not hire_date:
-            skipped += 1
-            skipped_no_hire_date += 1
-            continue  # hire_date not in dim_date range — extend dim_date if pre-2015 hires exist
+            hire_date = _DEFAULT_HIRE_DATE
+            defaulted_hire_date += 1
 
         role_id = role_map.get(role)
         status_id = status_map_emp.get(status)
@@ -836,10 +837,9 @@ def dim_employee(
                   )
             """)
 
-    if skipped_no_hire_date:
+    if defaulted_hire_date:
         context.log.warning(
-            f"dim_employee: {skipped_no_hire_date} employees skipped — hire_date not in dim_date range. "
-            "If this is unexpectedly high, check that dim_date covers all hire dates in stg_paie_bulletins."
+            f"dim_employee: {defaulted_hire_date} employees have no bulletin — hire_date defaulted to 2019-01-01"
         )
     context.log.info(
         f"dim_employee: {len(to_close)} closed, {len(to_insert)} inserted, {skipped} skipped total"
@@ -1777,24 +1777,24 @@ def dim_transport(
 
     with warehouse_db.get_connection() as conn:
         with conn.cursor() as cur:
-            # Insert departures
-            psycopg2.extras.execute_values(cur, """
+            # fetch=True aggregates RETURNING results across all execute_values pages.
+            # Without it, cur.fetchall() only returns the last page's rows.
+            dep_rows = psycopg2.extras.execute_values(cur, """
                 INSERT INTO warehouse.dim_transport_departure
                 (location_type_id, location_name, address, wilaya_id, commune_id, gps_lat, gps_lng)
                 VALUES %s
                 RETURNING departure_key
-            """, dep_records)
-            dep_keys = [r[0] for r in cur.fetchall()]
+            """, dep_records, fetch=True)
+            dep_keys = [r[0] for r in dep_rows]
             request_to_dep = dict(zip(dep_request_ids, dep_keys))
 
-            # Insert arrivals
-            psycopg2.extras.execute_values(cur, """
+            arr_rows = psycopg2.extras.execute_values(cur, """
                 INSERT INTO warehouse.dim_transport_arrival
                 (location_type_id, location_name, address, wilaya_id, commune_id, gps_lat, gps_lng)
                 VALUES %s
                 RETURNING arrival_key
-            """, arr_records)
-            arr_keys = [r[0] for r in cur.fetchall()]
+            """, arr_records, fetch=True)
+            arr_keys = [r[0] for r in arr_rows]
             request_to_arr = dict(zip(arr_request_ids, arr_keys))
 
             # Insert dim_transport
