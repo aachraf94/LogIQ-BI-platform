@@ -11,8 +11,24 @@ interface PieChartProps {
 
 const COLORS = ["#6366F1", "#22D3EE", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899", "#F97316", "#14B8A6", "#84CC16"];
 
+function EmptyState({ height }: { height: number }) {
+  return (
+    <div className="flex flex-col items-center justify-center gap-3 text-[var(--text-muted)] select-none" style={{ height }}>
+      <svg width="48" height="48" viewBox="0 0 48 48" fill="none" className="opacity-25">
+        <circle cx="24" cy="24" r="18" stroke="currentColor" strokeWidth="2" strokeDasharray="5 3"/>
+        <circle cx="24" cy="24" r="7" fill="currentColor" opacity="0.5"/>
+      </svg>
+      <p className="text-xs font-medium">Aucune donnée disponible</p>
+    </div>
+  );
+}
+
 export function PieChart({ data, height = 320 }: PieChartProps) {
   const t = useChartTheme()
+
+  if (data.length === 0) {
+    return <EmptyState height={height} />;
+  }
 
   const option = {
     backgroundColor: "transparent",
@@ -55,9 +71,9 @@ export function PieChart({ data, height = 320 }: PieChartProps) {
     <motion.div
       initial={{ opacity: 0, scale: 0.95 }}
       animate={{ opacity: 1, scale: 1 }}
-      transition={{ duration: 0.5, delay: 0.3 }}
+      transition={{ duration: 0.3, ease: "easeOut" }}
     >
-      <ReactECharts option={option} style={{ height }} notMerge />
+      <ReactECharts option={option} style={{ height }} notMerge lazyUpdate />
     </motion.div>
   );
 }

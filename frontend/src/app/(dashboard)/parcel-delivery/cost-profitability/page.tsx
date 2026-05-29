@@ -35,14 +35,47 @@ function SectionCard({ title, children, className = "" }: {
 }) {
   return (
     <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 ${className}`}>
-      <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">{title}</h3>
+      <div className="border-l-2 border-primary/40 pl-2 mb-4">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h3>
+      </div>
       {children}
     </div>
   );
 }
 
-function Skeleton({ h = "h-64" }: { h?: string }) {
-  return <div className={`${h} bg-[var(--surface-secondary)] animate-pulse rounded-lg`} />;
+function Skeleton({ h = "h-[280px]" }: { h?: string }) {
+  return (
+    <div className={`relative ${h}`}>
+      <div className="absolute top-0 left-0 flex gap-2 items-center">
+        <div className="h-3 w-24 bg-[var(--surface-secondary)] animate-pulse rounded" />
+        <div className="h-3 w-16 bg-[var(--surface-secondary)] animate-pulse rounded opacity-60" />
+      </div>
+      <div className="absolute inset-0 top-8 flex items-end gap-1.5">
+        {[45, 72, 58, 88, 62, 78, 52, 70].map((v, i) => (
+          <div
+            key={i}
+            className="flex-1 bg-[var(--surface-secondary)] animate-pulse rounded-t"
+            style={{ height: `${v}%` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EmptyChartState() {
+  return (
+    <div className="h-[280px] flex flex-col items-center justify-center gap-2 text-[var(--text-muted)] select-none">
+      <svg width="48" height="36" viewBox="0 0 48 36" fill="none" className="opacity-25">
+        <rect x="0" y="22" width="8" height="14" rx="2" fill="currentColor"/>
+        <rect x="10" y="14" width="8" height="22" rx="2" fill="currentColor"/>
+        <rect x="20" y="18" width="8" height="18" rx="2" fill="currentColor"/>
+        <rect x="30" y="6" width="8" height="30" rx="2" fill="currentColor"/>
+        <rect x="40" y="10" width="8" height="26" rx="2" fill="currentColor"/>
+      </svg>
+      <p className="text-xs font-medium">Aucune donnée disponible</p>
+    </div>
+  );
 }
 
 // ─── Revenue vs Cost trend chart ──────────────────────────────────────────────
@@ -82,6 +115,19 @@ function buildRevenueCostOption(
       axisLabel: { color: ct.labelColor, fontSize: 11 },
     },
     series: [
+      // Cost is first so it renders behind revenue
+      {
+        name: labels.cost,
+        type: "line" as const,
+        data: trend.map((d) => d.cout_total),
+        smooth: true,
+        symbol: "circle",
+        symbolSize: 5,
+        lineStyle: { color: "#EF4444", width: 2 },
+        itemStyle: { color: "#EF4444" },
+        areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(239,68,68,0.2)" }, { offset: 1, color: "rgba(239,68,68,0)" }] } },
+      },
+      // Revenue on top of cost
       {
         name: labels.revenue,
         type: "line" as const,
@@ -94,22 +140,20 @@ function buildRevenueCostOption(
         areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(16,185,129,0.25)" }, { offset: 1, color: "rgba(16,185,129,0)" }] } },
       },
       {
-        name: labels.cost,
-        type: "line" as const,
-        data: trend.map((d) => d.cout_total),
-        smooth: true,
-        symbol: "circle",
-        symbolSize: 5,
-        lineStyle: { color: "#EF4444", width: 2 },
-        itemStyle: { color: "#EF4444" },
-        areaStyle: { color: { type: "linear", x: 0, y: 0, x2: 0, y2: 1, colorStops: [{ offset: 0, color: "rgba(239,68,68,0.2)" }, { offset: 1, color: "rgba(239,68,68,0)" }] } },
-      },
-      {
         name: labels.margin,
         type: "bar" as const,
         data: trend.map((d) => d.marge_brute),
         itemStyle: { color: "#6366F1", borderRadius: [4, 4, 0, 0] },
         barMaxWidth: 20,
+        markLine: {
+          silent: true,
+          symbol: ["none", "none"] as [string, string],
+          lineStyle: { type: "dashed" as const, color: ct.labelColor, width: 1, opacity: 0.5 },
+          data: [{
+            yAxis: 0,
+            label: { formatter: "Break-even", position: "insideEndTop" as const, fontSize: 9, color: ct.labelColor },
+          }],
+        },
       },
     ],
   };
@@ -144,7 +188,8 @@ function buildEcartHistogramOption(
       data: cats,
       axisLine: { lineStyle: { color: ct.axisColor } },
       axisTick: { show: false },
-      axisLabel: { color: ct.labelColor, fontSize: 10, rotate: 20 },
+      // Increased rotation to 35° and reduced font to 9px to prevent overlap
+      axisLabel: { color: ct.labelColor, fontSize: 9, rotate: 35 },
     },
     yAxis: [
       {
@@ -262,9 +307,9 @@ export default function CostProfitabilityPage() {
 
   return (
     <div className="space-y-5">
-      {/* Mock data badge */}
+      {/* Mock data badge — sticky so it's always visible while scrolling */}
       {usingMock && (
-        <div className="text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg w-fit">
+        <div className="sticky top-0 z-10 text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg w-fit">
           {p.demoData}
         </div>
       )}
@@ -316,8 +361,8 @@ export default function CostProfitabilityPage() {
       {/* ── Row 2: Revenue vs Cost trend + Cost Structure ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <SectionCard title={p.sectionRevenueCostTrend}>
-          {loading ? <Skeleton /> : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+          {loading ? <Skeleton /> : revenueCostTrend.length === 0 ? <EmptyChartState /> : (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
               <ReactECharts
                 option={buildRevenueCostOption(
                   revenueCostTrend,
@@ -326,6 +371,7 @@ export default function CostProfitabilityPage() {
                 )}
                 style={{ height: 280 }}
                 notMerge
+                lazyUpdate
               />
             </motion.div>
           )}
@@ -351,8 +397,8 @@ export default function CostProfitabilityPage() {
         </SectionCard>
 
         <SectionCard title={p.sectionTariffGapDist}>
-          {loading ? <Skeleton /> : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+          {loading ? <Skeleton /> : ecartBuckets.length === 0 ? <EmptyChartState /> : (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
               <ReactECharts
                 option={buildEcartHistogramOption(
                   ecartBuckets,
@@ -361,6 +407,7 @@ export default function CostProfitabilityPage() {
                 )}
                 style={{ height: 280 }}
                 notMerge
+                lazyUpdate
               />
             </motion.div>
           )}

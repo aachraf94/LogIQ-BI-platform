@@ -35,14 +35,47 @@ function SectionCard({ title, children, className = "" }: {
 }) {
   return (
     <div className={`bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 ${className}`}>
-      <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-4">{title}</h3>
+      <div className="border-l-2 border-primary/40 pl-2 mb-4">
+        <h3 className="text-sm font-semibold text-[var(--text-primary)]">{title}</h3>
+      </div>
       {children}
     </div>
   );
 }
 
-function Skeleton({ h = "h-64" }: { h?: string }) {
-  return <div className={`${h} bg-[var(--surface-secondary)] animate-pulse rounded-lg`} />;
+function Skeleton({ h = "h-[280px]" }: { h?: string }) {
+  return (
+    <div className={`relative ${h}`}>
+      <div className="absolute top-0 left-0 flex gap-2 items-center">
+        <div className="h-3 w-24 bg-[var(--surface-secondary)] animate-pulse rounded" />
+        <div className="h-3 w-16 bg-[var(--surface-secondary)] animate-pulse rounded opacity-60" />
+      </div>
+      <div className="absolute inset-0 top-8 flex items-end gap-1.5">
+        {[45, 72, 58, 88, 62, 78, 52, 70].map((v, i) => (
+          <div
+            key={i}
+            className="flex-1 bg-[var(--surface-secondary)] animate-pulse rounded-t"
+            style={{ height: `${v}%` }}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EmptyChartState() {
+  return (
+    <div className="h-[280px] flex flex-col items-center justify-center gap-2 text-[var(--text-muted)] select-none">
+      <svg width="48" height="36" viewBox="0 0 48 36" fill="none" className="opacity-25">
+        <rect x="0" y="22" width="8" height="14" rx="2" fill="currentColor"/>
+        <rect x="10" y="14" width="8" height="22" rx="2" fill="currentColor"/>
+        <rect x="20" y="18" width="8" height="18" rx="2" fill="currentColor"/>
+        <rect x="30" y="6" width="8" height="30" rx="2" fill="currentColor"/>
+        <rect x="40" y="10" width="8" height="26" rx="2" fill="currentColor"/>
+      </svg>
+      <p className="text-xs font-medium">Aucune donnée disponible</p>
+    </div>
+  );
 }
 
 // ─── Volume trend chart builder ───────────────────────────────────────────────
@@ -235,9 +268,9 @@ export default function OperationsPage() {
 
   return (
     <div className="space-y-5">
-      {/* Mock data badge */}
+      {/* Mock data badge — sticky so it's always visible while scrolling */}
       {usingMock && (
-        <div className="text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg w-fit">
+        <div className="sticky top-0 z-10 text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg w-fit">
           {p.demoData}
         </div>
       )}
@@ -289,8 +322,8 @@ export default function OperationsPage() {
       {/* ── Row 2: Volume trend + Status breakdown ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <SectionCard title={p.sectionVolumeTrend}>
-          {loading ? <Skeleton /> : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
+          {loading ? <Skeleton /> : trend.length === 0 ? <EmptyChartState /> : (
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
               <ReactECharts
                 option={buildVolumeTrendOption(
                   trend,
@@ -299,6 +332,7 @@ export default function OperationsPage() {
                 )}
                 style={{ height: 280 }}
                 notMerge
+                lazyUpdate
               />
             </motion.div>
           )}
@@ -313,18 +347,18 @@ export default function OperationsPage() {
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
         <SectionCard title={p.sectionDeliveryTypeComp}>
           {loading ? <Skeleton /> : (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4 }}>
-              {/* HD vs SD metric cards + mini chart */}
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.3, ease: "easeOut" }}>
+              {/* HD vs SD metric cards */}
               <div className="grid grid-cols-2 gap-3 mb-4">
                 {byDeliveryType.map((dt) => (
                   <div
                     key={dt.delivery_type}
-                    className="bg-[var(--surface-secondary)] rounded-lg p-4 space-y-2.5"
+                    className="bg-[var(--surface-secondary)] border border-[var(--border)] rounded-lg p-4 space-y-2.5"
                   >
-                    <span className={`text-xs font-bold px-3 py-1 rounded-full inline-block ${
+                    <span className={`text-xs font-bold px-3 py-1 rounded-full inline-block ring-1 ${
                       dt.delivery_type === "HD"
-                        ? "bg-indigo-500/15 text-indigo-300"
-                        : "bg-cyan-500/15 text-cyan-300"
+                        ? "bg-indigo-500/15 text-indigo-300 ring-indigo-500/30"
+                        : "bg-cyan-500/15 text-cyan-300 ring-cyan-500/30"
                     }`}>
                       {dt.delivery_type === "HD" ? p.hdLabel : p.sdLabel}
                     </span>
@@ -343,15 +377,22 @@ export default function OperationsPage() {
                   </div>
                 ))}
               </div>
-              <ReactECharts
-                option={buildHDvsSDOption(
-                  byDeliveryType,
-                  { deliveryRate: p.hdDeliveryRate, returnRate: p.hdReturnRate, avgFee: p.hdAvgFee, avgDuration: p.hdAvgDuration, durationUnit: p.durationUnit },
-                  ct
-                )}
-                style={{ height: 160 }}
-                notMerge
-              />
+
+              {/* Divider between cards block and mini chart */}
+              <hr className="border-t border-[var(--border)] mb-4" />
+
+              {byDeliveryType.length === 0 ? <EmptyChartState /> : (
+                <ReactECharts
+                  option={buildHDvsSDOption(
+                    byDeliveryType,
+                    { deliveryRate: p.hdDeliveryRate, returnRate: p.hdReturnRate, avgFee: p.hdAvgFee, avgDuration: p.hdAvgDuration, durationUnit: p.durationUnit },
+                    ct
+                  )}
+                  style={{ height: 160 }}
+                  notMerge
+                  lazyUpdate
+                />
+              )}
             </motion.div>
           )}
         </SectionCard>
