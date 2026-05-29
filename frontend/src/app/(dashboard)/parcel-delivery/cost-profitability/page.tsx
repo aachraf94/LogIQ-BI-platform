@@ -228,7 +228,6 @@ const MOCK: PageData = {
 
 export default function CostProfitabilityPage() {
   const [data, setData] = useState<PageData>(MOCK);
-  const [usingMock, setUsingMock] = useState(false);
   const [fetching, setFetching] = useState(false);
   const [chartsReady, setChartsReady] = useState(false);
   const raf = useRef<number | null>(null);
@@ -242,7 +241,7 @@ export default function CostProfitabilityPage() {
   const p = t.pages.parcelDelivery;
   const ct = useChartTheme();
 
-  const { startDate, endDate, deliveryType, rangeDays } = useParcelDeliveryStore();
+  const { startDate, endDate, deliveryType, rangeDays, setUsingMock } = useParcelDeliveryStore();
   const days = rangeDays();
   const trendLabel = `vs ${days} j précédents`;
 
@@ -266,7 +265,7 @@ export default function CostProfitabilityPage() {
       setUsingMock(false);
     } catch {
       setData(MOCK);
-      setUsingMock(true);
+      setUsingMock(true);  // shared store — layout reads this for the badge
     } finally {
       setFetching(false);
     }
@@ -300,11 +299,7 @@ export default function CostProfitabilityPage() {
         </div>
       )}
 
-      {usingMock && !fetching && (
-        <div className="sticky top-0 z-10 text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg w-fit">
-          {p.demoData}
-        </div>
-      )}
+      {/* Demo badge is shown in layout.tsx's tab row — no badge here */}
 
       {/* ── Row 1: 5 KPI cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">

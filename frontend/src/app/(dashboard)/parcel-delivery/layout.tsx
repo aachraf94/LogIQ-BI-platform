@@ -6,18 +6,20 @@ import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { useParcelDeliveryStore } from "@/stores/parcelDeliveryStore";
 import { useTranslation } from "@/lib/i18n";
-import { ChevronDown, CalendarDays, ArrowRight, Activity, TrendingUp, Gauge } from "lucide-react";
+import { ChevronDown, CalendarDays, ArrowRight, Activity, Wallet, Gauge } from "lucide-react";
 import { motion } from "framer-motion";
 
 const MIN_DATE = "2023-01-01";
 
-function getTodayStr() {
-  return new Date().toISOString().split("T")[0];
+function getYesterdayStr() {
+  const d = new Date();
+  d.setDate(d.getDate() - 1);
+  return d.toISOString().split("T")[0];
 }
 
 function subDays(n: number): string {
   const d = new Date();
-  d.setDate(d.getDate() - n);
+  d.setDate(d.getDate() - n);           // n days ago; max stays at yesterday
   return d.toISOString().split("T")[0];
 }
 
@@ -31,14 +33,14 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
   const { t } = useTranslation();
   const p = t.pages.parcelDelivery;
 
-  const { startDate, endDate, deliveryType, setStartDate, setEndDate, setDeliveryType } =
+  const { startDate, endDate, deliveryType, usingMock, setStartDate, setEndDate, setDeliveryType } =
     useParcelDeliveryStore();
 
   const [pendingStart, setPendingStart] = useState(startDate);
   const [pendingEnd, setPendingEnd] = useState(endDate);
   const [activeQuick, setActiveQuick] = useState<string | null>(null);
 
-  const today = getTodayStr();
+  const yesterday = getYesterdayStr();
   const isDirty = pendingStart !== startDate || pendingEnd !== endDate;
 
   function applyDates() {
@@ -55,16 +57,16 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
   }
 
   const quickSelects = [
-    { label: "7D",  s: subDays(6),    e: today },
-    { label: "30D", s: subDays(29),   e: today },
-    { label: "90D", s: subDays(89),   e: today },
-    { label: "YTD", s: startOfYear(), e: today },
+    { label: "7D",  s: subDays(7),     e: yesterday },
+    { label: "30D", s: subDays(30),    e: yesterday },
+    { label: "90D", s: subDays(90),    e: yesterday },
+    { label: "YTD", s: startOfYear(),  e: yesterday },
   ];
 
   const tabs = [
-    { label: p.tabOperations,  href: "/parcel-delivery/operations",         Icon: Activity   },
-    { label: p.tabCostProfit,  href: "/parcel-delivery/cost-profitability", Icon: TrendingUp },
-    { label: p.tabPerformance, href: "/parcel-delivery/performance",        Icon: Gauge      },
+    { label: p.tabOperations,  href: "/parcel-delivery/operations",         Icon: Activity },
+    { label: p.tabCostProfit,  href: "/parcel-delivery/cost-profitability", Icon: Wallet   },
+    { label: p.tabPerformance, href: "/parcel-delivery/performance",        Icon: Gauge    },
   ];
 
   const deliveryTypes = [
@@ -76,8 +78,8 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
   return (
     <div className="space-y-0">
 
-      {/* ── Tab navigation ── */}
-      <div className="border-b border-[var(--border)] mb-5">
+      {/* ── Tab navigation + demo badge ── */}
+      <div className="border-b border-[var(--border)] mb-5 flex items-end justify-between">
         <nav className="flex gap-0.5">
           {tabs.map((tab) => {
             const active = pathname === tab.href || pathname.startsWith(tab.href + "/");
@@ -105,20 +107,29 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
             );
           })}
         </nav>
+
+        {/* Demo badge — right side of tab bar */}
+        {usingMock && (
+          <div className="mb-1 mr-1 flex items-center gap-1.5 text-[10px] font-medium text-amber-400/90
+            border border-amber-400/25 bg-amber-400/5 px-2.5 py-1 rounded-lg">
+            <span className="w-1.5 h-1.5 rounded-full bg-amber-400/70 animate-pulse shrink-0" />
+            {p.demoData}
+          </div>
+        )}
       </div>
 
       {/* ── Futuristic filter bar ── */}
-      <div className="flex flex-col sm:flex-row sm:items-center gap-2 sm:gap-0 mb-5
-        bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-0 mb-5
+        bg-[var(--surface)] border border-[var(--border)] rounded-2xl overflow-hidden divide-x-0 sm:divide-x divide-[var(--border)]">
 
         {/* Quick-select pills */}
-        <div className="flex items-center gap-1 px-3 py-2.5">
+        <div className="flex items-center gap-1 px-3 py-2.5 shrink-0">
           {quickSelects.map((qs) => (
             <button
               key={qs.label}
               onClick={() => applyQuick(qs.label, qs.s, qs.e)}
               className={cn(
-                "px-3 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200",
+                "px-2.5 py-1.5 text-xs font-semibold rounded-xl border transition-all duration-200",
                 activeQuick === qs.label
                   ? "bg-primary/15 border-primary/50 text-primary shadow-[0_0_10px_rgba(99,102,241,0.2)]"
                   : "bg-transparent border-transparent text-[var(--text-muted)] hover:border-[var(--border)] hover:text-[var(--text-secondary)]"
@@ -129,13 +140,11 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
           ))}
         </div>
 
-        {/* Separator */}
-        <div className="hidden sm:block w-px h-8 bg-[var(--border)] shrink-0" />
+        {/* Horizontal rule for mobile */}
         <div className="sm:hidden h-px w-full bg-[var(--border)]" />
 
         {/* Date range */}
         <div className="flex items-center gap-2 px-3 py-2 sm:py-0">
-          {/* From */}
           <div className="relative flex items-center group">
             <CalendarDays
               size={13}
@@ -150,18 +159,14 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
               className={cn(
                 "bg-[var(--surface-secondary)] border text-[var(--text-primary)] text-xs font-mono",
                 "rounded-xl pl-8 pr-2 py-1.5 w-[138px] cursor-pointer transition-all",
-                "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
-                "hover:border-primary/30",
-                isDirty && (pendingStart !== startDate)
-                  ? "border-primary/40 text-primary"
-                  : "border-[var(--border)]"
+                "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 hover:border-primary/30",
+                isDirty && pendingStart !== startDate ? "border-primary/40" : "border-[var(--border)]"
               )}
             />
           </div>
 
           <ArrowRight size={12} className="text-[var(--text-muted)] shrink-0" />
 
-          {/* To */}
           <div className="relative flex items-center group">
             <CalendarDays
               size={13}
@@ -171,26 +176,21 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
               type="date"
               value={pendingEnd}
               min={pendingStart}
-              max={today}
+              max={yesterday}
               onChange={(e) => { setPendingEnd(e.target.value); setActiveQuick(null); }}
               className={cn(
                 "bg-[var(--surface-secondary)] border text-[var(--text-primary)] text-xs font-mono",
                 "rounded-xl pl-8 pr-2 py-1.5 w-[138px] cursor-pointer transition-all",
-                "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50",
-                "hover:border-primary/30",
-                isDirty && (pendingEnd !== endDate)
-                  ? "border-primary/40 text-primary"
-                  : "border-[var(--border)]"
+                "focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary/50 hover:border-primary/30",
+                isDirty && pendingEnd !== endDate ? "border-primary/40" : "border-[var(--border)]"
               )}
             />
           </div>
 
-          {/* Apply */}
           {isDirty && (
             <motion.button
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
               onClick={applyDates}
               className="px-3 py-1.5 text-xs font-semibold rounded-xl bg-primary text-white
                 hover:bg-primary/90 transition-colors shadow-[0_0_12px_rgba(99,102,241,0.25)] shrink-0"
@@ -200,22 +200,32 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
           )}
         </div>
 
-        {/* Right separator + delivery type — pushed to end */}
-        <div className="hidden sm:block w-px h-8 bg-[var(--border)] shrink-0 ml-auto" />
+        {/* Mobile separator */}
         <div className="sm:hidden h-px w-full bg-[var(--border)]" />
 
-        <div className="relative px-3 py-2 sm:py-0">
+        {/* Delivery type — styled with solid bg for dark/light theme */}
+        <div className="relative px-3 py-2 sm:py-1.5 sm:ml-auto">
           <select
             value={deliveryType}
             onChange={(e) => setDeliveryType(e.target.value as "all" | "HD" | "SD")}
-            className="appearance-none bg-transparent text-[var(--text-primary)] text-xs font-medium
-              pl-2 pr-7 py-1.5 focus:outline-none cursor-pointer w-full sm:w-auto"
+            className={cn(
+              "appearance-none text-xs font-medium pl-2 pr-7 py-1.5 rounded-xl cursor-pointer",
+              "bg-[var(--surface-secondary)] border border-[var(--border)]",
+              "text-[var(--text-primary)] focus:outline-none focus:border-primary/50",
+              "w-full sm:w-auto"
+            )}
           >
             {deliveryTypes.map((dt) => (
-              <option key={dt.value} value={dt.value}>{dt.label}</option>
+              <option
+                key={dt.value}
+                value={dt.value}
+                className="bg-[var(--surface)] text-[var(--text-primary)]"
+              >
+                {dt.label}
+              </option>
             ))}
           </select>
-          <ChevronDown size={12} className="absolute right-4 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
+          <ChevronDown size={12} className="absolute right-5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] pointer-events-none" />
         </div>
       </div>
 

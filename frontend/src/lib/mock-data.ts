@@ -784,7 +784,8 @@ export const mockParcelOpsKpis: ParcelOpsKpis = {
   nbr_colis: 42_180,
   nbr_livres: 31_213,
   nbr_retours: 7_592,
-  nbr_echecs: 3_375,
+  nbr_echecs: 1_120,
+  nbr_en_transit: 2_255,
   avg_duree_livraison_h: 30.4,
   taux_livraison_pct: 74.0,
   taux_retour_pct: 18.0,
@@ -792,6 +793,7 @@ export const mockParcelOpsKpis: ParcelOpsKpis = {
   pop_livraison: 1.8,
   pop_retour: -0.5,
   pop_echecs: -2.1,
+  pop_en_transit: -3.8,
   pop_duree: -3.4,
 }
 
@@ -807,7 +809,8 @@ export const mockParcelOpsTrend: ParcelTrendPoint[] = Array.from({ length: 30 },
     date: date.toISOString().split("T")[0],
     nbr_livres,
     nbr_retours,
-    nbr_echecs: Math.round(base * 0.08),
+    nbr_echecs: Math.round(base * 0.03),
+    nbr_en_transit: Math.round(base * (0.05 + Math.random() * 0.02)),
   }
 })
 
@@ -943,6 +946,70 @@ export const mockParcelClaimsTypes: ParcelClaimsType[] = [
   { sinistre_type: "Dommage",        nbr_sinistres: 60  },
   { sinistre_type: "Vol",            nbr_sinistres: 25  },
   { sinistre_type: "Retard excessif",nbr_sinistres: 15  },
+]
+
+// ─── Region-to-region parcel flow matrix ─────────────────────────────────────
+import type { ParcelRegionFlowItem } from "@/types/parcel_delivery"
+
+export const REGION_FLOW_REGIONS = ["Alger", "Oran", "Constantine", "Annaba", "Sétif", "Batna", "Blida"]
+
+export const mockParcelRegionFlow: ParcelRegionFlowItem[] = [
+  // From Alger
+  { origin: "Alger", destination: "Alger",       nbr_colis: 8_420 },
+  { origin: "Alger", destination: "Oran",         nbr_colis: 4_180 },
+  { origin: "Alger", destination: "Constantine",  nbr_colis: 3_650 },
+  { origin: "Alger", destination: "Annaba",       nbr_colis: 2_340 },
+  { origin: "Alger", destination: "Sétif",        nbr_colis: 2_910 },
+  { origin: "Alger", destination: "Batna",        nbr_colis: 1_820 },
+  { origin: "Alger", destination: "Blida",        nbr_colis: 3_200 },
+  // From Oran
+  { origin: "Oran", destination: "Alger",         nbr_colis: 2_860 },
+  { origin: "Oran", destination: "Oran",          nbr_colis: 3_540 },
+  { origin: "Oran", destination: "Constantine",   nbr_colis: 840  },
+  { origin: "Oran", destination: "Annaba",        nbr_colis: 520  },
+  { origin: "Oran", destination: "Sétif",         nbr_colis: 680  },
+  { origin: "Oran", destination: "Batna",         nbr_colis: 410  },
+  { origin: "Oran", destination: "Blida",         nbr_colis: 720  },
+  // From Constantine
+  { origin: "Constantine", destination: "Alger",        nbr_colis: 2_140 },
+  { origin: "Constantine", destination: "Oran",         nbr_colis: 620  },
+  { origin: "Constantine", destination: "Constantine",  nbr_colis: 2_890 },
+  { origin: "Constantine", destination: "Annaba",       nbr_colis: 1_240 },
+  { origin: "Constantine", destination: "Sétif",        nbr_colis: 980  },
+  { origin: "Constantine", destination: "Batna",        nbr_colis: 860  },
+  { origin: "Constantine", destination: "Blida",        nbr_colis: 480  },
+  // From Annaba
+  { origin: "Annaba", destination: "Alger",        nbr_colis: 1_280 },
+  { origin: "Annaba", destination: "Oran",         nbr_colis: 340  },
+  { origin: "Annaba", destination: "Constantine",  nbr_colis: 940  },
+  { origin: "Annaba", destination: "Annaba",       nbr_colis: 1_560 },
+  { origin: "Annaba", destination: "Sétif",        nbr_colis: 620  },
+  { origin: "Annaba", destination: "Batna",        nbr_colis: 480  },
+  { origin: "Annaba", destination: "Blida",        nbr_colis: 280  },
+  // From Sétif
+  { origin: "Sétif", destination: "Alger",         nbr_colis: 1_640 },
+  { origin: "Sétif", destination: "Oran",          nbr_colis: 480  },
+  { origin: "Sétif", destination: "Constantine",   nbr_colis: 1_120 },
+  { origin: "Sétif", destination: "Annaba",        nbr_colis: 680  },
+  { origin: "Sétif", destination: "Sétif",         nbr_colis: 1_840 },
+  { origin: "Sétif", destination: "Batna",         nbr_colis: 720  },
+  { origin: "Sétif", destination: "Blida",         nbr_colis: 340  },
+  // From Batna
+  { origin: "Batna", destination: "Alger",         nbr_colis: 980  },
+  { origin: "Batna", destination: "Oran",          nbr_colis: 280  },
+  { origin: "Batna", destination: "Constantine",   nbr_colis: 840  },
+  { origin: "Batna", destination: "Annaba",        nbr_colis: 520  },
+  { origin: "Batna", destination: "Sétif",         nbr_colis: 680  },
+  { origin: "Batna", destination: "Batna",         nbr_colis: 1_240 },
+  { origin: "Batna", destination: "Blida",         nbr_colis: 240  },
+  // From Blida
+  { origin: "Blida", destination: "Alger",         nbr_colis: 2_840 },
+  { origin: "Blida", destination: "Oran",          nbr_colis: 680  },
+  { origin: "Blida", destination: "Constantine",   nbr_colis: 560  },
+  { origin: "Blida", destination: "Annaba",        nbr_colis: 340  },
+  { origin: "Blida", destination: "Sétif",         nbr_colis: 480  },
+  { origin: "Blida", destination: "Batna",         nbr_colis: 320  },
+  { origin: "Blida", destination: "Blida",         nbr_colis: 1_680 },
 ]
 
 export const mockParcelsPaginated: ParcelsPaginatedResponse = {

@@ -201,7 +201,6 @@ const MOCK: PageData = {
 
 export default function PerformancePage() {
   const [data, setData] = useState<PageData>(MOCK);
-  const [usingMock, setUsingMock] = useState(false);
   const [fetching, setFetching] = useState(false);
   // Defer all ECharts initialization until after first paint
   const [chartsReady, setChartsReady] = useState(false);
@@ -219,7 +218,7 @@ export default function PerformancePage() {
   const p = t.pages.parcelDelivery;
   const ct = useChartTheme();
 
-  const { startDate, endDate, deliveryType, rangeDays } = useParcelDeliveryStore();
+  const { startDate, endDate, deliveryType, rangeDays, setUsingMock } = useParcelDeliveryStore();
   const days = rangeDays();
   const trendLabel = `vs ${days} j précédents`;
 
@@ -275,11 +274,7 @@ export default function PerformancePage() {
         </div>
       )}
 
-      {usingMock && !fetching && (
-        <div className="sticky top-0 z-10 text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg w-fit">
-          {p.demoData}
-        </div>
-      )}
+      {/* Demo badge is shown in layout.tsx's tab row — no badge here */}
 
       {/* ── Row 1: KPI cards — paint immediately, no deferral needed ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">

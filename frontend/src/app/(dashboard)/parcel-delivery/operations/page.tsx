@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
-import { Package, TrendingUp, TrendingDown, Clock, AlertTriangle } from "lucide-react";
+import { Package, TrendingUp, TrendingDown, Clock, Truck } from "lucide-react";
 
 import { KpiCard } from "@/components/ui/KpiCard";
 import { PieChart } from "@/components/charts/PieChart";
@@ -12,20 +12,21 @@ import { useTranslation } from "@/lib/i18n";
 import { useChartTheme } from "@/lib/chartTheme";
 import { useParcelDeliveryStore } from "@/stores/parcelDeliveryStore";
 import { parcelDeliveryApi } from "@/lib/api";
-import { formatNumber, formatPercent } from "@/lib/utils";
+import { formatNumber } from "@/lib/utils";
 import {
   mockParcelOpsKpis,
   mockParcelOpsTrend,
   mockParcelStatusBreakdown,
-  mockParcelByDeliveryTypeNew,
   mockParcelZoneBreakdown,
+  mockParcelRegionFlow,
+  REGION_FLOW_REGIONS,
 } from "@/lib/mock-data";
 import type {
   ParcelOpsKpis,
   ParcelTrendPoint,
   ParcelStatusItem,
-  ParcelDeliveryTypeKpis,
   ParcelZoneItem,
+  ParcelRegionFlowItem,
 } from "@/types/parcel_delivery";
 
 // ─── Shared sub-components ────────────────────────────────────────────────────
@@ -58,11 +59,11 @@ function EmptyChartState() {
   );
 }
 
-// ─── Volume trend chart builder ───────────────────────────────────────────────
+// ─── Volume trend chart ───────────────────────────────────────────────────────
 
 function buildVolumeTrendOption(
   trend: ParcelTrendPoint[],
-  labels: { delivered: string; returned: string; failed: string },
+  labels: { delivered: string; returned: string; inTransit: string },
   ct: ReturnType<typeof useChartTheme>
 ) {
   const cats = trend.map((d) => d.date.slice(5));
@@ -110,67 +111,106 @@ function buildVolumeTrendOption(
         itemStyle: { color: "#F59E0B", borderRadius: [4, 4, 0, 0] },
       },
       {
-        name: labels.failed,
+        name: labels.inTransit,
         type: "bar" as const,
         stack: "vol",
-        data: trend.map((d) => d.nbr_echecs),
-        itemStyle: { color: "#EF4444", borderRadius: [4, 4, 0, 0] },
+        data: trend.map((d) => d.nbr_en_transit),
+        itemStyle: { color: "#6366F1", borderRadius: [4, 4, 0, 0] },
       },
     ],
   };
 }
 
-// ─── HD vs SD comparison chart ────────────────────────────────────────────────
+// ─── Region flow heatmap ──────────────────────────────────────────────────────
 
-function buildHDvsSDOption(
-  byType: ParcelDeliveryTypeKpis[],
-  labels: { deliveryRate: string; returnRate: string; avgFee: string; avgDuration: string; durationUnit: string },
+function buildRegionFlowOption(
+  flow: ParcelRegionFlowItem[],
+  regions: string[],
   ct: ReturnType<typeof useChartTheme>
 ) {
-  const types = byType.map((d) => d.delivery_type);
-  const metrics = [
-    { name: labels.deliveryRate, values: byType.map((d) => d.taux_livraison_pct), suffix: "%" },
-    { name: labels.returnRate,   values: byType.map((d) => d.taux_retour_pct),    suffix: "%" },
-    { name: labels.avgFee,       values: byType.map((d) => d.avg_fee_dzd),        suffix: " DZD" },
-    { name: labels.avgDuration,  values: byType.map((d) => d.avg_duree_livree_h), suffix: labels.durationUnit },
-  ];
-  const COLORS = ["#6366F1", "#22D3EE", "#10B981", "#F59E0B"];
+  // Build lookup map
+  const lookup = new Map(flow.map((f) => [`${f.origin}|${f.destination}`, f.nbr_colis]));
+  const maxVal = Math.max(...flow.map((f) => f.nbr_colis));
+
+  // ECharts heatmap: [dest_idx, origin_idx, value]
+  const data: [number, number, number][] = [];
+  regions.forEach((origin, yi) => {
+    regions.forEach((dest, xi) => {
+      const count = lookup.get(`${origin}|${dest}`) ?? 0;
+      data.push([xi, yi, count]);
+    });
+  });
+
   return {
     backgroundColor: "transparent",
     tooltip: {
-      trigger: "axis" as const,
+      trigger: "item" as const,
       backgroundColor: ct.tooltipBg,
       borderColor: ct.borderColor,
       textStyle: { color: ct.textColor, fontSize: 12 },
-      axisPointer: { type: "shadow" as const },
+      formatter: (params: { value: [number, number, number] }) => {
+        const [xi, yi, count] = params.value;
+        if (!count) return "";
+        return `<b>${regions[yi]}</b> → <b>${regions[xi]}</b><br/>${count.toLocaleString("fr-FR")} colis`;
+      },
     },
-    legend: {
-      top: 0, right: 0,
-      textStyle: { color: ct.legendColor, fontSize: 11 },
-      itemWidth: 10, itemHeight: 10,
-    },
-    grid: { left: 16, right: 16, top: 36, bottom: 0, containLabel: true },
+    grid: { left: 60, right: 12, top: 12, bottom: 60, containLabel: false },
     xAxis: {
       type: "category" as const,
-      data: types,
-      axisLine: { lineStyle: { color: ct.axisColor } },
+      data: regions,
+      position: "bottom" as const,
+      axisLine: { show: false },
       axisTick: { show: false },
-      axisLabel: { color: ct.labelColor, fontSize: 12 },
+      axisLabel: { color: ct.labelColor, fontSize: 10, rotate: 35 },
+      name: "Destination",
+      nameLocation: "middle" as const,
+      nameGap: 46,
+      nameTextStyle: { color: ct.labelColor, fontSize: 10 },
     },
-    yAxis: { show: false },
-    series: metrics.map((m, i) => ({
-      name: m.name,
-      type: "bar" as const,
-      data: m.values,
-      itemStyle: { color: COLORS[i], borderRadius: [4, 4, 0, 0] },
-      label: {
-        show: true,
-        position: "top" as const,
-        color: ct.legendColor,
-        fontSize: 11,
-        formatter: (p: { value: number }) => `${p.value}${m.suffix}`,
+    yAxis: {
+      type: "category" as const,
+      data: regions,
+      axisLine: { show: false },
+      axisTick: { show: false },
+      axisLabel: { color: ct.labelColor, fontSize: 10 },
+      name: "Origine",
+      nameLocation: "middle" as const,
+      nameGap: 50,
+      nameTextStyle: { color: ct.labelColor, fontSize: 10 },
+    },
+    visualMap: {
+      min: 0,
+      max: maxVal,
+      show: false,
+      calculable: false,
+      inRange: {
+        color: [
+          ct.surface ?? "rgba(99,102,241,0.04)",
+          "rgba(99,102,241,0.18)",
+          "rgba(99,102,241,0.55)",
+          "rgba(99,102,241,0.85)",
+        ],
       },
-    })),
+    },
+    series: [
+      {
+        type: "heatmap" as const,
+        data,
+        label: {
+          show: true,
+          color: ct.textColor,
+          fontSize: 9,
+          formatter: (p: { value: [number, number, number] }) =>
+            p.value[2] >= 500
+              ? (p.value[2] >= 1000 ? `${(p.value[2] / 1000).toFixed(1)}k` : String(p.value[2]))
+              : "",
+        },
+        emphasis: {
+          itemStyle: { shadowBlur: 12, shadowColor: "rgba(99,102,241,0.4)" },
+        },
+        itemStyle: { borderColor: ct.bgColor, borderWidth: 1.5, borderRadius: 3 },
+      },
+    ],
   };
 }
 
@@ -180,7 +220,7 @@ interface PageData {
   kpis: ParcelOpsKpis
   trend: ParcelTrendPoint[]
   statusBreakdown: ParcelStatusItem[]
-  byDeliveryType: ParcelDeliveryTypeKpis[]
+  regionFlow: ParcelRegionFlowItem[]
   zones: ParcelZoneItem[]
 }
 
@@ -188,16 +228,13 @@ const MOCK: PageData = {
   kpis: mockParcelOpsKpis,
   trend: mockParcelOpsTrend,
   statusBreakdown: mockParcelStatusBreakdown,
-  byDeliveryType: mockParcelByDeliveryTypeNew,
+  regionFlow: mockParcelRegionFlow,
   zones: mockParcelZoneBreakdown,
 };
 
 export default function OperationsPage() {
-  // Start with mock data visible immediately — no blocking skeleton on mount
   const [data, setData] = useState<PageData>(MOCK);
-  const [usingMock, setUsingMock] = useState(false);
   const [fetching, setFetching] = useState(false);
-  // Defer ECharts initialization until after first paint
   const [chartsReady, setChartsReady] = useState(false);
   const raf = useRef<number | null>(null);
 
@@ -210,7 +247,7 @@ export default function OperationsPage() {
   const p = t.pages.parcelDelivery;
   const ct = useChartTheme();
 
-  const { startDate, endDate, deliveryType, rangeDays } = useParcelDeliveryStore();
+  const { startDate, endDate, deliveryType, rangeDays, setUsingMock } = useParcelDeliveryStore();
   const days = rangeDays();
   const trendLabel = `vs ${days} j précédents`;
 
@@ -223,14 +260,14 @@ export default function OperationsPage() {
   const fetchData = useCallback(async () => {
     setFetching(true);
     try {
-      const [kpis, trend, statusBreakdown, byDeliveryType, zones] = await Promise.all([
+      const [kpis, trend, statusBreakdown, regionFlow, zones] = await Promise.all([
         parcelDeliveryApi.opsKpis(filters),
         parcelDeliveryApi.opsTrend(filters),
         parcelDeliveryApi.statusBreakdown(filters),
-        parcelDeliveryApi.byDeliveryType(filters),
+        parcelDeliveryApi.regionFlow(filters),
         parcelDeliveryApi.zoneBreakdown(filters),
       ]);
-      setData({ kpis, trend, statusBreakdown, byDeliveryType, zones });
+      setData({ kpis, trend, statusBreakdown, regionFlow, zones });
       setUsingMock(false);
     } catch {
       setData(MOCK);
@@ -242,20 +279,20 @@ export default function OperationsPage() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const { kpis, trend, statusBreakdown, byDeliveryType, zones } = data;
+  const { kpis, trend, statusBreakdown, regionFlow, zones } = data;
 
   const statusPieData = statusBreakdown
     .filter((s) => s.nbr_colis > 0)
     .map((s) => ({ name: s.status_name, value: s.nbr_colis }));
 
   const zoneBarData = zones.map((z) => ({
-    name: `Zone ${z.zone_num} (${z.fee_range})`,
+    name: `Z${z.zone_num} — ${z.fee_range}`,
     value: z.nbr_colis,
   }));
 
   return (
     <div className="space-y-5">
-      {/* Thin progress bar during background fetch */}
+      {/* Animated progress bar during background fetch */}
       {fetching && (
         <div className="h-0.5 rounded-full overflow-hidden bg-[var(--surface-secondary)]">
           <motion.div
@@ -267,20 +304,51 @@ export default function OperationsPage() {
         </div>
       )}
 
-      {/* Mock data badge */}
-      {usingMock && !fetching && (
-        <div className="sticky top-0 z-10 text-xs text-amber-400/80 border border-amber-400/20 bg-amber-400/5 px-3 py-1.5 rounded-lg w-fit">
-          {p.demoData}
-        </div>
-      )}
-
       {/* ── Row 1: 5 KPI cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard title={p.kpiTotalParcels}  value={formatNumber(kpis.nbr_colis)}              trend={kpis.pop_colis}      trendLabel={trendLabel} icon={<Package size={15} />}       index={0} />
-        <KpiCard title={p.kpiDeliveryRate}  value={formatPercent(kpis.taux_livraison_pct)}    trend={kpis.pop_livraison}  trendLabel={trendLabel} icon={<TrendingUp size={15} />}    index={1} />
-        <KpiCard title={p.kpiReturnRate}    value={formatPercent(kpis.taux_retour_pct)}       trend={-kpis.pop_retour}    trendLabel={trendLabel} icon={<TrendingDown size={15} />}  index={2} />
-        <KpiCard title={p.kpiFailedParcels} value={formatNumber(kpis.nbr_echecs)}             trend={-kpis.pop_echecs}    trendLabel={trendLabel} icon={<AlertTriangle size={15} />} index={3} />
-        <KpiCard title={p.kpiAvgDuration}   value={`${kpis.avg_duree_livraison_h.toFixed(1)} ${p.durationUnit}`} trend={-kpis.pop_duree} trendLabel={trendLabel} icon={<Clock size={15} />} index={4} />
+        <KpiCard
+          title={p.kpiTotalParcels}
+          value={formatNumber(kpis.nbr_colis)}
+          trend={kpis.pop_colis}
+          trendLabel={trendLabel}
+          icon={<Package size={15} />}
+          index={0}
+        />
+        {/* Delivered Parcels — count, not rate */}
+        <KpiCard
+          title={p.kpiDeliveryRate}
+          value={formatNumber(kpis.nbr_livres)}
+          trend={kpis.pop_livraison}
+          trendLabel={trendLabel}
+          icon={<TrendingUp size={15} />}
+          index={1}
+        />
+        {/* Returns — count, not rate */}
+        <KpiCard
+          title={p.kpiReturnRate}
+          value={formatNumber(kpis.nbr_retours)}
+          trend={-kpis.pop_retour}
+          trendLabel={trendLabel}
+          icon={<TrendingDown size={15} />}
+          index={2}
+        />
+        {/* In Transit */}
+        <KpiCard
+          title={p.kpiFailedParcels}
+          value={formatNumber(kpis.nbr_en_transit)}
+          trend={kpis.pop_en_transit}
+          trendLabel={trendLabel}
+          icon={<Truck size={15} />}
+          index={3}
+        />
+        <KpiCard
+          title={p.kpiAvgDuration}
+          value={`${kpis.avg_duree_livraison_h.toFixed(1)} ${p.durationUnit}`}
+          trend={-kpis.pop_duree}
+          trendLabel={trendLabel}
+          icon={<Clock size={15} />}
+          index={4}
+        />
       </div>
 
       {/* ── Row 2: Volume trend + Status breakdown ── */}
@@ -288,7 +356,11 @@ export default function OperationsPage() {
         <SectionCard title={p.sectionVolumeTrend}>
           {!chartsReady ? <div className="h-[280px]" /> : trend.length === 0 ? <EmptyChartState /> : (
             <ReactECharts
-              option={buildVolumeTrendOption(trend, { delivered: p.seriesDelivered, returned: p.seriesReturned, failed: p.seriesFailed }, ct)}
+              option={buildVolumeTrendOption(trend, {
+                delivered: p.seriesDelivered,
+                returned: p.seriesReturned,
+                inTransit: p.seriesInTransit,
+              }, ct)}
               style={{ height: 280 }}
               notMerge
               lazyUpdate
@@ -301,56 +373,32 @@ export default function OperationsPage() {
         </SectionCard>
       </div>
 
-      {/* ── Row 3: HD vs SD + Zone distribution ── */}
+      {/* ── Row 3: Region Flow heatmap + Zone distribution ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+
+        {/* Region × Region flow matrix */}
         <SectionCard title={p.sectionDeliveryTypeComp}>
-          {!chartsReady ? <div className="h-[360px]" /> : (
-            <div>
-              {/* HD vs SD metric cards */}
-              <div className="grid grid-cols-2 gap-3 mb-4">
-                {byDeliveryType.map((dt) => (
-                  <div
-                    key={dt.delivery_type}
-                    className="bg-[var(--surface-secondary)] border border-[var(--border)] rounded-lg p-4 space-y-2.5"
-                  >
-                    <span className={`text-xs font-bold px-3 py-1 rounded-full inline-block ring-1 ${
-                      dt.delivery_type === "HD"
-                        ? "bg-indigo-500/15 text-indigo-300 ring-indigo-500/30"
-                        : "bg-cyan-500/15 text-cyan-300 ring-cyan-500/30"
-                    }`}>
-                      {dt.delivery_type === "HD" ? p.hdLabel : p.sdLabel}
-                    </span>
-                    <p className="text-xl font-bold text-[var(--text-primary)]">{formatNumber(dt.nbr_colis)}</p>
-                    {[
-                      { label: p.hdDeliveryRate, value: `${dt.taux_livraison_pct.toFixed(1)}%`, positive: dt.taux_livraison_pct >= 73 },
-                      { label: p.hdReturnRate,   value: `${dt.taux_retour_pct.toFixed(1)}%`,    positive: dt.taux_retour_pct < 20 },
-                      { label: p.hdAvgFee,       value: `${dt.avg_fee_dzd.toFixed(0)} DZD`,    positive: true },
-                      { label: p.hdAvgDuration,  value: `${dt.avg_duree_livree_h.toFixed(1)} ${p.durationUnit}`, positive: dt.avg_duree_livree_h < 36 },
-                    ].map(({ label, value, positive }) => (
-                      <div key={label} className="flex justify-between text-xs">
-                        <span className="text-slate-400">{label}</span>
-                        <span className={`font-semibold ${positive ? "text-emerald-400" : "text-amber-400"}`}>{value}</span>
-                      </div>
-                    ))}
-                  </div>
-                ))}
-              </div>
-              <hr className="border-t border-[var(--border)] mb-4" />
-              {byDeliveryType.length === 0 ? <EmptyChartState /> : (
-                <ReactECharts
-                  option={buildHDvsSDOption(byDeliveryType, { deliveryRate: p.hdDeliveryRate, returnRate: p.hdReturnRate, avgFee: p.hdAvgFee, avgDuration: p.hdAvgDuration, durationUnit: p.durationUnit }, ct)}
-                  style={{ height: 160 }}
-                  notMerge
-                  lazyUpdate
-                />
-              )}
-            </div>
+          {!chartsReady ? <div className="h-[320px]" /> : regionFlow.length === 0 ? <EmptyChartState /> : (
+            <ReactECharts
+              option={buildRegionFlowOption(regionFlow, REGION_FLOW_REGIONS, ct)}
+              style={{ height: 320 }}
+              notMerge
+              lazyUpdate
+            />
           )}
         </SectionCard>
 
+        {/* Zone distribution — gridLeft=160 to fit the longer labels */}
         <SectionCard title={p.sectionZoneDist}>
           {!chartsReady ? <div className="h-[280px]" /> : (
-            <BarChart data={zoneBarData} height={280} color="#6366F1" horizontal label="colis" />
+            <BarChart
+              data={zoneBarData}
+              height={280}
+              color="#6366F1"
+              horizontal
+              label="colis"
+              gridLeft={10}
+            />
           )}
         </SectionCard>
       </div>

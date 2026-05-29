@@ -13,6 +13,7 @@ export interface ParcelOpsKpis {
   nbr_livres: number
   nbr_retours: number
   nbr_echecs: number
+  nbr_en_transit: number
   avg_duree_livraison_h: number
   taux_livraison_pct: number
   taux_retour_pct: number
@@ -20,6 +21,7 @@ export interface ParcelOpsKpis {
   pop_livraison: number
   pop_retour: number
   pop_echecs: number
+  pop_en_transit: number
   pop_duree: number
 }
 
@@ -28,6 +30,13 @@ export interface ParcelTrendPoint {
   nbr_livres: number
   nbr_retours: number
   nbr_echecs: number
+  nbr_en_transit: number
+}
+
+export interface ParcelRegionFlowItem {
+  origin: string
+  destination: string
+  nbr_colis: number
 }
 
 export interface ParcelStatusItem {

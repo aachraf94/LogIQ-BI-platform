@@ -556,6 +556,11 @@ export const parcelDeliveryApi = {
       `/analytics/parcel-delivery/zone-breakdown/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 
+  regionFlow: (f: ParcelDeliveryFilters) =>
+    request<import("@/types/parcel_delivery").ParcelRegionFlowItem[]>(
+      `/analytics/parcel-delivery/region-flow/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
+    ),
+
   // Cost & Profitability
   costKpis: (f: ParcelDeliveryFilters) =>
     request<import("@/types/parcel_delivery").ParcelCostKpis>(

@@ -17,6 +17,7 @@ interface BarChartProps {
   horizontal?: boolean;
   label?: string;
   markLine?: BarChartMarkLine;
+  gridLeft?: number;
 }
 
 function EmptyState({ height }: { height: number }) {
@@ -34,7 +35,7 @@ function EmptyState({ height }: { height: number }) {
   );
 }
 
-export function BarChart({ data, height = 300, color = "#6366F1", horizontal = false, label, markLine }: BarChartProps) {
+export function BarChart({ data, height = 300, color = "#6366F1", horizontal = false, label, markLine, gridLeft }: BarChartProps) {
   const t = useChartTheme()
 
   if (data.length === 0) {
@@ -79,7 +80,7 @@ export function BarChart({ data, height = 300, color = "#6366F1", horizontal = f
       axisPointer: { type: "shadow" },
     },
     grid: {
-      left: horizontal ? 100 : 16,
+      left: gridLeft ?? (horizontal ? 100 : 16),
       right: 16,
       top: 16,
       bottom: 16,
