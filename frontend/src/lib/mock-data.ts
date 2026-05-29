@@ -1071,6 +1071,179 @@ export const mockParcelZoneProfit: ParcelZoneProfitItem[] = [
   { zone_num: 4, fee_range: "1 200–1 600",nbr_colis: 3_600,  total_fees: 4_968_000, cout_total: 3_776_880, marge_brute: 1_191_120, marge_pct: 24.0 },
 ]
 
+// ─── Transport Analytics mock data ───────────────────────────────────────────
+
+import type {
+  TransportOpsKpis,
+  TransportMonthlyTrendPoint,
+  TransportServiceBreakdownItem,
+  TransportODItem,
+  TransportDistanceCategoryItem,
+  TransportCostKpis,
+  TransportRevCostTrendPoint,
+  TransportCostCategoryItem,
+  TransportServiceMarginItem,
+  TransportCorridorItem,
+  TransportPerfKpis,
+  TransportOnTimeTrendPoint,
+  TransportDelayBucketItem,
+  TransportRatingBucketItem,
+  TransportVehiclePerfItem,
+} from "@/types/transport_analytics"
+
+const TRANSPORT_OD_WILAYAS = ["Alger", "Oran", "Constantine", "Annaba", "Sétif", "Blida", "Batna"]
+
+export const mockTransportOpsKpis: TransportOpsKpis = {
+  nbr_requests: 412,
+  completion_rate_pct: 84.7,
+  cancellation_rate_pct: 6.8,
+  avg_distance_km: 248.4,
+  avg_stops: 3.2,
+  pop_requests: 7.3,
+  pop_completion_rate: 1.4,
+  pop_cancellation_rate: -0.8,
+  pop_distance: -2.1,
+  pop_stops: 0.3,
+}
+
+export const mockTransportMonthlyTrend: TransportMonthlyTrendPoint[] = Array.from({ length: 12 }, (_, i) => {
+  const year = i < 6 ? 2024 : 2025
+  const month = i < 6 ? i + 7 : i - 5
+  const base = 30 + i * 1.5 + Math.sin(i * 0.6) * 4
+  const total = Math.round(base)
+  const terminees = Math.round(total * (0.82 + Math.sin(i * 0.4) * 0.04))
+  const annulees = Math.round(total * 0.07)
+  return {
+    period: `${year}-${String(month).padStart(2, "0")}`,
+    nbr_requests: total,
+    nbr_terminees: terminees,
+    nbr_en_cours: Math.round(total * 0.08),
+    nbr_annulees: annulees,
+  }
+})
+
+export const mockTransportServiceBreakdown: TransportServiceBreakdownItem[] = [
+  { service_type: "course_dediee", nbr_requests: 268, completion_rate_pct: 87.3 },
+  { service_type: "courrier",      nbr_requests:  96, completion_rate_pct: 79.2 },
+  { service_type: "manutention",   nbr_requests:  48, completion_rate_pct: 85.4 },
+]
+
+export const mockTransportODMatrix: TransportODItem[] = TRANSPORT_OD_WILAYAS.flatMap((origin) =>
+  TRANSPORT_OD_WILAYAS.map((destination) => {
+    const base = origin === destination ? 18 : 8
+    const noise = Math.floor(Math.abs(Math.sin((origin + destination).length * 7.3)) * 40)
+    return { origin, destination, nbr_requests: base + noise }
+  })
+)
+
+export const mockTransportDistanceCategory: TransportDistanceCategoryItem[] = [
+  { distance_category: "local",    km_range: "< 50 km",    nbr_requests: 104 },
+  { distance_category: "regional", km_range: "50–200 km",  nbr_requests: 186 },
+  { distance_category: "national", km_range: "> 200 km",   nbr_requests: 122 },
+]
+
+export const mockTransportCostKpis: TransportCostKpis = {
+  total_revenue:      9_840_000,
+  total_cost:         6_888_000,
+  marge_brute_dzd:    2_952_000,
+  marge_brute_pct:    30.0,
+  collection_rate_pct: 91.4,
+  pop_revenue:    8.2,
+  pop_cost:       5.1,
+  pop_margin_dzd: 14.8,
+  pop_margin_pct:  1.9,
+  pop_collection: -0.6,
+}
+
+export const mockTransportRevCostTrend: TransportRevCostTrendPoint[] = Array.from({ length: 12 }, (_, i) => {
+  const year = i < 6 ? 2024 : 2025
+  const month = i < 6 ? i + 7 : i - 5
+  const rev = Math.round((700_000 + i * 22_000 + Math.sin(i * 0.7) * 60_000))
+  const cost = Math.round(rev * (0.68 + Math.sin(i * 0.5) * 0.02))
+  return {
+    period: `${year}-${String(month).padStart(2, "0")}`,
+    total_revenue: rev,
+    total_cost: cost,
+    marge_brute_dzd: rev - cost,
+    marge_brute_pct: Math.round(((rev - cost) / rev) * 1000) / 10,
+  }
+})
+
+export const mockTransportCostCategories: TransportCostCategoryItem[] = [
+  { category: "cout_base",          label: "Tarif de base",        total_dzd: 2_820_000 },
+  { category: "cout_carburant",     label: "Carburant",            total_dzd: 1_680_000 },
+  { category: "cout_assurance",     label: "Assurance",            total_dzd:   960_000 },
+  { category: "cout_distance_supp", label: "Distance supp.",       total_dzd:   504_000 },
+  { category: "cout_manutention",   label: "Manutention",          total_dzd:   360_000 },
+  { category: "cout_peage",         label: "Péage",                total_dzd:   264_000 },
+  { category: "cout_emballage",     label: "Emballage",            total_dzd:   180_000 },
+  { category: "cout_tarif_nuit",    label: "Tarif nuit",           total_dzd:   120_000 },
+]
+
+export const mockTransportServiceMargin: TransportServiceMarginItem[] = [
+  { service_type: "course_dediee", label: "Course dédiée", total_revenue: 6_540_000, total_cost: 4_440_000, marge_brute_pct: 32.1 },
+  { service_type: "courrier",      label: "Courrier",      total_revenue: 2_160_000, total_cost: 1_620_000, marge_brute_pct: 25.0 },
+  { service_type: "manutention",   label: "Manutention",  total_revenue: 1_140_000, total_cost:   828_000, marge_brute_pct: 27.4 },
+]
+
+export const mockTransportTopCorridors: TransportCorridorItem[] = [
+  { corridor: "Alger → Oran",        nbr_requests: 78, taux_marge_pct: 23.8, total_revenue: 1_638_000 },
+  { corridor: "Alger → Constantine", nbr_requests: 64, taux_marge_pct: 24.6, total_revenue: 1_459_200 },
+  { corridor: "Alger → Sétif",       nbr_requests: 48, taux_marge_pct: 27.2, total_revenue:   892_800 },
+  { corridor: "Oran → Alger",        nbr_requests: 45, taux_marge_pct: 22.4, total_revenue:   756_000 },
+  { corridor: "Constantine → Alger", nbr_requests: 38, taux_marge_pct: 25.8, total_revenue:   642_400 },
+  { corridor: "Alger → Blida",       nbr_requests: 36, taux_marge_pct: 31.5, total_revenue:   432_000 },
+  { corridor: "Annaba → Alger",      nbr_requests: 29, taux_marge_pct: 26.3, total_revenue:   376_400 },
+  { corridor: "Batna → Alger",       nbr_requests: 24, taux_marge_pct: 28.1, total_revenue:   326_400 },
+]
+
+export const mockTransportPerfKpis: TransportPerfKpis = {
+  on_time_rate_pct:    87.4,
+  avg_duration_h:       4.8,
+  avg_client_rating:    4.3,
+  avg_arrival_delay_min: 18.2,
+  night_shift_rate_pct: 14.6,
+  pop_on_time:    2.1,
+  pop_duration:  -3.4,
+  pop_rating:     0.2,
+  pop_delay:     -6.8,
+  pop_night_shift: 1.3,
+}
+
+export const mockTransportOnTimeTrend: TransportOnTimeTrendPoint[] = Array.from({ length: 12 }, (_, i) => {
+  const year = i < 6 ? 2024 : 2025
+  const month = i < 6 ? i + 7 : i - 5
+  return {
+    period: `${year}-${String(month).padStart(2, "0")}`,
+    on_time_rate_pct: Math.round((84 + i * 0.3 + Math.sin(i * 0.7) * 2.5) * 10) / 10,
+    avg_duration_h:   Math.round((5.4 - i * 0.05 + Math.sin(i * 0.6) * 0.4) * 10) / 10,
+  }
+})
+
+export const mockTransportDelayBuckets: TransportDelayBucketItem[] = [
+  { bucket: "Avance",     bucket_order: 0, nbr_requests:  42 },
+  { bucket: "0–15 min",   bucket_order: 1, nbr_requests: 178 },
+  { bucket: "15–30 min",  bucket_order: 2, nbr_requests:  86 },
+  { bucket: "30–60 min",  bucket_order: 3, nbr_requests:  52 },
+  { bucket: "> 60 min",   bucket_order: 4, nbr_requests:  22 },
+]
+
+export const mockTransportRatingBuckets: TransportRatingBucketItem[] = [
+  { rating: 1, nbr_requests:  12 },
+  { rating: 2, nbr_requests:  24 },
+  { rating: 3, nbr_requests:  58 },
+  { rating: 4, nbr_requests: 148 },
+  { rating: 5, nbr_requests: 112 },
+]
+
+export const mockTransportVehiclePerf: TransportVehiclePerfItem[] = [
+  { vehicle_type: "Moto",        on_time_rate_pct: 92.4, avg_duration_h: 1.8, nbr_requests:  38 },
+  { vehicle_type: "Citadine",    on_time_rate_pct: 89.1, avg_duration_h: 2.6, nbr_requests:  62 },
+  { vehicle_type: "Break",       on_time_rate_pct: 88.3, avg_duration_h: 3.4, nbr_requests:  84 },
+  { vehicle_type: "Camionnette", on_time_rate_pct: 85.6, avg_duration_h: 5.1, nbr_requests: 148 },
+  { vehicle_type: "Camion",      on_time_rate_pct: 81.2, avg_duration_h: 7.3, nbr_requests:  80 },
+]
+
 export const mockParcelsPaginated: ParcelsPaginatedResponse = {
   results: [
     { tracking: "YLI-2025-384291", date_creation: "2025-03-15", agence_id: 1, agence_nom: "Alger Centre",  wilaya_destination: "Alger",       delivery_type: "HD", statut_actuel: "Livré",        delivery_fee: 520,  tarif_theorique: 680,  ecart_tarif_dzd: -160,  duree_livraison_minutes: 980,  nbr_evenements: 4 },

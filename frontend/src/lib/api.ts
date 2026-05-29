@@ -423,6 +423,85 @@ export const transportApi = {
     ),
 }
 
+// ─── Transport analytics (tabbed, date-range based) ───────────────────────────
+
+export type TransportAnalyticsFilters = {
+  start_date: string
+  end_date: string
+  service_type?: string
+}
+
+const _ta = (f: TransportAnalyticsFilters) =>
+  _qs(f as unknown as Record<string, string | number | undefined | null>)
+
+export const transportAnalyticsApi = {
+  // Operations
+  opsKpis: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportOpsKpis>(
+      `/analytics/transport-analytics/ops-kpis/${_ta(f)}`
+    ),
+  monthlyTrend: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportMonthlyTrendPoint[]>(
+      `/analytics/transport-analytics/monthly-trend/${_ta(f)}`
+    ),
+  serviceBreakdown: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportServiceBreakdownItem[]>(
+      `/analytics/transport-analytics/service-breakdown/${_ta(f)}`
+    ),
+  odMatrix: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportODItem[]>(
+      `/analytics/transport-analytics/od-matrix/${_ta(f)}`
+    ),
+  distanceCategory: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportDistanceCategoryItem[]>(
+      `/analytics/transport-analytics/distance-category/${_ta(f)}`
+    ),
+
+  // Cost & Profitability
+  costKpis: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportCostKpis>(
+      `/analytics/transport-analytics/cost-kpis/${_ta(f)}`
+    ),
+  revCostTrend: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportRevCostTrendPoint[]>(
+      `/analytics/transport-analytics/rev-cost-trend/${_ta(f)}`
+    ),
+  costCategories: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportCostCategoryItem[]>(
+      `/analytics/transport-analytics/cost-categories/${_ta(f)}`
+    ),
+  serviceMargin: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportServiceMarginItem[]>(
+      `/analytics/transport-analytics/service-margin/${_ta(f)}`
+    ),
+  topCorridors: (f: TransportAnalyticsFilters & { limit?: number }) =>
+    request<import("@/types/transport_analytics").TransportCorridorItem[]>(
+      `/analytics/transport-analytics/top-corridors/${_ta(f)}`
+    ),
+
+  // Performance
+  perfKpis: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportPerfKpis>(
+      `/analytics/transport-analytics/perf-kpis/${_ta(f)}`
+    ),
+  onTimeTrend: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportOnTimeTrendPoint[]>(
+      `/analytics/transport-analytics/on-time-trend/${_ta(f)}`
+    ),
+  delayBuckets: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportDelayBucketItem[]>(
+      `/analytics/transport-analytics/delay-buckets/${_ta(f)}`
+    ),
+  ratingBuckets: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportRatingBucketItem[]>(
+      `/analytics/transport-analytics/rating-buckets/${_ta(f)}`
+    ),
+  vehiclePerf: (f: TransportAnalyticsFilters) =>
+    request<import("@/types/transport_analytics").TransportVehiclePerfItem[]>(
+      `/analytics/transport-analytics/vehicle-perf/${_ta(f)}`
+    ),
+}
+
 // ─── Parcel costs analytics ───────────────────────────────────────────────────
 
 export interface ParcelCostsFilters {

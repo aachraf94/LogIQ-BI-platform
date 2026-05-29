@@ -193,6 +193,40 @@ export interface Translations {
       marginLegend: string
       costLabels: Record<string, string>
       regionOrder: [string, string, string]
+      // ── Tabbed layout additions ──
+      tabOperations: string
+      tabCostProfit: string
+      tabPerformance: string
+      filterFrom: string
+      filterTo: string
+      kpiAvgDistance: string
+      kpiTotalCost: string
+      kpiMarginPct: string
+      kpiCollectionRate: string
+      kpiAvgDuration: string
+      kpiAvgDelay: string
+      kpiNightShiftRate: string
+      sectionMonthlyVolume: string
+      sectionServicePie: string
+      sectionDistanceCategory: string
+      sectionRevCostTrend: string
+      sectionCostCategories: string
+      sectionServiceMargin: string
+      sectionTopCorridors: string
+      sectionOnTimeTrend: string
+      sectionDelayBuckets: string
+      sectionRatingDist: string
+      sectionVehiclePerf: string
+      seriesTerminees: string
+      seriesEnCours: string
+      seriesAnnulees: string
+      seriesRevenue: string
+      seriesCost: string
+      seriesMarginPct: string
+      seriesOnTimeRate: string
+      seriesAvgDuration: string
+      durationUnit: string
+      minuteUnit: string
     }
     parcelCosts: {
       kpiParcels: string
@@ -484,7 +518,7 @@ export interface Translations {
 const fr: Translations = {
   nav: {
     overview: 'Aperçu',
-    transport: 'Transport',
+    transport: 'Transport à la demande',
     parcelCosts: 'Coûts Colis',
     parcelDelivery: 'Livraison Colis',
     routes: 'Analyse Routes',
@@ -677,6 +711,39 @@ const fr: Translations = {
         cout_autres: 'Autres',
       },
       regionOrder: ['Nord', 'Hauts Plateaux', 'Sud'],
+      tabOperations: 'Opérations',
+      tabCostProfit: 'Coûts & Rentabilité',
+      tabPerformance: 'Performance',
+      filterFrom: 'Du',
+      filterTo: 'Au',
+      kpiAvgDistance: 'Distance moy. (km)',
+      kpiTotalCost: 'Coût total',
+      kpiMarginPct: 'Marge (%)',
+      kpiCollectionRate: 'Taux d\'encaissement',
+      kpiAvgDuration: 'Durée moy. (h)',
+      kpiAvgDelay: 'Retard arrivée moy.',
+      kpiNightShiftRate: 'Taux nuit',
+      sectionMonthlyVolume: 'Volume mensuel — Statuts des demandes',
+      sectionServicePie: 'Répartition par type de service',
+      sectionDistanceCategory: 'Répartition par catégorie de distance',
+      sectionRevCostTrend: 'Tendance mensuelle — Revenus vs Coûts (DZD)',
+      sectionCostCategories: 'Décomposition des coûts par catégorie',
+      sectionServiceMargin: 'Marge brute par type de service',
+      sectionTopCorridors: 'Top 8 corridors — Marge (%)',
+      sectionOnTimeTrend: 'Tendance mensuelle — Ponctualité & Durée',
+      sectionDelayBuckets: 'Distribution des retards à l\'arrivée',
+      sectionRatingDist: 'Distribution des notes clients',
+      sectionVehiclePerf: 'Ponctualité par type de véhicule',
+      seriesTerminees: 'Terminées',
+      seriesEnCours: 'En cours',
+      seriesAnnulees: 'Annulées',
+      seriesRevenue: 'Revenus',
+      seriesCost: 'Coût',
+      seriesMarginPct: 'Marge (%)',
+      seriesOnTimeRate: 'Ponctualité (%)',
+      seriesAvgDuration: 'Durée moy. (h)',
+      durationUnit: 'h',
+      minuteUnit: 'min',
     },
     parcelCosts: {
       kpiParcels: 'Colis traités',
@@ -975,7 +1042,7 @@ const fr: Translations = {
 const en: Translations = {
   nav: {
     overview: 'Overview',
-    transport: 'Transport',
+    transport: 'On-demand Transport',
     parcelCosts: 'Parcel Costs',
     parcelDelivery: 'Parcel Delivery',
     routes: 'Route Analysis',
@@ -1168,6 +1235,39 @@ const en: Translations = {
         cout_autres: 'Other',
       },
       regionOrder: ['Nord', 'Hauts Plateaux', 'Sud'],
+      tabOperations: 'Operations',
+      tabCostProfit: 'Cost & Profitability',
+      tabPerformance: 'Performance',
+      filterFrom: 'From',
+      filterTo: 'To',
+      kpiAvgDistance: 'Avg Distance (km)',
+      kpiTotalCost: 'Total Cost',
+      kpiMarginPct: 'Margin (%)',
+      kpiCollectionRate: 'Collection Rate',
+      kpiAvgDuration: 'Avg Duration (h)',
+      kpiAvgDelay: 'Avg Arrival Delay',
+      kpiNightShiftRate: 'Night Shift Rate',
+      sectionMonthlyVolume: 'Monthly Volume — Request Status',
+      sectionServicePie: 'Breakdown by Service Type',
+      sectionDistanceCategory: 'Breakdown by Distance Category',
+      sectionRevCostTrend: 'Monthly Trend — Revenue vs Cost (DZD)',
+      sectionCostCategories: 'Cost Breakdown by Category',
+      sectionServiceMargin: 'Gross Margin by Service Type',
+      sectionTopCorridors: 'Top 8 Corridors — Margin (%)',
+      sectionOnTimeTrend: 'Monthly Trend — On-Time Rate & Duration',
+      sectionDelayBuckets: 'Arrival Delay Distribution',
+      sectionRatingDist: 'Client Rating Distribution',
+      sectionVehiclePerf: 'On-Time Rate by Vehicle Type',
+      seriesTerminees: 'Completed',
+      seriesEnCours: 'In Progress',
+      seriesAnnulees: 'Cancelled',
+      seriesRevenue: 'Revenue',
+      seriesCost: 'Cost',
+      seriesMarginPct: 'Margin (%)',
+      seriesOnTimeRate: 'On-Time Rate (%)',
+      seriesAvgDuration: 'Avg Duration (h)',
+      durationUnit: 'h',
+      minuteUnit: 'min',
     },
     parcelCosts: {
       kpiParcels: 'Processed Parcels',
@@ -1466,7 +1566,7 @@ const en: Translations = {
 const ar: Translations = {
   nav: {
     overview: 'نظرة عامة',
-    transport: 'الشحن',
+    transport: 'النقل عند الطلب',
     parcelCosts: 'تكاليف الطرود',
     parcelDelivery: 'توصيل الطرود',
     routes: 'تحليل المسارات',
@@ -1659,6 +1759,39 @@ const ar: Translations = {
         cout_autres: 'أخرى',
       },
       regionOrder: ['Nord', 'Hauts Plateaux', 'Sud'],
+      tabOperations: 'العمليات',
+      tabCostProfit: 'التكاليف والربحية',
+      tabPerformance: 'الأداء',
+      filterFrom: 'من',
+      filterTo: 'إلى',
+      kpiAvgDistance: 'متوسط المسافة (كم)',
+      kpiTotalCost: 'التكلفة الإجمالية',
+      kpiMarginPct: 'الهامش (%)',
+      kpiCollectionRate: 'معدل التحصيل',
+      kpiAvgDuration: 'متوسط المدة (س)',
+      kpiAvgDelay: 'متوسط التأخر عند الوصول',
+      kpiNightShiftRate: 'معدل الوردية الليلية',
+      sectionMonthlyVolume: 'الحجم الشهري — حالات الطلبات',
+      sectionServicePie: 'التوزيع حسب نوع الخدمة',
+      sectionDistanceCategory: 'التوزيع حسب فئة المسافة',
+      sectionRevCostTrend: 'الاتجاه الشهري — الإيرادات مقابل التكاليف (دج)',
+      sectionCostCategories: 'تفصيل التكاليف حسب الفئة',
+      sectionServiceMargin: 'الهامش الإجمالي حسب نوع الخدمة',
+      sectionTopCorridors: 'أفضل 8 ممرات — الهامش (%)',
+      sectionOnTimeTrend: 'الاتجاه الشهري — الانتظام والمدة',
+      sectionDelayBuckets: 'توزيع التأخيرات عند الوصول',
+      sectionRatingDist: 'توزيع تقييمات العملاء',
+      sectionVehiclePerf: 'معدل الانتظام حسب نوع المركبة',
+      seriesTerminees: 'مكتملة',
+      seriesEnCours: 'قيد التنفيذ',
+      seriesAnnulees: 'ملغاة',
+      seriesRevenue: 'الإيرادات',
+      seriesCost: 'التكلفة',
+      seriesMarginPct: 'الهامش (%)',
+      seriesOnTimeRate: 'معدل الانتظام (%)',
+      seriesAvgDuration: 'متوسط المدة (س)',
+      durationUnit: 'س',
+      minuteUnit: 'د',
     },
     parcelCosts: {
       kpiParcels: 'الطرود المعالجة',

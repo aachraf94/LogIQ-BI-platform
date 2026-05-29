@@ -47,6 +47,7 @@ function NotificationsInit() {
 
 function pageTitle(pathname: string, t: ReturnType<typeof useTranslation>['t']): string {
   if (pathname.startsWith('/parcel-delivery')) return t.nav.parcelDelivery
+  if (pathname.startsWith('/transport')) return t.nav.transport
   const map: Record<string, string> = {
     '/overview':    t.nav.overview,
     '/transport':   t.nav.transport,
