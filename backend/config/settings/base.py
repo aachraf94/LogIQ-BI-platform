@@ -6,6 +6,8 @@ import os
 from datetime import timedelta
 from pathlib import Path
 
+from celery.schedules import crontab
+
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 SECRET_KEY = os.environ.get("SECRET_KEY", "insecure-dev-key")
@@ -96,10 +98,12 @@ DATABASE_ROUTERS = ["config.db_router.LogiqDBRouter"]
 # --- Celery ---
 CELERY_BROKER_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 CELERY_RESULT_BACKEND = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+CELERY_TIMEZONE = "Africa/Algiers"
 CELERY_BEAT_SCHEDULE = {
-    "evaluate-alert-rules": {
+    # Weekly KPI alert evaluation — every Sunday at 07:00 Algiers time (UTC+1).
+    "evaluate-alert-rules-weekly": {
         "task": "apps.notifications.tasks.evaluate_alert_rules",
-        "schedule": timedelta(minutes=15),
+        "schedule": crontab(hour=7, minute=0, day_of_week="sunday"),
     },
 }
 

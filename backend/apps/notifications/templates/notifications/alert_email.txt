@@ -1,0 +1,21 @@
+LOGIQ Platform — Alerte KPI {{ severity_icon }} {{ severity_label }}
+======================================================================
+
+Règle déclenchée : {{ rule_name }}
+Tableau de bord  : {{ dashboard_label }}
+Catégorie KPI    : {{ kpi_category_label }}
+Indicateur       : {{ metric_display }}
+
+Valeur mesurée   : {{ triggered_value }}
+Seuil configuré  : {{ operator_label }} {{ threshold }}
+
+Période analysée : {{ week_start }} – {{ week_end }}
+
+{% if rule_description %}Description : {{ rule_description }}
+
+{% endif %}----------------------------------------------------------------------
+Vous recevez cet email car vous avez activé les alertes dans vos
+préférences LOGIQ et êtes abonné(e) à cette règle d'alerte.
+Pour vous désabonner : Alertes → Mes règles d'alerte.
+
+© {{ current_year }} LOGIQ Platform · Yalidine Express

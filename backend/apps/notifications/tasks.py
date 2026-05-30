@@ -19,11 +19,17 @@ logger = logging.getLogger(__name__)
 # ---------------------------------------------------------------------------
 
 # ---------------------------------------------------------------------------
-# Weekly KPI queries — last 7 full days (CURRENT_DATE - 7 to CURRENT_DATE - 1)
+# Weekly KPI queries — the 7-day window ending on the most recent Saturday.
+# Task fires every Sunday at 07:00, so:
+#   CURRENT_DATE - 1  =  last Saturday  (end of week, inclusive)
+#   CURRENT_DATE - 7  =  last Sunday    (start of week, inclusive)
 # All queries use the same warehouse schema as the analytics app.
 # ---------------------------------------------------------------------------
 
-_W = "dd.full_date >= CURRENT_DATE - INTERVAL '7 days' AND dd.full_date < CURRENT_DATE"
+_W = (
+    "dd.full_date >= CURRENT_DATE - INTERVAL '7 days'"
+    " AND dd.full_date <= CURRENT_DATE - INTERVAL '1 day'"
+)
 
 _METRIC_QUERIES: dict[str, str] = {
     # ── Parcel Delivery — Operations ────────────────────────────────────────
@@ -106,7 +112,7 @@ _METRIC_QUERIES: dict[str, str] = {
                 (SELECT COUNT(*) FROM warehouse.dim_parcel dp2
                  JOIN warehouse.dim_date dd2 ON dp2.date_creation_id = dd2.date_key
                  WHERE dd2.full_date >= CURRENT_DATE - INTERVAL '7 days'
-                   AND dd2.full_date < CURRENT_DATE
+                   AND dd2.full_date <= CURRENT_DATE - INTERVAL '1 day'
                    AND dp2.current_status_id = 13),
                 0)
         ::NUMERIC, 2)
@@ -307,36 +313,64 @@ def _fetch_metric(metric: str) -> float | None:
         return None
 
 
+_SEVERITY_META = {
+    "info":     ("ℹ️",  "Information", "#6366f1", "#1e1b4b"),
+    "warning":  ("⚠️",  "Avertissement", "#f59e0b", "#1c1000"),
+    "critical": ("🚨", "Critique",     "#ef4444", "#200a0a"),
+}
+
+_OPERATOR_LABELS = {
+    "gt": "supérieur à",
+    "gte": "supérieur ou égal à",
+    "lt": "inférieur à",
+    "lte": "inférieur ou égal à",
+}
+
+_DASHBOARD_LABELS = {
+    "parcels": "Livraison Colis",
+    "transport": "Transport à la demande",
+}
+
+_CATEGORY_LABELS = {
+    "operations": "Opérations",
+    "cost_profitability": "Coûts & Rentabilité",
+    "performance": "Performance",
+}
+
+
 def _notify_users_for_rule(rule, alert):
-    """Create in-app Notification rows for all users targeted by this rule.
+    """Dispatch in-app and email notifications for a fired AlertRule.
 
     Respects three layers of filtering:
     1. Role / dashboard targeting defined on the AlertRule
     2. UserPreferences.notif_alert_triggered (blanket on/off for alerts)
     3. UserAlertRulePreference.is_subscribed (per-rule opt-out)
+
+    For each eligible user:
+    - notif_in_app=True → creates a Notification row (SSE-delivered)
+    - notif_email=True  → sends an HTML email via alert_email.html
     """
+    from datetime import datetime, timedelta
+
+    from django.conf import settings
+    from django.core.mail import EmailMultiAlternatives
+    from django.template.loader import render_to_string
+
     from apps.notifications.models import Notification, UserAlertRulePreference
     from apps.users.models import User
 
-    # Base: active users with alert notifications enabled globally
-    base_qs = (
-        User.objects
-        .filter(is_active=True)
-        .select_related("preferences", "role")
-    )
+    # ── Resolve eligible users ────────────────────────────────────────────────
+    base_qs = User.objects.filter(is_active=True).select_related("preferences", "role")
 
-    # Role targeting
     if rule.notify_roles:
         base_qs = base_qs.filter(role__name__in=rule.notify_roles)
 
-    # Dashboard access + global alert preference
     users = [
         u for u in base_qs
         if u.can_access_dashboard(rule.dashboard)
         and getattr(getattr(u, "preferences", None), "notif_alert_triggered", True)
     ]
 
-    # Per-rule unsubscriptions
     unsubscribed_ids = set(
         UserAlertRulePreference.objects
         .filter(rule=rule, is_subscribed=False)
@@ -344,28 +378,90 @@ def _notify_users_for_rule(rule, alert):
     )
     users = [u for u in users if u.pk not in unsubscribed_ids]
 
-    severity_emoji = {"info": "ℹ️", "warning": "⚠️", "critical": "🚨"}.get(rule.severity, "🔔")
-    notifications = [
-        Notification(
-            user=user,
-            notification_type="alert",
-            title=f"{severity_emoji} {rule.name}",
-            message=(
-                f"La métrique «{rule.get_metric_display()}» a atteint "
-                f"{alert.triggered_value:.2f} "
-                f"(seuil configuré : {rule.get_operator_display()} {rule.threshold})."
-            ),
-            metadata={
-                "alert_id": alert.id,
-                "rule_id": rule.id,
-                "dashboard": rule.dashboard,
-                "severity": rule.severity,
-            },
-        )
-        for user in users
-    ]
-    if notifications:
-        Notification.objects.bulk_create(notifications, ignore_conflicts=True)
+    if not users:
+        return
+
+    # ── Build shared context ──────────────────────────────────────────────────
+    severity_icon, severity_label, severity_color, severity_bg_color = _SEVERITY_META.get(
+        rule.severity, ("🔔", rule.severity, "#6366f1", "#1e1b4b")
+    )
+    title = f"{severity_icon} {rule.name}"
+    operator_label = _OPERATOR_LABELS.get(rule.operator, rule.operator)
+    plain_message = (
+        f"La métrique «{rule.get_metric_display()}» a atteint "
+        f"{alert.triggered_value:.2f} "
+        f"(seuil : {operator_label} {rule.threshold})."
+    )
+
+    today = datetime.today()
+    week_start = (today - timedelta(days=7)).strftime("%d/%m/%Y")
+    week_end = (today - timedelta(days=1)).strftime("%d/%m/%Y")
+
+    template_ctx = {
+        "title": title,
+        "rule_name": rule.name,
+        "rule_description": rule.description,
+        "metric_display": rule.get_metric_display(),
+        "triggered_value": f"{alert.triggered_value:.2f}",
+        "threshold": rule.threshold,
+        "operator_label": operator_label,
+        "severity": rule.severity,
+        "severity_label": severity_label,
+        "severity_color": severity_color,
+        "severity_bg_color": severity_bg_color,
+        "severity_icon": severity_icon,
+        "dashboard_label": _DASHBOARD_LABELS.get(rule.dashboard, rule.dashboard),
+        "kpi_category_label": _CATEGORY_LABELS.get(rule.kpi_category, rule.kpi_category),
+        "week_start": week_start,
+        "week_end": week_end,
+        "current_year": today.year,
+    }
+
+    # ── Dispatch ──────────────────────────────────────────────────────────────
+    in_app_batch = []
+    emails_sent = 0
+
+    for user in users:
+        prefs = user.preferences
+
+        if prefs.notif_in_app:
+            in_app_batch.append(Notification(
+                user=user,
+                notification_type="alert",
+                title=title,
+                message=plain_message,
+                metadata={
+                    "alert_id": alert.id,
+                    "rule_id": rule.id,
+                    "dashboard": rule.dashboard,
+                    "severity": rule.severity,
+                },
+            ))
+
+        if prefs.notif_email and user.email:
+            try:
+                email = EmailMultiAlternatives(
+                    subject=f"[LOGIQ Alerte] {rule.name} — {severity_label}",
+                    body=render_to_string("notifications/alert_email.txt", template_ctx),
+                    from_email=settings.DEFAULT_FROM_EMAIL,
+                    to=[user.email],
+                )
+                email.attach_alternative(
+                    render_to_string("notifications/alert_email.html", template_ctx),
+                    "text/html",
+                )
+                email.send(fail_silently=False)
+                emails_sent += 1
+            except Exception as exc:
+                logger.warning("Alert email failed for %s: %s", user.email, exc)
+
+    if in_app_batch:
+        Notification.objects.bulk_create(in_app_batch, ignore_conflicts=True)
+
+    logger.info(
+        "Rule '%s' [%s] — in-app: %d, email: %d",
+        rule.name, rule.severity, len(in_app_batch), emails_sent,
+    )
 
 
 @shared_task(name="apps.notifications.tasks.evaluate_alert_rules", bind=True, max_retries=2)
