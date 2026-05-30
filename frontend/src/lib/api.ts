@@ -530,6 +530,20 @@ export const transportAnalyticsApi = {
     request<import("@/types/transport_analytics").TransportVehiclePerfItem[]>(
       `/analytics/transport-analytics/vehicle-perf/${_ta(f)}`
     ),
+
+  // Paginated KPI data tables
+  opsTable: (f: TransportAnalyticsFilters & { kpi?: string; page?: number; page_size?: number }) =>
+    request<import("@/types/transport_analytics").TransportTablePage<import("@/types/transport_analytics").TransportOpsRow>>(
+      `/analytics/transport-analytics/table/ops/${_ta(f as unknown as TransportAnalyticsFilters)}`
+    ),
+  costTable: (f: TransportAnalyticsFilters & { kpi?: string; page?: number; page_size?: number }) =>
+    request<import("@/types/transport_analytics").TransportTablePage<import("@/types/transport_analytics").TransportCostRow>>(
+      `/analytics/transport-analytics/table/cost/${_ta(f as unknown as TransportAnalyticsFilters)}`
+    ),
+  perfTable: (f: TransportAnalyticsFilters & { kpi?: string; page?: number; page_size?: number }) =>
+    request<import("@/types/transport_analytics").TransportTablePage<import("@/types/transport_analytics").TransportPerfRow>>(
+      `/analytics/transport-analytics/table/perf/${_ta(f as unknown as TransportAnalyticsFilters)}`
+    ),
 }
 
 // ─── Parcel costs analytics ───────────────────────────────────────────────────

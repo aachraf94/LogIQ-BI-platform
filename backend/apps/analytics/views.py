@@ -14,6 +14,7 @@ from rest_framework.views import APIView
 from .queries import overview as ovq
 from .queries import parcel_delivery as pdq
 from .queries import transport as tq
+from .queries import transport_tables as ttq
 
 logger = logging.getLogger(__name__)
 
@@ -692,4 +693,88 @@ class OverviewActivityTrendView(APIView):
             return Response(ovq.get_activity_trend())
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+# ─── Transport KPI data tables (paginated) ────────────────────────────────────
+#
+# All three views accept:
+#   start_date   (required) — YYYY-MM-DD
+#   end_date     (required) — YYYY-MM-DD
+#   service_type (optional) — 'course_dediee' | 'courrier' | 'manutention'
+#   kpi          (optional) — KPI key used to sort/filter rows (see transport_tables.py)
+#   page         (optional, default 1)
+#   page_size    (optional, default 20, max 100)
+#
+# Response: {count, page, page_size, total_pages, results: [...]}
+
+
+def _table_params(request):
+    """Extract common table pagination + filter params."""
+    start = request.query_params.get("start_date")
+    end   = request.query_params.get("end_date")
+    st    = request.query_params.get("service_type")
+    kpi   = request.query_params.get("kpi", "")
+    try:
+        page = max(1, int(request.query_params.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        page_size = min(100, max(1, int(request.query_params.get("page_size", 20))))
+    except (ValueError, TypeError):
+        page_size = 20
+    return start, end, st, kpi, page, page_size
+
+
+class TransportOpsTableView(APIView):
+    """
+    GET /api/analytics/transport-analytics/table/ops/
+    Paginated row-level data for the Operations KPI cards.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st, kpi, page, page_size = _table_params(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(ttq.get_ops_table(start, end, st, kpi, page, page_size))
+        except Exception as exc:
+            logger.exception("Table query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportCostTableView(APIView):
+    """
+    GET /api/analytics/transport-analytics/table/cost/
+    Paginated row-level data for the Cost & Profitability KPI cards.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st, kpi, page, page_size = _table_params(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(ttq.get_cost_table(start, end, st, kpi, page, page_size))
+        except Exception as exc:
+            logger.exception("Table query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportPerfTableView(APIView):
+    """
+    GET /api/analytics/transport-analytics/table/perf/
+    Paginated row-level data for the Performance KPI cards.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st, kpi, page, page_size = _table_params(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(ttq.get_perf_table(start, end, st, kpi, page, page_size))
+        except Exception as exc:
+            logger.exception("Table query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)

@@ -129,3 +129,48 @@ export interface TransportVehiclePerfItem {
   avg_duration_h: number
   nbr_requests: number
 }
+
+// ─── Paginated table rows ──────────────────────────────────────────────────────
+
+export interface TransportTablePage<T> {
+  count: number
+  page: number
+  page_size: number
+  total_pages: number
+  results: T[]
+}
+
+export interface TransportOpsRow {
+  transport_key: number
+  date_creation: string        // YYYY-MM-DD
+  type_service: string         // course_dediee | courrier | manutention
+  statut: string               // terminée | annulée | en_cours
+  wilaya_depart: string | null
+  wilaya_arrivee: string | null
+  distance_km: number | null
+  nbr_stops: number | null
+}
+
+export interface TransportCostRow {
+  transport_key: number
+  date_creation: string
+  type_service: string
+  statut: string
+  montant_facture: number
+  cout_total: number
+  marge_brute: number
+  marge_pct: number | null
+  cout_par_km: number | null
+}
+
+export interface TransportPerfRow {
+  transport_key: number
+  date_creation: string
+  type_service: string
+  type_vehicule: string | null
+  a_l_heure: boolean | null
+  duree_h: number
+  note_client: number | null   // 1–5
+  retard_min: number | null
+  is_nuit: boolean
+}

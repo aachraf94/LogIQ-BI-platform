@@ -19,9 +19,10 @@ export interface KpiInfo {
 interface InfoPanelProps {
   info: KpiInfo | null;
   onClose: () => void;
+  onViewDataTable?: () => void;
 }
 
-export function InfoPanel({ info, onClose }: InfoPanelProps) {
+export function InfoPanel({ info, onClose, onViewDataTable }: InfoPanelProps) {
   const { t, isRTL } = useTranslation();
   const ip = t.pages.common.infoPanel;
 
@@ -118,9 +119,9 @@ export function InfoPanel({ info, onClose }: InfoPanelProps) {
 
             <div className={`shrink-0 px-5 py-4 border-t border-[var(--border)]`}>
               <button
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 transition-colors cursor-not-allowed opacity-60"
-                disabled
-                title="Coming soon"
+                onClick={onViewDataTable}
+                disabled={!onViewDataTable}
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 active:scale-[0.98] transition-all disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <Table2 size={14} />
                 {ip.viewDataTable}

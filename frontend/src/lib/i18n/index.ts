@@ -110,6 +110,39 @@ export interface Translations {
         labelCalcNotes: string
         viewDataTable: string
       }
+      kpiTable: {
+        title: string
+        loading: string
+        noData: string
+        rowsTotal: string
+        page: string
+        of: string
+        prev: string
+        next: string
+        colId: string
+        colDate: string
+        colService: string
+        colStatus: string
+        colOrigin: string
+        colDestination: string
+        colDistanceKm: string
+        colStops: string
+        colRevenue: string
+        colCost: string
+        colMarginDzd: string
+        colMarginPct: string
+        colCostKm: string
+        colVehicle: string
+        colOnTime: string
+        colDurationH: string
+        colRating: string
+        colDelayMin: string
+        colNight: string
+        yes: string
+        no: string
+        onTime: string
+        late: string
+      }
     }
     overview: {
       kpiTransportRequests:  string
@@ -612,6 +645,39 @@ const fr: Translations = {
         labelUpdateFreq: 'Fréquence de mise à jour',
         labelCalcNotes: 'Notes de calcul',
         viewDataTable: 'Vue tableau de données',
+      },
+      kpiTable: {
+        title: 'Données —',
+        loading: 'Chargement des données…',
+        noData: 'Aucune donnée pour cette période.',
+        rowsTotal: 'lignes',
+        page: 'Page',
+        of: 'sur',
+        prev: 'Précédent',
+        next: 'Suivant',
+        colId: 'ID',
+        colDate: 'Date',
+        colService: 'Service',
+        colStatus: 'Statut',
+        colOrigin: 'Départ',
+        colDestination: 'Arrivée',
+        colDistanceKm: 'Distance (km)',
+        colStops: 'Arrêts',
+        colRevenue: 'Facturé (DZD)',
+        colCost: 'Coût (DZD)',
+        colMarginDzd: 'Marge (DZD)',
+        colMarginPct: 'Marge (%)',
+        colCostKm: 'DZD/km',
+        colVehicle: 'Véhicule',
+        colOnTime: 'Ponctualité',
+        colDurationH: 'Durée (h)',
+        colRating: 'Note',
+        colDelayMin: 'Retard (min)',
+        colNight: 'Nuit',
+        yes: 'Oui',
+        no: 'Non',
+        onTime: 'À l\'heure',
+        late: 'En retard',
       },
     },
     overview: {
@@ -1129,6 +1195,39 @@ const en: Translations = {
         labelCalcNotes: 'Calculation Notes',
         viewDataTable: 'Data Table View',
       },
+      kpiTable: {
+        title: 'Data —',
+        loading: 'Loading data…',
+        noData: 'No data for this period.',
+        rowsTotal: 'rows',
+        page: 'Page',
+        of: 'of',
+        prev: 'Previous',
+        next: 'Next',
+        colId: 'ID',
+        colDate: 'Date',
+        colService: 'Service',
+        colStatus: 'Status',
+        colOrigin: 'Origin',
+        colDestination: 'Destination',
+        colDistanceKm: 'Distance (km)',
+        colStops: 'Stops',
+        colRevenue: 'Invoiced (DZD)',
+        colCost: 'Cost (DZD)',
+        colMarginDzd: 'Margin (DZD)',
+        colMarginPct: 'Margin (%)',
+        colCostKm: 'DZD/km',
+        colVehicle: 'Vehicle',
+        colOnTime: 'On-Time',
+        colDurationH: 'Duration (h)',
+        colRating: 'Rating',
+        colDelayMin: 'Delay (min)',
+        colNight: 'Night',
+        yes: 'Yes',
+        no: 'No',
+        onTime: 'On time',
+        late: 'Late',
+      },
     },
     overview: {
       kpiTransportRequests: 'Transport Requests',
@@ -1644,6 +1743,39 @@ const ar: Translations = {
         labelUpdateFreq: 'تكرار التحديث',
         labelCalcNotes: 'ملاحظات الحساب',
         viewDataTable: 'عرض جدول البيانات',
+      },
+      kpiTable: {
+        title: 'البيانات —',
+        loading: 'جارٍ تحميل البيانات…',
+        noData: 'لا توجد بيانات لهذه الفترة.',
+        rowsTotal: 'سجل',
+        page: 'صفحة',
+        of: 'من',
+        prev: 'السابق',
+        next: 'التالي',
+        colId: 'المعرّف',
+        colDate: 'التاريخ',
+        colService: 'الخدمة',
+        colStatus: 'الحالة',
+        colOrigin: 'الانطلاق',
+        colDestination: 'الوجهة',
+        colDistanceKm: 'المسافة (كم)',
+        colStops: 'التوقفات',
+        colRevenue: 'المُفوتَر (دج)',
+        colCost: 'التكلفة (دج)',
+        colMarginDzd: 'الهامش (دج)',
+        colMarginPct: 'الهامش (%)',
+        colCostKm: 'دج/كم',
+        colVehicle: 'المركبة',
+        colOnTime: 'الانتظام',
+        colDurationH: 'المدة (س)',
+        colRating: 'التقييم',
+        colDelayMin: 'التأخر (د)',
+        colNight: 'ليلي',
+        yes: 'نعم',
+        no: 'لا',
+        onTime: 'في الموعد',
+        late: 'متأخر',
       },
     },
     overview: {

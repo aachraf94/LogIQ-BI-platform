@@ -8,6 +8,7 @@ import { DollarSign, Receipt, TrendingUp, Percent, Gauge } from "lucide-react";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { InfoPanel } from "@/components/ui/InfoPanel";
 import type { KpiInfo } from "@/components/ui/InfoPanel";
+import { KpiDataTableModal } from "@/components/ui/KpiDataTableModal";
 import { useTranslation } from "@/lib/i18n";
 import { useChartTheme } from "@/lib/chartTheme";
 import { useTransportStore } from "@/stores/transportStore";
@@ -359,7 +360,8 @@ export default function TransportCostPage() {
   const [data, setData] = useState<PageData>(MOCK);
   const [fetching, setFetching] = useState(false);
   const [chartsReady, setChartsReady] = useState(false);
-  const [activeKpiInfo, setActiveKpiInfo] = useState<KpiInfo | null>(null);
+  const [activeKpi, setActiveKpi] = useState<{ key: import("@/lib/kpi-info/transport").TransportKpiKey; info: KpiInfo } | null>(null);
+  const [tableKpiKey, setTableKpiKey] = useState<import("@/lib/kpi-info/transport").TransportKpiKey | null>(null);
   const raf = useRef<number | null>(null);
 
   useEffect(() => {
@@ -423,14 +425,24 @@ export default function TransportCostPage() {
 
       {/* ── Row 1: KPIs ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard title={p.kpiTotalRevenue} value={formatDZD(kpis.total_revenue)}             trend={kpis.pop_revenue}      trendLabel={trendLabel} icon={<DollarSign size={15} />} index={0} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_total_revenue)} />
-        <KpiCard title={p.kpiTotalCost}    value={formatDZD(kpis.total_cost)}                trend={-kpis.pop_cost}        trendLabel={trendLabel} icon={<Receipt size={15} />}    index={1} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_total_cost)} />
-        <KpiCard title={p.kpiGrossMargin}  value={formatDZD(kpis.marge_brute_dzd)}           trend={kpis.pop_margin_dzd}   trendLabel={trendLabel} icon={<TrendingUp size={15} />} index={2} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_gross_margin)} />
-        <KpiCard title={p.kpiMarginPct}    value={`${kpis.marge_brute_pct.toFixed(1)}%`}     trend={kpis.pop_margin_pct}   trendLabel={trendLabel} icon={<Percent size={15} />}    index={3} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_margin_pct)} />
-        <KpiCard title={p.kpiCostPerKm}    value={`${kpis.cout_par_km.toFixed(1)} DZD/km`}  trend={-kpis.pop_cout_par_km} trendLabel={trendLabel} icon={<Gauge size={15} />}      index={4} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_per_km)} />
+        <KpiCard title={p.kpiTotalRevenue} value={formatDZD(kpis.total_revenue)}             trend={kpis.pop_revenue}      trendLabel={trendLabel} icon={<DollarSign size={15} />} index={0} onInfoClick={() => setActiveKpi({ key: "cost_total_revenue", info: kpiInfo.cost_total_revenue })} />
+        <KpiCard title={p.kpiTotalCost}    value={formatDZD(kpis.total_cost)}                trend={-kpis.pop_cost}        trendLabel={trendLabel} icon={<Receipt size={15} />}    index={1} onInfoClick={() => setActiveKpi({ key: "cost_total_cost",    info: kpiInfo.cost_total_cost })} />
+        <KpiCard title={p.kpiGrossMargin}  value={formatDZD(kpis.marge_brute_dzd)}           trend={kpis.pop_margin_dzd}   trendLabel={trendLabel} icon={<TrendingUp size={15} />} index={2} onInfoClick={() => setActiveKpi({ key: "cost_gross_margin",  info: kpiInfo.cost_gross_margin })} />
+        <KpiCard title={p.kpiMarginPct}    value={`${kpis.marge_brute_pct.toFixed(1)}%`}     trend={kpis.pop_margin_pct}   trendLabel={trendLabel} icon={<Percent size={15} />}    index={3} onInfoClick={() => setActiveKpi({ key: "cost_margin_pct",    info: kpiInfo.cost_margin_pct })} />
+        <KpiCard title={p.kpiCostPerKm}    value={`${kpis.cout_par_km.toFixed(1)} DZD/km`}  trend={-kpis.pop_cout_par_km} trendLabel={trendLabel} icon={<Gauge size={15} />}      index={4} onInfoClick={() => setActiveKpi({ key: "cost_per_km",         info: kpiInfo.cost_per_km })} />
       </div>
 
-      <InfoPanel info={activeKpiInfo} onClose={() => setActiveKpiInfo(null)} />
+      <InfoPanel
+        info={activeKpi?.info ?? null}
+        onClose={() => setActiveKpi(null)}
+        onViewDataTable={() => { if (activeKpi) { setTableKpiKey(activeKpi.key); setActiveKpi(null); } }}
+      />
+      <KpiDataTableModal
+        kpiKey={tableKpiKey}
+        kpiTitle={tableKpiKey ? kpiInfo[tableKpiKey].title : ""}
+        filters={filters}
+        onClose={() => setTableKpiKey(null)}
+      />
 
       {/* ── Row 2: Rev vs Cost trend + Cost categories ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

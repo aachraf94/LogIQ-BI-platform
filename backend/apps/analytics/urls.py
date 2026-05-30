@@ -23,6 +23,10 @@ urlpatterns = [
     path("transport-analytics/delay-buckets/",     views.TransportDelayBucketsView.as_view(),     name="transport-delay-buckets"),
     path("transport-analytics/rating-buckets/",    views.TransportRatingBucketsView.as_view(),    name="transport-rating-buckets"),
     path("transport-analytics/vehicle-perf/",      views.TransportVehiclePerfView.as_view(),      name="transport-vehicle-perf"),
+    # Paginated data table views (one per sub-page)
+    path("transport-analytics/table/ops/",         views.TransportOpsTableView.as_view(),         name="transport-table-ops"),
+    path("transport-analytics/table/cost/",        views.TransportCostTableView.as_view(),        name="transport-table-cost"),
+    path("transport-analytics/table/perf/",        views.TransportPerfTableView.as_view(),        name="transport-table-perf"),
 
     # Parcel Delivery analytics (date-range based — Operations / Cost & Profitability / Performance)
     path("parcel-delivery/ops-kpis/",                  views.ParcelDeliveryOpsKpisView.as_view(),                  name="parcel-delivery-ops-kpis"),

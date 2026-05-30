@@ -8,6 +8,7 @@ import { Truck, CheckCircle2, XCircle, Route, MapPin } from "lucide-react";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { InfoPanel } from "@/components/ui/InfoPanel";
 import type { KpiInfo } from "@/components/ui/InfoPanel";
+import { KpiDataTableModal } from "@/components/ui/KpiDataTableModal";
 import { useTranslation } from "@/lib/i18n";
 import { useChartTheme } from "@/lib/chartTheme";
 import { useTransportStore } from "@/stores/transportStore";
@@ -331,7 +332,8 @@ export default function TransportOperationsPage() {
   const [data, setData] = useState<PageData>(MOCK);
   const [fetching, setFetching] = useState(false);
   const [chartsReady, setChartsReady] = useState(false);
-  const [activeKpiInfo, setActiveKpiInfo] = useState<KpiInfo | null>(null);
+  const [activeKpi, setActiveKpi] = useState<{ key: import("@/lib/kpi-info/transport").TransportKpiKey; info: KpiInfo } | null>(null);
+  const [tableKpiKey, setTableKpiKey] = useState<import("@/lib/kpi-info/transport").TransportKpiKey | null>(null);
   const raf = useRef<number | null>(null);
 
   useEffect(() => {
@@ -395,14 +397,24 @@ export default function TransportOperationsPage() {
 
       {/* ── Row 1: KPIs ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard title={p.kpiTotalRequests}    value={formatNumber(kpis.nbr_requests)}              trend={kpis.pop_requests}           trendLabel={trendLabel} icon={<Truck size={15} />}       index={0} onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_total_requests)} />
-        <KpiCard title={p.kpiCompletionRate}   value={`${kpis.completion_rate_pct.toFixed(1)}%`}    trend={kpis.pop_completion_rate}    trendLabel={trendLabel} icon={<CheckCircle2 size={15} />} index={1} onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_completion_rate)} />
-        <KpiCard title={p.kpiCancellationRate} value={`${kpis.cancellation_rate_pct.toFixed(1)}%`}  trend={-kpis.pop_cancellation_rate} trendLabel={trendLabel} icon={<XCircle size={15} />}     index={2} onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_cancellation_rate)} />
-        <KpiCard title={p.kpiAvgDistance}      value={`${kpis.avg_distance_km.toFixed(1)} km`}      trend={kpis.pop_distance}           trendLabel={trendLabel} icon={<Route size={15} />}        index={3} onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_avg_distance)} />
-        <KpiCard title={p.kpiAvgStops}         value={kpis.avg_stops.toFixed(1)}                    trend={kpis.pop_stops}              trendLabel={trendLabel} icon={<MapPin size={15} />}       index={4} onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_avg_stops)} />
+        <KpiCard title={p.kpiTotalRequests}    value={formatNumber(kpis.nbr_requests)}              trend={kpis.pop_requests}           trendLabel={trendLabel} icon={<Truck size={15} />}       index={0} onInfoClick={() => setActiveKpi({ key: "ops_total_requests",    info: kpiInfo.ops_total_requests })} />
+        <KpiCard title={p.kpiCompletionRate}   value={`${kpis.completion_rate_pct.toFixed(1)}%`}    trend={kpis.pop_completion_rate}    trendLabel={trendLabel} icon={<CheckCircle2 size={15} />} index={1} onInfoClick={() => setActiveKpi({ key: "ops_completion_rate",   info: kpiInfo.ops_completion_rate })} />
+        <KpiCard title={p.kpiCancellationRate} value={`${kpis.cancellation_rate_pct.toFixed(1)}%`}  trend={-kpis.pop_cancellation_rate} trendLabel={trendLabel} icon={<XCircle size={15} />}     index={2} onInfoClick={() => setActiveKpi({ key: "ops_cancellation_rate", info: kpiInfo.ops_cancellation_rate })} />
+        <KpiCard title={p.kpiAvgDistance}      value={`${kpis.avg_distance_km.toFixed(1)} km`}      trend={kpis.pop_distance}           trendLabel={trendLabel} icon={<Route size={15} />}        index={3} onInfoClick={() => setActiveKpi({ key: "ops_avg_distance",      info: kpiInfo.ops_avg_distance })} />
+        <KpiCard title={p.kpiAvgStops}         value={kpis.avg_stops.toFixed(1)}                    trend={kpis.pop_stops}              trendLabel={trendLabel} icon={<MapPin size={15} />}       index={4} onInfoClick={() => setActiveKpi({ key: "ops_avg_stops",          info: kpiInfo.ops_avg_stops })} />
       </div>
 
-      <InfoPanel info={activeKpiInfo} onClose={() => setActiveKpiInfo(null)} />
+      <InfoPanel
+        info={activeKpi?.info ?? null}
+        onClose={() => setActiveKpi(null)}
+        onViewDataTable={() => { if (activeKpi) { setTableKpiKey(activeKpi.key); setActiveKpi(null); } }}
+      />
+      <KpiDataTableModal
+        kpiKey={tableKpiKey}
+        kpiTitle={tableKpiKey ? kpiInfo[tableKpiKey].title : ""}
+        filters={filters}
+        onClose={() => setTableKpiKey(null)}
+      />
 
       {/* ── Row 2: Monthly Volume + Service Breakdown ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
