@@ -17,6 +17,7 @@ services:
 
   warehouse-db:
     image: postgres:17-alpine
+    shm_size: '256m'
     environment:
       POSTGRES_DB: ${WAREHOUSE_DB_NAME}
       POSTGRES_USER: ${WAREHOUSE_DB_USER}
