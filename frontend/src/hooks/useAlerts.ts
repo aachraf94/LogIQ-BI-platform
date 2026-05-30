@@ -1,26 +1,37 @@
 "use client";
 
-import { useState } from "react";
-import { alerts as initialAlerts } from "@/lib/mock-data";
-import type { Alert } from "@/types/user";
+import { useState, useEffect, useCallback } from "react";
+import { alertsApi } from "@/lib/api";
+import type { Alert } from "@/types/api";
 
 export function useAlerts() {
-  const [alertList, setAlertList] = useState<Alert[]>(initialAlerts);
+  const [alertList, setAlertList] = useState<Alert[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const resolveAlert = (id: string) => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      setAlertList(await alertsApi.list());
+    } catch {
+      // silently degrade
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const acknowledgeAlert = async (id: number, note = "") => {
+    await alertsApi.acknowledge(id, note);
     setAlertList((prev) =>
-      prev.map((a) =>
-        a.id === id
-          ? { ...a, status: "resolved" as const, resolvedAt: new Date().toISOString() }
-          : a
-      )
+      prev.map((a) => a.id === id ? { ...a, is_acknowledged: true } : a)
     );
   };
 
-  const activeCount = alertList.filter((a) => a.status === "active").length;
+  const activeCount = alertList.filter((a) => !a.is_acknowledged).length;
   const criticalCount = alertList.filter(
-    (a) => a.severity === "critical" && a.status === "active"
+    (a) => a.severity === "critical" && !a.is_acknowledged
   ).length;
 
-  return { alerts: alertList, resolveAlert, activeCount, criticalCount };
+  return { alerts: alertList, loading, acknowledgeAlert, activeCount, criticalCount, reload: load };
 }

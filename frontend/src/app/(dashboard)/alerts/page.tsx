@@ -2,34 +2,43 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { AlertTriangle, Info, CheckCircle, Bell, Clock, RefreshCw } from 'lucide-react'
-import { alertsApi, alertRulesApi, ApiError } from '@/lib/api'
-import type { Alert, AlertRule, AlertSeverity } from '@/types/api'
+import {
+  AlertTriangle, Info, CheckCircle, Bell, Clock, RefreshCw,
+  Plus, Trash2, Edit2, X, BellOff, BellRing, ShieldAlert,
+} from 'lucide-react'
+import {
+  alertsApi, alertRulesApi, myAlertRulesApi, ApiError,
+} from '@/lib/api'
+import type {
+  Alert, AlertRule, AlertRuleWithPreference, AlertSeverity,
+} from '@/types/api'
 import ReactECharts from 'echarts-for-react'
 import { formatDistanceToNow } from 'date-fns'
 import { cn } from '@/lib/utils'
 import { useTranslation } from '@/lib/i18n'
 import { useChartTheme } from '@/lib/chartTheme'
+import { useAuthStore } from '@/stores/authStore'
 
 type SeverityFilter = 'all' | AlertSeverity
 type StatusFilter = 'all' | 'acknowledged' | 'unacknowledged'
+type PageTab = 'alerts' | 'my-rules'
 
 const SEV_ICON: Record<AlertSeverity, React.ReactNode> = {
   critical: <AlertTriangle size={16} className="text-red-400" />,
-  warning: <AlertTriangle size={16} className="text-amber-400" />,
-  info: <Info size={16} className="text-blue-400" />,
+  warning:  <AlertTriangle size={16} className="text-amber-400" />,
+  info:     <Info          size={16} className="text-blue-400" />,
 }
 
 const SEV_BORDER: Record<AlertSeverity, string> = {
   critical: 'border-red-500/30',
-  warning: 'border-amber-500/30',
-  info: 'border-blue-500/30',
+  warning:  'border-amber-500/30',
+  info:     'border-blue-500/30',
 }
 
 const SEV_BADGE: Record<AlertSeverity, string> = {
   critical: 'bg-red-500/10 text-red-400',
-  warning: 'bg-amber-500/10 text-amber-400',
-  info: 'bg-blue-500/10 text-blue-400',
+  warning:  'bg-amber-500/10 text-amber-400',
+  info:     'bg-blue-500/10 text-blue-400',
 }
 
 const COND_LABEL: Record<string, string> = { gt: '>', lt: '<', gte: '≥', lte: '≤' }
@@ -134,40 +143,337 @@ function AlertCard({ alert, onAcknowledge }: { alert: Alert; onAcknowledge: (id:
   )
 }
 
-// ─── Rules table ──────────────────────────────────────────────────────────────
+// ─── Rule form (admin only) ────────────────────────────────────────────────────
 
-function RulesSection({ rules }: { rules: AlertRule[] }) {
+interface RuleFormData {
+  name: string
+  description: string
+  metric: string
+  operator: string
+  threshold: string
+  severity: string
+  dashboard: string
+  cooldown_minutes: string
+  is_active: boolean
+}
+
+const EMPTY_FORM: RuleFormData = {
+  name: '', description: '', metric: 'taux_livraison_pct', operator: 'lt',
+  threshold: '', severity: 'warning', dashboard: 'parcels', cooldown_minutes: '60', is_active: true,
+}
+
+const METRIC_CHOICES = [
+  'taux_livraison_pct', 'ecart_tarif_pct', 'nbr_sous_tarif',
+  'nbr_livraisons_jour', 'marge_brute_transport_pct', 'transport_cost_dzd',
+]
+
+function RuleFormModal({
+  rule, onClose, onSaved,
+}: {
+  rule: AlertRule | null
+  onClose: () => void
+  onSaved: (r: AlertRule) => void
+}) {
   const { t } = useTranslation()
   const p = t.pages.alerts
-  if (rules.length === 0) return null
+  const [form, setForm] = useState<RuleFormData>(
+    rule ? {
+      name: rule.name, description: rule.description, metric: rule.metric,
+      operator: rule.operator, threshold: String(rule.threshold),
+      severity: rule.severity, dashboard: rule.dashboard,
+      cooldown_minutes: String(rule.cooldown_minutes), is_active: rule.is_active,
+    } : EMPTY_FORM
+  )
+  const [saving, setSaving] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+
+  const set = (k: keyof RuleFormData, v: string | boolean) =>
+    setForm((f) => ({ ...f, [k]: v }))
+
+  const handleSave = async () => {
+    if (!form.name.trim() || !form.threshold) return
+    setSaving(true)
+    setError(null)
+    try {
+      const payload = {
+        ...form,
+        threshold: parseFloat(form.threshold),
+        cooldown_minutes: parseInt(form.cooldown_minutes, 10) || 60,
+        notify_roles: [],
+      }
+      const saved = rule
+        ? await alertRulesApi.update(rule.id, payload)
+        : await alertRulesApi.create(payload)
+      onSaved(saved)
+    } catch (e) {
+      setError(e instanceof ApiError ? e.message : 'Error')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const inputCls = "w-full bg-[var(--surface-secondary)] border border-[var(--border)] rounded-lg px-3 py-2 text-sm text-[var(--text-primary)] focus:outline-none focus:border-primary"
+  const labelCls = "block text-xs text-slate-400 mb-1"
+
   return (
-    <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl overflow-hidden">
-      <div className="px-5 py-3 border-b border-[var(--border)]">
-        <h3 className="text-sm font-semibold text-[var(--text-primary)]">{p.alertRules}</h3>
-      </div>
-      <div className="divide-y divide-[var(--border)]">
-        {rules.map((r) => (
-          <div key={r.id} className="flex items-center gap-4 px-5 py-3">
-            <div className="flex-1 min-w-0">
-              <p className="text-sm text-[var(--text-primary)] font-medium">{r.name}</p>
-              <p className="text-xs text-slate-500 mt-0.5">
-                {p.metricLabels[r.metric] ?? r.metric} {COND_LABEL[r.condition]} {r.threshold}
-                {' · '}{p.cooldown} {r.cooldown_minutes}m
-              </p>
-            </div>
-            <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full capitalize', SEV_BADGE[r.severity])}>
-              {r.severity}
-            </span>
-            <span className={cn('text-[10px] font-bold px-2 py-0.5 rounded-full',
-              r.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400')}>
-              {r.is_active ? p.ruleActive : p.rulePaused}
-            </span>
-            <span className="text-xs text-slate-600">
-              {r.trigger_count}{p.fired}
-            </span>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        exit={{ opacity: 0, scale: 0.95 }}
+        className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl w-full max-w-lg p-6 shadow-2xl"
+      >
+        <div className="flex items-center justify-between mb-5">
+          <h3 className="font-semibold text-[var(--text-primary)]">
+            {rule ? p.editRule : p.createRule}
+          </h3>
+          <button onClick={onClose} className="text-slate-500 hover:text-slate-300">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className={labelCls}>{p.ruleName}</label>
+            <input value={form.name} onChange={(e) => set('name', e.target.value)}
+              placeholder={p.ruleNamePlaceholder} className={inputCls} />
           </div>
-        ))}
+          <div>
+            <label className={labelCls}>{p.ruleDescription}</label>
+            <textarea value={form.description} onChange={(e) => set('description', e.target.value)}
+              rows={2} className={cn(inputCls, 'resize-none')} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{p.ruleMetric}</label>
+              <select value={form.metric} onChange={(e) => set('metric', e.target.value)} className={inputCls}>
+                {METRIC_CHOICES.map((m) => (
+                  <option key={m} value={m}>{p.metricLabels[m] ?? m}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>{p.ruleDashboard}</label>
+              <select value={form.dashboard} onChange={(e) => set('dashboard', e.target.value)} className={inputCls}>
+                {Object.entries(p.dashboardLabels).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={labelCls}>{p.ruleOperator}</label>
+              <select value={form.operator} onChange={(e) => set('operator', e.target.value)} className={inputCls}>
+                {Object.entries(p.operatorLabels).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className={labelCls}>{p.ruleThreshold}</label>
+              <input type="number" value={form.threshold} onChange={(e) => set('threshold', e.target.value)} className={inputCls} />
+            </div>
+            <div>
+              <label className={labelCls}>{p.ruleSeverity}</label>
+              <select value={form.severity} onChange={(e) => set('severity', e.target.value)} className={inputCls}>
+                <option value="info">Info</option>
+                <option value="warning">Warning</option>
+                <option value="critical">Critical</option>
+              </select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls}>{p.ruleCooldownMin}</label>
+              <input type="number" value={form.cooldown_minutes} onChange={(e) => set('cooldown_minutes', e.target.value)} className={inputCls} />
+            </div>
+            <div className="flex items-end pb-1">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <div
+                  onClick={() => set('is_active', !form.is_active)}
+                  className={cn(
+                    'relative w-10 h-5 rounded-full transition-colors cursor-pointer',
+                    form.is_active ? 'bg-primary' : 'bg-slate-600'
+                  )}
+                >
+                  <div className={cn(
+                    'absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform',
+                    form.is_active ? 'translate-x-5' : 'translate-x-0.5'
+                  )} />
+                </div>
+                <span className="text-sm text-[var(--text-secondary)]">{p.ruleActive}</span>
+              </label>
+            </div>
+          </div>
+        </div>
+
+        {error && <p className="mt-3 text-xs text-red-400">{error}</p>}
+
+        <div className="flex justify-end gap-3 mt-6">
+          <button onClick={onClose} className="px-4 py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors">
+            {p.cancel}
+          </button>
+          <button onClick={handleSave} disabled={saving || !form.name.trim() || !form.threshold}
+            className="px-5 py-2 text-sm font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50">
+            {saving ? '…' : p.save}
+          </button>
+        </div>
+      </motion.div>
+    </div>
+  )
+}
+
+// ─── My rules tab ─────────────────────────────────────────────────────────────
+
+function MyRulesTab({
+  isSuperAdmin, onEditRule,
+}: {
+  isSuperAdmin: boolean
+  onEditRule: (r: AlertRule) => void
+}) {
+  const { t } = useTranslation()
+  const p = t.pages.alerts
+  const [rules, setRules] = useState<AlertRuleWithPreference[]>([])
+  const [loading, setLoading] = useState(true)
+  const [toggling, setToggling] = useState<number | null>(null)
+  const [deleting, setDeleting] = useState<number | null>(null)
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      setRules(await myAlertRulesApi.list())
+    } catch { /* silently degrade */ } finally { setLoading(false) }
+  }, [])
+
+  useEffect(() => { load() }, [load])
+
+  const handleToggle = async (rule: AlertRuleWithPreference) => {
+    setToggling(rule.id)
+    try {
+      const pref = await myAlertRulesApi.setSubscription(rule.id, !rule.is_subscribed)
+      setRules((prev) => prev.map((r) => r.id === rule.id ? { ...r, is_subscribed: pref.is_subscribed } : r))
+    } catch { /* ignore */ } finally { setToggling(null) }
+  }
+
+  const handleDelete = async (rule: AlertRule) => {
+    if (!confirm(p.deleteConfirm)) return
+    setDeleting(rule.id)
+    try {
+      await alertRulesApi.delete(rule.id)
+      setRules((prev) => prev.filter((r) => r.id !== rule.id))
+    } catch { /* ignore */ } finally { setDeleting(null) }
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-32">
+        <span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
       </div>
+    )
+  }
+
+  if (rules.length === 0) {
+    return (
+      <div className="text-center py-14 text-slate-500">
+        <Bell size={32} className="mx-auto mb-3 opacity-30" />
+        <p>{p.noRules}</p>
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-3">
+      <p className="text-xs text-slate-500 mb-4">{p.subscriptionNote}</p>
+      {rules.map((rule) => (
+        <motion.div
+          key={rule.id}
+          layout
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          className={cn(
+            'bg-[var(--surface)] border rounded-xl p-4 transition-opacity',
+            !rule.is_subscribed && 'opacity-50',
+            SEV_BORDER[rule.severity],
+          )}
+        >
+          <div className="flex items-start gap-3">
+            <div className="mt-0.5">{SEV_ICON[rule.severity]}</div>
+            <div className="flex-1 min-w-0">
+              <div className="flex items-start justify-between gap-3">
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <h4 className="font-semibold text-[var(--text-primary)] text-sm">{rule.name}</h4>
+                    {rule.is_default && (
+                      <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20">
+                        {p.defaultRule}
+                      </span>
+                    )}
+                    <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-full capitalize', SEV_BADGE[rule.severity])}>
+                      {rule.severity}
+                    </span>
+                    <span className={cn('text-[10px] font-bold px-1.5 py-0.5 rounded-full',
+                      rule.is_active ? 'bg-emerald-500/10 text-emerald-400' : 'bg-slate-500/10 text-slate-400')}>
+                      {rule.is_active ? p.ruleActive : p.rulePaused}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    {p.metricLabels[rule.metric] ?? rule.metric}
+                    {' '}{COND_LABEL[rule.operator]}{' '}{rule.threshold}
+                    {' · '}{p.cooldown} {rule.cooldown_minutes}m
+                    {' · '}{p.dashboardLabels[rule.dashboard] ?? rule.dashboard}
+                  </p>
+                  {rule.description && (
+                    <p className="text-xs text-slate-600 mt-1">{rule.description}</p>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2 shrink-0">
+                  {/* Subscribe toggle */}
+                  <button
+                    onClick={() => handleToggle(rule)}
+                    disabled={toggling === rule.id}
+                    title={rule.is_subscribed ? p.unsubscribe : p.subscribe}
+                    className={cn(
+                      'flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg border transition-colors',
+                      rule.is_subscribed
+                        ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/20'
+                        : 'bg-slate-500/10 text-slate-400 border-slate-500/20 hover:bg-slate-500/20',
+                      toggling === rule.id && 'opacity-60 pointer-events-none',
+                    )}
+                  >
+                    {toggling === rule.id
+                      ? <span className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                      : rule.is_subscribed
+                        ? <BellRing size={12} />
+                        : <BellOff size={12} />
+                    }
+                    {rule.is_subscribed ? p.subscribed : p.unsubscribed}
+                  </button>
+
+                  {/* Admin actions */}
+                  {isSuperAdmin && (
+                    <>
+                      <button onClick={() => onEditRule(rule)}
+                        className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors" title={p.editRule}>
+                        <Edit2 size={13} />
+                      </button>
+                      <button onClick={() => handleDelete(rule)}
+                        disabled={deleting === rule.id}
+                        className="p-1.5 text-slate-500 hover:text-red-400 transition-colors" title={p.deleteRule}>
+                        {deleting === rule.id
+                          ? <span className="w-3 h-3 border border-red-400 border-t-transparent rounded-full animate-spin inline-block" />
+                          : <Trash2 size={13} />
+                        }
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </motion.div>
+      ))}
     </div>
   )
 }
@@ -175,146 +481,203 @@ function RulesSection({ rules }: { rules: AlertRule[] }) {
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
 export default function AlertsPage() {
+  const { user } = useAuthStore()
+  const isSuperAdmin = user?.is_superuser ?? false
+
+  const [tab, setTab] = useState<PageTab>('alerts')
   const [alerts, setAlerts] = useState<Alert[]>([])
-  const [rules, setRules] = useState<AlertRule[]>([])
   const [loading, setLoading] = useState(true)
   const [sevFilter, setSevFilter] = useState<SeverityFilter>('all')
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('unacknowledged')
+  const [showForm, setShowForm] = useState(false)
+  const [editingRule, setEditingRule] = useState<AlertRule | null>(null)
   const { t } = useTranslation()
   const p = t.pages.alerts
   const chartT = useChartTheme()
 
-  const load = useCallback(async () => {
+  const loadAlerts = useCallback(async () => {
     setLoading(true)
     try {
-      const [a, r] = await Promise.all([alertsApi.list(), alertRulesApi.list()])
-      setAlerts(a)
-      setRules(r)
+      setAlerts(await alertsApi.list())
     } catch { /* silently degrade */ } finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { loadAlerts() }, [loadAlerts])
 
   const handleAcknowledge = (id: number) => {
     setAlerts((prev) => prev.map((a) => a.id === id ? { ...a, is_acknowledged: true } : a))
   }
 
+  const handleRuleSaved = (rule: AlertRule) => {
+    setShowForm(false)
+    setEditingRule(null)
+    // Switch to rules tab after creating/editing
+    setTab('my-rules')
+  }
+
   const filtered = alerts.filter((a) => {
     const sev = sevFilter === 'all' || a.severity === sevFilter
-    const status =
+    const st =
       statusFilter === 'all' ||
       (statusFilter === 'acknowledged' && a.is_acknowledged) ||
       (statusFilter === 'unacknowledged' && !a.is_acknowledged)
-    return sev && status
+    return sev && st
   })
 
   const sevCounts = { critical: 0, warning: 0, info: 0 }
-  alerts.forEach((a) => { sevCounts[a.severity]++ })
+  alerts.forEach((a) => { sevCounts[a.severity as AlertSeverity]++ })
 
   const chartOption = {
     backgroundColor: 'transparent',
-    tooltip: { trigger: 'item', backgroundColor: chartT.tooltipBg, borderColor: chartT.borderColor, textStyle: { color: chartT.textColor, fontSize: 12 } },
+    tooltip: {
+      trigger: 'item',
+      backgroundColor: chartT.tooltipBg,
+      borderColor: chartT.borderColor,
+      textStyle: { color: chartT.textColor, fontSize: 12 },
+    },
     series: [{
       type: 'pie',
       radius: ['50%', '75%'],
       data: [
         { value: sevCounts.critical, name: 'Critical', itemStyle: { color: '#EF4444' } },
-        { value: sevCounts.warning, name: 'Warning', itemStyle: { color: '#F59E0B' } },
-        { value: sevCounts.info, name: 'Info', itemStyle: { color: '#3B82F6' } },
+        { value: sevCounts.warning,  name: 'Warning',  itemStyle: { color: '#F59E0B' } },
+        { value: sevCounts.info,     name: 'Info',     itemStyle: { color: '#3B82F6' } },
       ],
       label: { show: true, color: chartT.legendColor, fontSize: 11 },
     }],
   }
 
   const SEV_FILTER_LABELS: Record<SeverityFilter, string> = {
-    all: p.allSeverity,
-    critical: 'Critical',
-    warning: 'Warning',
-    info: 'Info',
+    all: p.allSeverity, critical: 'Critical', warning: 'Warning', info: 'Info',
   }
-
   const STATUS_FILTER_LABELS: Record<StatusFilter, string> = {
-    all: p.allSeverity,
-    unacknowledged: p.unacknowledged,
-    acknowledged: p.acknowledged,
+    all: p.allSeverity, unacknowledged: p.unacknowledged, acknowledged: p.acknowledged,
   }
 
   return (
     <div className="space-y-6">
-      {/* Summary row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {[
-          { label: p.allSeverity, value: alerts.length, color: 'text-white' },
-          { label: 'Critical', value: sevCounts.critical, color: 'text-red-400' },
-          { label: 'Warning', value: sevCounts.warning, color: 'text-amber-400' },
-          { label: p.unacknowledged, value: alerts.filter((a) => !a.is_acknowledged).length, color: 'text-primary' },
-        ].map((stat) => (
-          <div key={stat.label} className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
-            <p className="text-xs text-slate-400">{stat.label}</p>
-            <p className={cn('text-2xl font-bold mt-1', stat.color)}>{stat.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Chart + rules */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5">
-          <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">{p.distribution}</h3>
-          {alerts.length > 0
-            ? <ReactECharts option={chartOption} style={{ height: 180 }} notMerge />
-            : <div className="h-[180px] flex items-center justify-center text-slate-600 text-sm">{p.noAlerts}</div>}
-        </div>
-        <div className="lg:col-span-2">
-          <RulesSection rules={rules} />
-        </div>
-      </div>
-
-      {/* Filters */}
-      <div className="flex flex-wrap gap-3 items-center">
+      {/* Header tabs + create button */}
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div className="flex gap-0.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-1">
-          {(['all', 'critical', 'warning', 'info'] as SeverityFilter[]).map((s) => (
-            <button key={s} onClick={() => setSevFilter(s)}
-              className={cn('px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors',
-                sevFilter === s ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200')}>
-              {SEV_FILTER_LABELS[s]}
+          {(['alerts', 'my-rules'] as PageTab[]).map((t) => (
+            <button key={t} onClick={() => setTab(t)}
+              className={cn(
+                'px-4 py-1.5 rounded-md text-xs font-medium transition-colors flex items-center gap-1.5',
+                tab === t ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200',
+              )}>
+              {t === 'alerts'
+                ? <><ShieldAlert size={12} />{p.tabAlerts}</>
+                : <><Bell size={12} />{p.tabMyRules}</>
+              }
             </button>
           ))}
         </div>
-        <div className="flex gap-0.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-1">
-          {(['all', 'unacknowledged', 'acknowledged'] as StatusFilter[]).map((s) => (
-            <button key={s} onClick={() => setStatusFilter(s)}
-              className={cn('px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors',
-                statusFilter === s ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200')}>
-              {STATUS_FILTER_LABELS[s]}
-            </button>
-          ))}
-        </div>
-        <span className="text-xs text-slate-500 ml-auto">{filtered.length}</span>
-        <button onClick={load} disabled={loading} className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors">
-          <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
-        </button>
-      </div>
 
-      {/* Alert cards */}
-      <div className="space-y-3">
-        {loading ? (
-          <div className="flex items-center justify-center h-32">
-            <span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
-          </div>
-        ) : (
-          <AnimatePresence>
-            {filtered.map((alert) => (
-              <AlertCard key={alert.id} alert={alert} onAcknowledge={handleAcknowledge} />
-            ))}
-            {filtered.length === 0 && (
-              <div className="text-center py-14 text-slate-500">
-                <Bell size={32} className="mx-auto mb-3 opacity-30" />
-                <p>{p.noAlerts}</p>
-              </div>
-            )}
-          </AnimatePresence>
+        {isSuperAdmin && (
+          <button
+            onClick={() => { setEditingRule(null); setShowForm(true) }}
+            className="flex items-center gap-2 px-4 py-2 text-sm font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            <Plus size={14} /> {p.createRule}
+          </button>
         )}
       </div>
+
+      {/* ── Alerts tab ────────────────────────────────────────────────── */}
+      {tab === 'alerts' && (
+        <>
+          {/* Summary row */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: p.allSeverity,    value: alerts.length,                                  color: 'text-white' },
+              { label: 'Critical',       value: sevCounts.critical,                             color: 'text-red-400' },
+              { label: 'Warning',        value: sevCounts.warning,                              color: 'text-amber-400' },
+              { label: p.unacknowledged, value: alerts.filter((a) => !a.is_acknowledged).length, color: 'text-primary' },
+            ].map((stat) => (
+              <div key={stat.label} className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-4">
+                <p className="text-xs text-slate-400">{stat.label}</p>
+                <p className={cn('text-2xl font-bold mt-1', stat.color)}>{stat.value}</p>
+              </div>
+            ))}
+          </div>
+
+          {/* Chart */}
+          <div className="bg-[var(--surface)] border border-[var(--border)] rounded-xl p-5 max-w-sm">
+            <h3 className="text-sm font-semibold text-[var(--text-primary)] mb-3">{p.distribution}</h3>
+            {alerts.length > 0
+              ? <ReactECharts option={chartOption} style={{ height: 180 }} notMerge />
+              : <div className="h-[180px] flex items-center justify-center text-slate-600 text-sm">{p.noAlerts}</div>
+            }
+          </div>
+
+          {/* Filters */}
+          <div className="flex flex-wrap gap-3 items-center">
+            <div className="flex gap-0.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-1">
+              {(['all', 'critical', 'warning', 'info'] as SeverityFilter[]).map((s) => (
+                <button key={s} onClick={() => setSevFilter(s)}
+                  className={cn('px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors',
+                    sevFilter === s ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200')}>
+                  {SEV_FILTER_LABELS[s]}
+                </button>
+              ))}
+            </div>
+            <div className="flex gap-0.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-1">
+              {(['all', 'unacknowledged', 'acknowledged'] as StatusFilter[]).map((s) => (
+                <button key={s} onClick={() => setStatusFilter(s)}
+                  className={cn('px-3 py-1.5 rounded-md text-xs font-medium capitalize transition-colors',
+                    statusFilter === s ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200')}>
+                  {STATUS_FILTER_LABELS[s]}
+                </button>
+              ))}
+            </div>
+            <span className="text-xs text-slate-500 ml-auto">{filtered.length}</span>
+            <button onClick={loadAlerts} disabled={loading}
+              className="p-1.5 text-slate-500 hover:text-slate-300 transition-colors">
+              <RefreshCw size={14} className={loading ? 'animate-spin' : ''} />
+            </button>
+          </div>
+
+          {/* Alert cards */}
+          <div className="space-y-3">
+            {loading ? (
+              <div className="flex items-center justify-center h-32">
+                <span className="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin" />
+              </div>
+            ) : (
+              <AnimatePresence>
+                {filtered.map((alert) => (
+                  <AlertCard key={alert.id} alert={alert} onAcknowledge={handleAcknowledge} />
+                ))}
+                {filtered.length === 0 && (
+                  <div className="text-center py-14 text-slate-500">
+                    <Bell size={32} className="mx-auto mb-3 opacity-30" />
+                    <p>{p.noAlerts}</p>
+                  </div>
+                )}
+              </AnimatePresence>
+            )}
+          </div>
+        </>
+      )}
+
+      {/* ── My rules tab ──────────────────────────────────────────────── */}
+      {tab === 'my-rules' && (
+        <MyRulesTab
+          isSuperAdmin={isSuperAdmin}
+          onEditRule={(rule) => { setEditingRule(rule); setShowForm(true) }}
+        />
+      )}
+
+      {/* ── Rule create/edit modal ────────────────────────────────────── */}
+      <AnimatePresence>
+        {showForm && (
+          <RuleFormModal
+            rule={editingRule}
+            onClose={() => { setShowForm(false); setEditingRule(null) }}
+            onSaved={handleRuleSaved}
+          />
+        )}
+      </AnimatePresence>
     </div>
   )
 }

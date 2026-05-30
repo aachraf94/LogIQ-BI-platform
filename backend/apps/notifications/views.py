@@ -13,14 +13,16 @@ from rest_framework_simplejwt.authentication import JWTAuthentication
 
 from apps.users.permissions import IsSuperAdmin
 
-from .models import Alert, AlertRule, Notification
+from .models import Alert, AlertRule, Notification, UserAlertRulePreference
 from .serializers import (
     AlertAcknowledgeSerializer,
     AlertRuleSerializer,
+    AlertRuleWithPreferenceSerializer,
     AlertRuleWriteSerializer,
     AlertSerializer,
     NotificationCountSerializer,
     NotificationSerializer,
+    UserAlertRulePreferenceSerializer,
 )
 
 
@@ -285,3 +287,54 @@ class NotificationStreamView(View):
         response["Cache-Control"] = "no-cache"
         response["X-Accel-Buffering"] = "no"
         return response
+
+
+# ---------------------------------------------------------------------------
+# User Alert Rule Preferences
+# ---------------------------------------------------------------------------
+
+@extend_schema(tags=["alert-preferences"])
+class UserAlertRuleListView(generics.ListAPIView):
+    """
+    List all AlertRules visible to the current user, annotated with their
+    personal subscription status (is_subscribed).
+    Superadmins see all rules; regular users see only rules for their dashboards.
+    """
+    permission_classes = [IsAuthenticated]
+    serializer_class = AlertRuleWithPreferenceSerializer
+
+    def get_queryset(self):
+        qs = AlertRule.objects.select_related("created_by").all()
+        if not self.request.user.is_superuser:
+            qs = qs.filter(dashboard__in=self.request.user.accessible_dashboards)
+        return qs
+
+
+@extend_schema(tags=["alert-preferences"])
+class UserAlertRuleSubscribeView(APIView):
+    """
+    Set the current user's subscription preference for a specific AlertRule.
+    POST with { "is_subscribed": true/false }
+    """
+    permission_classes = [IsAuthenticated]
+
+    @extend_schema(
+        request=UserAlertRulePreferenceSerializer,
+        responses={200: UserAlertRulePreferenceSerializer},
+    )
+    def post(self, request, rule_pk):
+        try:
+            rule = AlertRule.objects.get(pk=rule_pk)
+        except AlertRule.DoesNotExist:
+            return Response({"detail": "Règle introuvable."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not request.user.is_superuser and not request.user.can_access_dashboard(rule.dashboard):
+            return Response({"detail": "Accès refusé."}, status=status.HTTP_403_FORBIDDEN)
+
+        is_subscribed = bool(request.data.get("is_subscribed", True))
+        pref, _ = UserAlertRulePreference.objects.update_or_create(
+            user=request.user,
+            rule=rule,
+            defaults={"is_subscribed": is_subscribed},
+        )
+        return Response(UserAlertRulePreferenceSerializer(pref).data)

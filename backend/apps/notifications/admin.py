@@ -1,7 +1,7 @@
 from django.contrib import admin, messages
 from django.utils.html import format_html
 
-from .models import Alert, AlertRule, Notification
+from .models import Alert, AlertRule, Notification, UserAlertRulePreference
 
 
 @admin.register(Notification)
@@ -37,14 +37,14 @@ class NotificationAdmin(admin.ModelAdmin):
 
 @admin.register(AlertRule)
 class AlertRuleAdmin(admin.ModelAdmin):
-    list_display = ["name", "metric_display_col", "condition_display", "severity_badge",
+    list_display = ["name", "is_default", "metric_display_col", "condition_display", "severity_badge",
                     "dashboard", "is_active", "cooldown_minutes", "last_triggered_at", "trigger_count"]
-    list_filter = ["is_active", "severity", "dashboard", "metric"]
+    list_filter = ["is_active", "is_default", "severity", "dashboard", "metric"]
     search_fields = ["name", "description"]
     readonly_fields = ["last_triggered_at", "created_at", "updated_at", "trigger_count"]
-    ordering = ["-created_at"]
+    ordering = ["-is_default", "-created_at"]
     fieldsets = [
-        (None, {"fields": ["name", "description", "is_active"]}),
+        (None, {"fields": ["name", "description", "is_active", "is_default"]}),
         ("Condition", {"fields": ["metric", "operator", "threshold", "severity"]}),
         ("Portée", {"fields": ["dashboard", "notify_roles", "cooldown_minutes"]}),
         ("Statistiques", {"fields": ["last_triggered_at", "trigger_count", "created_at", "updated_at"],
@@ -115,3 +115,12 @@ class AlertAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False
+
+
+@admin.register(UserAlertRulePreference)
+class UserAlertRulePreferenceAdmin(admin.ModelAdmin):
+    list_display = ["user", "rule", "is_subscribed", "updated_at"]
+    list_filter = ["is_subscribed", "rule__dashboard", "rule__severity"]
+    search_fields = ["user__username", "rule__name"]
+    readonly_fields = ["updated_at"]
+    ordering = ["user__username", "rule__name"]

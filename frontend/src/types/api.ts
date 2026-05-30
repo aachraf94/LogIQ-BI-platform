@@ -110,6 +110,7 @@ export interface AlertRule {
   id: number
   name: string
   description: string
+  is_default: boolean
   metric: string
   metric_display: string
   operator: string
@@ -117,13 +118,23 @@ export interface AlertRule {
   threshold: number
   severity: AlertSeverity
   dashboard: string
-  notify_roles: number[]
+  notify_roles: string[]
   is_active: boolean
   cooldown_minutes: number
   last_triggered_at: string | null
   trigger_count: number
   created_by_name: string | null
   created_at: string
+  updated_at: string
+}
+
+export interface AlertRuleWithPreference extends AlertRule {
+  is_subscribed: boolean
+}
+
+export interface UserAlertRulePreference {
+  rule_id: number
+  is_subscribed: boolean
   updated_at: string
 }
 

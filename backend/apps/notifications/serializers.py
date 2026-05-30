@@ -1,7 +1,7 @@
 from drf_spectacular.utils import extend_schema_field
 from rest_framework import serializers
 
-from .models import Alert, AlertRule, Notification
+from .models import Alert, AlertRule, Notification, UserAlertRulePreference
 
 
 class NotificationSerializer(serializers.ModelSerializer):
@@ -35,7 +35,7 @@ class AlertRuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = AlertRule
         fields = [
-            "id", "name", "description",
+            "id", "name", "description", "is_default",
             "metric", "metric_display",
             "operator", "condition", "operator_display",
             "threshold", "severity", "severity_display",
@@ -44,7 +44,10 @@ class AlertRuleSerializer(serializers.ModelSerializer):
             "last_triggered_at", "trigger_count",
             "created_by_name", "created_at", "updated_at",
         ]
-        read_only_fields = ["last_triggered_at", "trigger_count", "created_by_name", "created_at", "updated_at"]
+        read_only_fields = [
+            "last_triggered_at", "trigger_count", "created_by_name",
+            "created_at", "updated_at",
+        ]
 
     @extend_schema_field(serializers.IntegerField())
     def get_trigger_count(self, obj):
@@ -57,6 +60,25 @@ class AlertRuleSerializer(serializers.ModelSerializer):
         return None
 
 
+class AlertRuleWithPreferenceSerializer(AlertRuleSerializer):
+    """AlertRule enriched with the requesting user's subscription status."""
+    is_subscribed = serializers.SerializerMethodField()
+
+    class Meta(AlertRuleSerializer.Meta):
+        fields = AlertRuleSerializer.Meta.fields + ["is_subscribed"]
+
+    @extend_schema_field(serializers.BooleanField())
+    def get_is_subscribed(self, obj):
+        request = self.context.get("request")
+        if not request or not request.user.is_authenticated:
+            return True
+        try:
+            pref = UserAlertRulePreference.objects.get(user=request.user, rule=obj)
+            return pref.is_subscribed
+        except UserAlertRulePreference.DoesNotExist:
+            return True  # implicit subscription
+
+
 class AlertRuleWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = AlertRule
@@ -65,6 +87,13 @@ class AlertRuleWriteSerializer(serializers.ModelSerializer):
             "threshold", "severity", "dashboard",
             "notify_roles", "is_active", "cooldown_minutes",
         ]
+
+
+class UserAlertRulePreferenceSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = UserAlertRulePreference
+        fields = ["rule_id", "is_subscribed", "updated_at"]
+        read_only_fields = ["rule_id", "updated_at"]
 
 
 class AlertSerializer(serializers.ModelSerializer):

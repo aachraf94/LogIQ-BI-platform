@@ -10,6 +10,8 @@ from .views import (
     NotificationMarkAllReadView,
     NotificationMarkReadView,
     NotificationStreamView,
+    UserAlertRuleListView,
+    UserAlertRuleSubscribeView,
 )
 
 urlpatterns = [
@@ -22,11 +24,15 @@ urlpatterns = [
     # --- SSE stream ---
     path("stream/", NotificationStreamView.as_view(), name="notification-stream"),
 
-    # --- Alert rules ---
+    # --- Alert rules (admin CRUD) ---
     path("rules/", AlertRuleListCreateView.as_view(), name="alert-rule-list"),
     path("rules/<int:pk>/", AlertRuleDetailView.as_view(), name="alert-rule-detail"),
 
     # --- Alerts ---
     path("alerts/", AlertListView.as_view(), name="alert-list"),
     path("alerts/<int:pk>/acknowledge/", AlertAcknowledgeView.as_view(), name="alert-acknowledge"),
+
+    # --- User alert rule preferences ---
+    path("my-rules/", UserAlertRuleListView.as_view(), name="user-alert-rule-list"),
+    path("my-rules/<int:rule_pk>/subscribe/", UserAlertRuleSubscribeView.as_view(), name="user-alert-rule-subscribe"),
 ]

@@ -440,6 +440,38 @@ export interface Translations {
       noAlerts: string
       distribution: string
       metricLabels: Record<string, string>
+      // Tabs
+      tabAlerts: string
+      tabMyRules: string
+      // Subscription
+      subscribed: string
+      unsubscribed: string
+      subscribe: string
+      unsubscribe: string
+      defaultRule: string
+      noRules: string
+      subscriptionNote: string
+      // Admin create/edit
+      createRule: string
+      editRule: string
+      deleteRule: string
+      deleteConfirm: string
+      ruleName: string
+      ruleNamePlaceholder: string
+      ruleDescription: string
+      ruleMetric: string
+      ruleOperator: string
+      ruleThreshold: string
+      ruleSeverity: string
+      ruleDashboard: string
+      ruleCooldownMin: string
+      save: string
+      cancel: string
+      created: string
+      updated: string
+      deleted: string
+      dashboardLabels: Record<string, string>
+      operatorLabels: Record<string, string>
     }
     admin: {
       title: string
@@ -989,6 +1021,35 @@ const fr: Translations = {
         marge_brute_transport_pct: 'Marge brute transport (%)',
         nbr_livraisons_jour: 'Livraisons journalières',
       },
+      tabAlerts: 'Alertes actives',
+      tabMyRules: 'Mes règles',
+      subscribed: 'Abonné',
+      unsubscribed: 'Non abonné',
+      subscribe: 'Activer',
+      unsubscribe: 'Désactiver',
+      defaultRule: 'Par défaut',
+      noRules: 'Aucune règle disponible.',
+      subscriptionNote: 'Activez ou désactivez les règles d\'alerte selon vos besoins. Les règles désactivées ne génèreront aucune notification pour vous.',
+      createRule: 'Créer une règle',
+      editRule: 'Modifier',
+      deleteRule: 'Supprimer',
+      deleteConfirm: 'Êtes-vous sûr de vouloir supprimer cette règle ?',
+      ruleName: 'Nom de la règle',
+      ruleNamePlaceholder: 'ex. Taux de livraison faible',
+      ruleDescription: 'Description',
+      ruleMetric: 'Métrique',
+      ruleOperator: 'Opérateur',
+      ruleThreshold: 'Seuil',
+      ruleSeverity: 'Sévérité',
+      ruleDashboard: 'Tableau de bord',
+      ruleCooldownMin: 'Délai de récupération (min)',
+      save: 'Enregistrer',
+      cancel: 'Annuler',
+      created: 'Règle créée avec succès.',
+      updated: 'Règle mise à jour.',
+      deleted: 'Règle supprimée.',
+      dashboardLabels: { overview: 'Aperçu', transport: 'Transport', parcels: 'Colis & PCC' },
+      operatorLabels: { gt: 'Supérieur à (>)', gte: 'Supérieur ou égal (≥)', lt: 'Inférieur à (<)', lte: 'Inférieur ou égal (≤)' },
     },
     admin: {
       title: 'Vue Admin',
@@ -1538,6 +1599,35 @@ const en: Translations = {
         marge_brute_transport_pct: 'Transport Gross Margin (%)',
         nbr_livraisons_jour: 'Daily Deliveries',
       },
+      tabAlerts: 'Active Alerts',
+      tabMyRules: 'My Alert Rules',
+      subscribed: 'Subscribed',
+      unsubscribed: 'Unsubscribed',
+      subscribe: 'Enable',
+      unsubscribe: 'Disable',
+      defaultRule: 'Default',
+      noRules: 'No rules available.',
+      subscriptionNote: 'Enable or disable alert rules for yourself. Disabled rules will not generate notifications for you.',
+      createRule: 'Create Rule',
+      editRule: 'Edit',
+      deleteRule: 'Delete',
+      deleteConfirm: 'Are you sure you want to delete this rule?',
+      ruleName: 'Rule Name',
+      ruleNamePlaceholder: 'e.g. Low Delivery Rate',
+      ruleDescription: 'Description',
+      ruleMetric: 'Metric',
+      ruleOperator: 'Operator',
+      ruleThreshold: 'Threshold',
+      ruleSeverity: 'Severity',
+      ruleDashboard: 'Dashboard',
+      ruleCooldownMin: 'Cooldown (min)',
+      save: 'Save',
+      cancel: 'Cancel',
+      created: 'Rule created successfully.',
+      updated: 'Rule updated.',
+      deleted: 'Rule deleted.',
+      dashboardLabels: { overview: 'Overview', transport: 'Transport', parcels: 'Parcels & PCC' },
+      operatorLabels: { gt: 'Greater than (>)', gte: 'Greater or equal (≥)', lt: 'Less than (<)', lte: 'Less or equal (≤)' },
     },
     admin: {
       title: 'Admin Overview',
@@ -2087,6 +2177,35 @@ const ar: Translations = {
         marge_brute_transport_pct: 'هامش الربح الإجمالي للشحن (%)',
         nbr_livraisons_jour: 'التسليمات اليومية',
       },
+      tabAlerts: 'التنبيهات النشطة',
+      tabMyRules: 'قواعدي',
+      subscribed: 'مشترك',
+      unsubscribed: 'غير مشترك',
+      subscribe: 'تفعيل',
+      unsubscribe: 'إلغاء التفعيل',
+      defaultRule: 'افتراضي',
+      noRules: 'لا توجد قواعد متاحة.',
+      subscriptionNote: 'فعّل أو عطّل قواعد التنبيه حسب احتياجاتك. لن تتلقى إشعارات من القواعد المعطلة.',
+      createRule: 'إنشاء قاعدة',
+      editRule: 'تعديل',
+      deleteRule: 'حذف',
+      deleteConfirm: 'هل أنت متأكد من حذف هذه القاعدة؟',
+      ruleName: 'اسم القاعدة',
+      ruleNamePlaceholder: 'مثال: معدل تسليم منخفض',
+      ruleDescription: 'الوصف',
+      ruleMetric: 'المقياس',
+      ruleOperator: 'المشغّل',
+      ruleThreshold: 'الحد',
+      ruleSeverity: 'الخطورة',
+      ruleDashboard: 'لوحة البيانات',
+      ruleCooldownMin: 'فترة التهدئة (دقيقة)',
+      save: 'حفظ',
+      cancel: 'إلغاء',
+      created: 'تم إنشاء القاعدة بنجاح.',
+      updated: 'تم تحديث القاعدة.',
+      deleted: 'تم حذف القاعدة.',
+      dashboardLabels: { overview: 'نظرة عامة', transport: 'الشحن', parcels: 'الطرود والـ PCC' },
+      operatorLabels: { gt: 'أكبر من (>)', gte: 'أكبر أو يساوي (≥)', lt: 'أصغر من (<)', lte: 'أصغر أو يساوي (≤)' },
     },
     admin: {
       title: 'لوحة الإدارة',

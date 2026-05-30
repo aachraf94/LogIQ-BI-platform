@@ -88,16 +88,41 @@ def _fetch_metric(metric: str) -> float | None:
 
 
 def _notify_users_for_rule(rule, alert):
-    """Create in-app Notification rows for all users targeted by this rule."""
-    from apps.notifications.models import Notification
+    """Create in-app Notification rows for all users targeted by this rule.
+
+    Respects three layers of filtering:
+    1. Role / dashboard targeting defined on the AlertRule
+    2. UserPreferences.notif_alert_triggered (blanket on/off for alerts)
+    3. UserAlertRulePreference.is_subscribed (per-rule opt-out)
+    """
+    from apps.notifications.models import Notification, UserAlertRulePreference
     from apps.users.models import User
 
-    qs = User.objects.filter(is_active=True)
+    # Base: active users with alert notifications enabled globally
+    base_qs = (
+        User.objects
+        .filter(is_active=True)
+        .select_related("preferences", "role")
+    )
+
+    # Role targeting
     if rule.notify_roles:
-        qs = qs.filter(role__name__in=rule.notify_roles)
-    else:
-        # Notify all users who have access to the rule's dashboard
-        qs = [u for u in qs if u.can_access_dashboard(rule.dashboard)]
+        base_qs = base_qs.filter(role__name__in=rule.notify_roles)
+
+    # Dashboard access + global alert preference
+    users = [
+        u for u in base_qs
+        if u.can_access_dashboard(rule.dashboard)
+        and getattr(getattr(u, "preferences", None), "notif_alert_triggered", True)
+    ]
+
+    # Per-rule unsubscriptions
+    unsubscribed_ids = set(
+        UserAlertRulePreference.objects
+        .filter(rule=rule, is_subscribed=False)
+        .values_list("user_id", flat=True)
+    )
+    users = [u for u in users if u.pk not in unsubscribed_ids]
 
     severity_emoji = {"info": "ℹ️", "warning": "⚠️", "critical": "🚨"}.get(rule.severity, "🔔")
     notifications = [
@@ -117,7 +142,7 @@ def _notify_users_for_rule(rule, alert):
                 "severity": rule.severity,
             },
         )
-        for user in qs
+        for user in users
     ]
     if notifications:
         Notification.objects.bulk_create(notifications, ignore_conflicts=True)

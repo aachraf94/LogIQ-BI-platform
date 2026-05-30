@@ -44,6 +44,8 @@ class AlertRule(models.Model):
     """
     Threshold rule evaluated periodically by Celery.
     When the metric crosses the threshold, an Alert + Notification are created.
+    Default rules (is_default=True) are seeded by migrations and serve as a baseline;
+    users can subscribe or unsubscribe from any rule accessible to them.
     """
     METRIC_CHOICES = [
         ("ecart_tarif_pct", "Écart tarif moyen (%)"),
@@ -72,6 +74,10 @@ class AlertRule(models.Model):
 
     name = models.CharField(max_length=150)
     description = models.TextField(blank=True)
+    is_default = models.BooleanField(
+        default=False,
+        help_text="System-seeded rule shown to all eligible users; individual users may unsubscribe",
+    )
     metric = models.CharField(max_length=50, choices=METRIC_CHOICES)
     operator = models.CharField(max_length=5, choices=OPERATOR_CHOICES)
     threshold = models.FloatField()
@@ -138,3 +144,30 @@ class Alert(models.Model):
         self.acknowledged_at = timezone.now()
         self.note = note
         self.save(update_fields=["is_acknowledged", "acknowledged_by", "acknowledged_at", "note"])
+
+
+class UserAlertRulePreference(models.Model):
+    """
+    Per-user opt-in/out for a specific AlertRule.
+    If no row exists, the user is implicitly subscribed (default=True).
+    Only rows with is_subscribed=False represent an explicit unsubscription.
+    """
+    user = models.ForeignKey(
+        "users.User", on_delete=models.CASCADE, related_name="alert_rule_preferences"
+    )
+    rule = models.ForeignKey(
+        AlertRule, on_delete=models.CASCADE, related_name="user_preferences"
+    )
+    is_subscribed = models.BooleanField(
+        default=True,
+        help_text="False = user has explicitly unsubscribed from this rule",
+    )
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        db_table = "notifications_user_alert_rule_pref"
+        unique_together = [("user", "rule")]
+
+    def __str__(self):
+        status = "✓" if self.is_subscribed else "✗"
+        return f"[{status}] {self.user.username} → {self.rule.name}"

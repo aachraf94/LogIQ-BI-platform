@@ -1,7 +1,7 @@
 import type {
   LoginResponse, User, UserPreferences, LoginSession,
   DashboardBookmark, UserActivity, Announcement,
-  Notification, NotificationCount, AlertRule, Alert,
+  Notification, NotificationCount, AlertRule, AlertRuleWithPreference, UserAlertRulePreference, Alert,
   ETLRun, DataFreshness, HealthStatus, PlatformStats,
   UserStats, AdminActivity, PaginatedResponse, Role,
 } from '@/types/api'
@@ -264,6 +264,18 @@ export const alertsApi = {
     request(`/notifications/alerts/${id}/acknowledge/`, {
       method: 'POST',
       body: JSON.stringify({ note }),
+    }),
+}
+
+// ─── User alert rule preferences ──────────────────────────────────────────────
+
+export const myAlertRulesApi = {
+  list: () => requestList<AlertRuleWithPreference>('/notifications/my-rules/'),
+
+  setSubscription: (ruleId: number, isSubscribed: boolean) =>
+    request<UserAlertRulePreference>(`/notifications/my-rules/${ruleId}/subscribe/`, {
+      method: 'POST',
+      body: JSON.stringify({ is_subscribed: isSubscribed }),
     }),
 }
 
