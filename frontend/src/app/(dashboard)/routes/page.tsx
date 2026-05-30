@@ -29,7 +29,7 @@ const actualBars = groupedRouteData.map((d) => ({ name: d.route, value: d.actual
 const radarData = [82, 75, 100, 52, 78];
 
 export default function RoutesPage() {
-  const { t } = useTranslation();
+  const { t, isRTL } = useTranslation();
   const p = t.pages.routes;
 
   const routeColumns: Column<Route>[] = [
@@ -86,9 +86,13 @@ export default function RoutesPage() {
 
   return (
     <div className="space-y-6">
-      {/* ── Work-in-progress notice ── */}
-      <div className="sticky top-0 z-20 flex items-start gap-3 px-4 py-3.5 rounded-xl
-        border border-amber-500/30 bg-amber-500/10 backdrop-blur-sm shadow-[0_4px_24px_rgba(245,158,11,0.08)]">
+      {/* ── Work-in-progress floating notice ── */}
+      <div
+        className="fixed bottom-6 z-40 flex items-start gap-3 px-4 py-3.5 rounded-xl max-w-xs w-full
+          border border-amber-500/30 bg-[var(--surface)] backdrop-blur-sm
+          shadow-[0_8px_32px_rgba(0,0,0,0.18),0_0_0_1px_rgba(245,158,11,0.12)]"
+        style={isRTL ? { left: '1.5rem' } : { right: '1.5rem' }}
+      >
         <span className="relative flex h-2.5 w-2.5 mt-0.5 shrink-0">
           <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75" />
           <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-amber-500" />
@@ -96,7 +100,7 @@ export default function RoutesPage() {
         <Hammer size={15} className="shrink-0 text-amber-400 mt-0.5" />
         <div className="flex-1 min-w-0">
           <p className="text-sm font-semibold text-amber-400">{p.wipTitle}</p>
-          <p className="text-xs text-amber-400/70 mt-0.5 leading-relaxed">{p.wipDesc}</p>
+          <p className="text-xs text-[var(--text-muted)] mt-0.5 leading-relaxed">{p.wipDesc}</p>
         </div>
       </div>
 
