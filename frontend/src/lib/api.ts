@@ -751,7 +751,14 @@ export const parcelDeliveryApi = {
 
   // Date-range probe
   dateRange: () =>
-    request<{ min_date: string | null; max_date: string | null; total_count: number }>(
+    request<{
+      min_date: string | null;
+      max_date: string | null;
+      total_count: number;
+      min_terminal_date: string | null;
+      max_terminal_date: string | null;
+      terminal_count: number;
+    }>(
       `/analytics/parcel-delivery/date-range/`
     ),
 

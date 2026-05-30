@@ -200,8 +200,12 @@ export function ParcelKpiDataTableModal({
   const [costData, setCostData] = useState<ParcelTablePage<ParcelCostRow> | null>(null);
   const [perfData, setPerfData] = useState<ParcelTablePage<ParcelPerfRow> | null>(null);
 
-  const [dwRange,      setDwRange]      = useState<{ min_date: string; max_date: string; total_count: number } | null>(null);
-  const [probingRange, setProbingRange] = useState(false);
+  const [dwRange, setDwRange] = useState<{
+    min_date: string; max_date: string; total_count: number;
+    min_terminal_date: string | null; max_terminal_date: string | null; terminal_count: number;
+  } | null>(null);
+  const [probingRange,  setProbingRange]  = useState(false);
+  const [effectiveDates, setEffectiveDates] = useState<{ start: string; end: string } | null>(null);
 
   const tab         = kpiKey ? tabFromKey(kpiKey) : "ops";
   const currentPage = tab === "ops" ? opsData : tab === "cost" ? costData : perfData;
@@ -219,14 +223,22 @@ export function ParcelKpiDataTableModal({
 
   // Reset on KPI change
   useEffect(() => {
-    if (kpiKey) { setPage(1); setDwRange(null); }
+    if (kpiKey) { setPage(1); setDwRange(null); setEffectiveDates(null); }
   }, [kpiKey]);
+
+  const fetchStart = effectiveDates?.start ?? filters.start_date;
+  const fetchEnd   = effectiveDates?.end   ?? filters.end_date;
 
   const fetchData = useCallback(async () => {
     if (!kpiKey) return;
     setLoading(true);
     setError(null);
-    const params = { ...filters, kpi: kpiKey, page, page_size: PAGE_SIZE };
+    const params = {
+      ...filters,
+      start_date: fetchStart,
+      end_date:   fetchEnd,
+      kpi: kpiKey, page, page_size: PAGE_SIZE,
+    };
     try {
       let result;
       if (tab === "ops") {
@@ -244,7 +256,7 @@ export function ParcelKpiDataTableModal({
     } finally {
       setLoading(false);
     }
-  }, [kpiKey, tab, filters.start_date, filters.end_date, filters.delivery_type, page]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [kpiKey, tab, fetchStart, fetchEnd, filters.delivery_type, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -256,17 +268,34 @@ export function ParcelKpiDataTableModal({
     setProbingRange(true);
     parcelDeliveryApi.dateRange()
       .then((r) => {
-        if (r.min_date && r.max_date) setDwRange({ min_date: r.min_date, max_date: r.max_date, total_count: r.total_count });
+        if (r.min_date && r.max_date) setDwRange({
+          min_date:          r.min_date,
+          max_date:          r.max_date,
+          total_count:       r.total_count,
+          min_terminal_date: r.min_terminal_date ?? null,
+          max_terminal_date: r.max_terminal_date ?? null,
+          terminal_count:    r.terminal_count ?? 0,
+        });
       })
       .catch(() => { /* silent */ })
       .finally(() => setProbingRange(false));
   }, [kpiKey, loading, hasResults, usingMock, dwRange, probingRange, currentPage]);
 
+  function getSuggestedRange(r: NonNullable<typeof dwRange>): { start: string; end: string; count: number } {
+    if (tab === "cost" && r.min_terminal_date && r.max_terminal_date) {
+      return { start: r.min_terminal_date, end: r.max_terminal_date, count: r.terminal_count };
+    }
+    return { start: r.min_date, end: r.max_date, count: r.total_count };
+  }
+
   function applyDwRange() {
     if (!dwRange) return;
-    setStartDate(dwRange.min_date);
-    setEndDate(dwRange.max_date);
-    onClose();
+    const { start, end } = getSuggestedRange(dwRange);
+    setStartDate(start);
+    setEndDate(end);
+    setEffectiveDates({ start, end });
+    setDwRange(null);
+    setPage(1);
   }
 
   // ─── Table content ───────────────────────────────────────────────────────────
@@ -290,37 +319,39 @@ export function ParcelKpiDataTableModal({
         <div className="space-y-1">
           <p className="text-sm font-medium text-[var(--text-secondary)]">Aucune donnée pour cette période</p>
           <p className="text-xs font-mono text-[var(--text-muted)]">
-            {filters.start_date} → {filters.end_date}
+            {fetchStart} → {fetchEnd}
           </p>
         </div>
 
         {probingRange && (
           <p className="text-xs text-[var(--text-muted)] animate-pulse">Recherche de données disponibles…</p>
         )}
-        {dwRange && dwRange.total_count > 0 && (
-          <div className="mt-1 px-4 py-3 rounded-xl border border-primary/20 bg-primary/5 text-left space-y-2 w-full max-w-xs">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-primary/70">
-              Données disponibles dans le DW
-            </p>
-            <p className="text-xs text-[var(--text-secondary)]">
-              <span className="font-mono font-semibold text-[var(--text-primary)]">{dwRange.min_date}</span>
-              {" "}→{" "}
-              <span className="font-mono font-semibold text-[var(--text-primary)]">{dwRange.max_date}</span>
-            </p>
-            <p className="text-[11px] text-[var(--text-muted)]">
-              {dwRange.total_count.toLocaleString()} enregistrements au total
-            </p>
-            <button
-              onClick={applyDwRange}
-              className="w-full mt-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
-            >
-              Appliquer cette période et réessayer
-            </button>
-          </div>
-        )}
-        {dwRange && dwRange.total_count === 0 && (
-          <p className="text-xs text-[var(--text-muted)] opacity-60">Le DW ne contient aucune donnée de colis.</p>
-        )}
+        {dwRange && (() => {
+          const { start, end, count } = getSuggestedRange(dwRange);
+          return count > 0 ? (
+            <div className="mt-1 px-4 py-3 rounded-xl border border-primary/20 bg-primary/5 text-left space-y-2 w-full max-w-xs">
+              <p className="text-[11px] font-bold uppercase tracking-widest text-primary/70">
+                Données disponibles dans le DW
+              </p>
+              <p className="text-xs text-[var(--text-secondary)]">
+                <span className="font-mono font-semibold text-[var(--text-primary)]">{start}</span>
+                {" "}→{" "}
+                <span className="font-mono font-semibold text-[var(--text-primary)]">{end}</span>
+              </p>
+              <p className="text-[11px] text-[var(--text-muted)]">
+                {count.toLocaleString()} enregistrements au total
+              </p>
+              <button
+                onClick={applyDwRange}
+                className="w-full mt-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
+              >
+                Appliquer cette période et réessayer
+              </button>
+            </div>
+          ) : (
+            <p className="text-xs text-[var(--text-muted)] opacity-60">Le DW ne contient aucune donnée de colis.</p>
+          );
+        })()}
       </div>
     </td>
   );
@@ -378,7 +409,7 @@ export function ParcelKpiDataTableModal({
                 </p>
                 <h2 className="text-sm font-bold text-[var(--text-primary)] truncate">{kpiTitle}</h2>
                 <p className="text-[11px] font-mono text-[var(--text-muted)] mt-0.5">
-                  {filters.start_date} → {filters.end_date}
+                  {fetchStart} → {fetchEnd}
                   {filters.delivery_type ? <span className="ml-2 text-primary/70">· {filters.delivery_type}</span> : null}
                 </p>
               </div>

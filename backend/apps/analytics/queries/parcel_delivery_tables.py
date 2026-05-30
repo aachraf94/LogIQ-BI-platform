@@ -64,19 +64,36 @@ _PERF_FILTER: dict[str, str] = {
 # ─── Date range probe ─────────────────────────────────────────────────────────
 
 def get_parcel_date_range():
-    """Return the min/max date_creation_id and total row count in dim_parcel."""
+    """
+    Return date availability info from dim_parcel for both date columns:
+      - min_date / max_date / total_count   : based on date_creation_id (ops & perf tables)
+      - min_terminal_date / max_terminal_date / terminal_count : based on date_terminal_id (cost table)
+    """
     with connections["warehouse"].cursor() as cur:
         cur.execute("""
             SELECT
-                MIN(date_creation_id)::text AS min_date,
-                MAX(date_creation_id)::text AS max_date,
-                COUNT(*)                    AS total_count
+                MIN(date_creation_id)::text  AS min_date,
+                MAX(date_creation_id)::text  AS max_date,
+                COUNT(*)                     AS total_count,
+                MIN(date_terminal_id)::text  AS min_terminal_date,
+                MAX(date_terminal_id)::text  AS max_terminal_date,
+                COUNT(date_terminal_id)      AS terminal_count
             FROM warehouse.dim_parcel
         """)
         row = cur.fetchone()
     if not row or row[0] is None:
-        return {"min_date": None, "max_date": None, "total_count": 0}
-    return {"min_date": row[0], "max_date": row[1], "total_count": int(row[2])}
+        return {
+            "min_date": None, "max_date": None, "total_count": 0,
+            "min_terminal_date": None, "max_terminal_date": None, "terminal_count": 0,
+        }
+    return {
+        "min_date":           row[0],
+        "max_date":           row[1],
+        "total_count":        int(row[2]),
+        "min_terminal_date":  row[3],
+        "max_terminal_date":  row[4],
+        "terminal_count":     int(row[5]),
+    }
 
 
 # ─── Pagination helpers ───────────────────────────────────────────────────────
