@@ -212,12 +212,18 @@ export function KpiDataTableModal({ kpiKey, kpiTitle, filters, onClose, usingMoc
   const { t, isRTL } = useTranslation();
   const lb = t.pages.common.kpiTable;
 
+  const { setStartDate, setEndDate } = useTransportStore();
+
   const [page,     setPage]     = useState(1);
   const [loading,  setLoading]  = useState(false);
   const [error,    setError]    = useState<string | null>(null);
   const [opsData,  setOpsData]  = useState<TransportTablePage<TransportOpsRow>  | null>(null);
   const [costData, setCostData] = useState<TransportTablePage<TransportCostRow> | null>(null);
   const [perfData, setPerfData] = useState<TransportTablePage<TransportPerfRow> | null>(null);
+
+  // DW date-range probe — fetched once when the modal first opens on empty results
+  const [dwRange, setDwRange] = useState<{ min_date: string; max_date: string; total_count: number } | null>(null);
+  const [probingRange, setProbingRange] = useState(false);
 
   const tab         = kpiKey ? tabFromKey(kpiKey) : "ops";
   const currentPage = tab === "ops" ? opsData : tab === "cost" ? costData : perfData;
@@ -233,40 +239,60 @@ export function KpiDataTableModal({ kpiKey, kpiTitle, filters, onClose, usingMoc
     return () => window.removeEventListener("keydown", h);
   }, [kpiKey, onClose]);
 
-  // Reset page on KPI change
-  useEffect(() => { if (kpiKey) setPage(1); }, [kpiKey]);
+  // Reset page and DW range probe on KPI change
+  useEffect(() => {
+    if (kpiKey) { setPage(1); setDwRange(null); }
+  }, [kpiKey]);
 
   const fetchData = useCallback(async () => {
     if (!kpiKey) return;
     setLoading(true);
     setError(null);
     const params = { ...filters, kpi: kpiKey, page, page_size: PAGE_SIZE };
+    console.log("[KpiDataTableModal] fetch →", `start=${params.start_date}`, `end=${params.end_date}`, `kpi=${params.kpi}`, `service_type=${params.service_type ?? "all"}`);
     try {
       let result;
       if (tab === "ops") {
         result = await transportAnalyticsApi.opsTable(params);
-        console.log("[KpiDataTableModal] ops response:", result);
         setOpsData(result);
       } else if (tab === "cost") {
         result = await transportAnalyticsApi.costTable(params);
-        console.log("[KpiDataTableModal] cost response:", result);
         setCostData(result);
       } else {
         result = await transportAnalyticsApi.perfTable(params);
-        console.log("[KpiDataTableModal] perf response:", result);
         setPerfData(result);
       }
+      console.log("[KpiDataTableModal] response → count:", result.count);
     } catch (err) {
       console.error("[KpiDataTableModal] fetch error:", err);
-      // Surface the full error object so date-range vs auth vs SQL issues are distinguishable
-      const msg = err instanceof Error ? err.message : String(err);
-      setError(msg);
+      setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
   }, [kpiKey, tab, filters.start_date, filters.end_date, filters.service_type, page]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchData(); }, [fetchData]);
+
+  // When results come back empty (and backend is live), probe DW date range
+  const hasResults = (currentPage?.count ?? 0) > 0;
+  useEffect(() => {
+    if (!kpiKey || loading || hasResults || usingMock || dwRange || probingRange) return;
+    if (currentPage === null) return; // not yet fetched
+    setProbingRange(true);
+    transportAnalyticsApi.dateRange()
+      .then((r) => {
+        if (r.min_date && r.max_date) setDwRange({ min_date: r.min_date, max_date: r.max_date, total_count: r.total_count });
+      })
+      .catch(() => { /* silent — this is a helper probe */ })
+      .finally(() => setProbingRange(false));
+  }, [kpiKey, loading, hasResults, usingMock, dwRange, probingRange, currentPage]);
+
+  function applyDwRange() {
+    if (!dwRange) return;
+    setStartDate(dwRange.min_date);
+    setEndDate(dwRange.max_date);
+    onClose();
+  }
 
   // ─── Unified table body content ──────────────────────────────────────────────
 
@@ -275,25 +301,52 @@ export function KpiDataTableModal({ kpiKey, kpiTitle, filters, onClose, usingMoc
   const emptyNode = usingMock ? (
     <td colSpan={colCount} className="py-16 text-center">
       <div className="inline-flex flex-col items-center gap-2 max-w-xs mx-auto">
-        <span className="text-2xl">⚠️</span>
-        <p className="text-sm font-medium text-amber-500">
-          Données de démonstration
-        </p>
+        <AlertCircle size={24} className="text-amber-400" />
+        <p className="text-sm font-medium text-amber-500">Données de démonstration</p>
         <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-          Les cartes KPI affichent des données mock (backend indisponible). Le tableau de données nécessite une connexion live au backend.
+          Les cartes KPI affichent des données mock (backend indisponible). Le tableau nécessite une connexion live au backend.
         </p>
       </div>
     </td>
   ) : (
-    <td colSpan={colCount} className="py-16 text-center">
-      <div className="inline-flex flex-col items-center gap-1.5">
-        <p className="text-sm text-[var(--text-muted)]">{lb.noData}</p>
-        <p className="text-xs text-[var(--text-muted)] opacity-60">
-          {filters.start_date} → {filters.end_date}
-        </p>
-        <p className="text-[10px] text-[var(--text-muted)] opacity-40 mt-1">
-          Vérifiez que la plage de dates correspond aux données chargées dans votre DW.
-        </p>
+    <td colSpan={colCount} className="py-12 text-center">
+      <div className="inline-flex flex-col items-center gap-3 max-w-sm mx-auto">
+        <CalendarSearch size={28} className="text-[var(--text-muted)] opacity-40" />
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-[var(--text-secondary)]">Aucune donnée pour cette période</p>
+          <p className="text-xs font-mono text-[var(--text-muted)]">
+            {filters.start_date} → {filters.end_date}
+          </p>
+        </div>
+
+        {/* DW date range probe result */}
+        {probingRange && (
+          <p className="text-xs text-[var(--text-muted)] animate-pulse">Recherche de données disponibles…</p>
+        )}
+        {dwRange && dwRange.total_count > 0 && (
+          <div className="mt-1 px-4 py-3 rounded-xl border border-primary/20 bg-primary/5 text-left space-y-2 w-full max-w-xs">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-primary/70">
+              Données disponibles dans le DW
+            </p>
+            <p className="text-xs text-[var(--text-secondary)]">
+              <span className="font-mono font-semibold text-[var(--text-primary)]">{dwRange.min_date}</span>
+              {" "}→{" "}
+              <span className="font-mono font-semibold text-[var(--text-primary)]">{dwRange.max_date}</span>
+            </p>
+            <p className="text-[11px] text-[var(--text-muted)]">
+              {dwRange.total_count.toLocaleString()} enregistrements au total
+            </p>
+            <button
+              onClick={applyDwRange}
+              className="w-full mt-1 px-3 py-1.5 text-xs font-semibold rounded-lg bg-primary text-white hover:bg-primary/90 transition-colors"
+            >
+              Appliquer cette période et réessayer
+            </button>
+          </div>
+        )}
+        {dwRange && dwRange.total_count === 0 && (
+          <p className="text-xs text-[var(--text-muted)] opacity-60">Le DW ne contient aucune donnée de transport.</p>
+        )}
       </div>
     </td>
   );
@@ -354,6 +407,11 @@ export function KpiDataTableModal({ kpiKey, kpiTitle, filters, onClose, usingMoc
                   {lb.title}
                 </p>
                 <h2 className="text-sm font-bold text-[var(--text-primary)] truncate">{kpiTitle}</h2>
+                {/* Always show the queried period so user knows what filter is active */}
+                <p className="text-[11px] font-mono text-[var(--text-muted)] mt-0.5">
+                  {filters.start_date} → {filters.end_date}
+                  {filters.service_type ? <span className="ml-2 text-primary/70">· {filters.service_type}</span> : null}
+                </p>
               </div>
               {!loading && totalCount > 0 && (
                 <span className="text-xs text-[var(--text-muted)] shrink-0 tabular-nums">
