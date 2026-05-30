@@ -37,6 +37,7 @@ class AlertRuleSerializer(serializers.ModelSerializer):
         fields = [
             "id", "name", "description", "is_default",
             "metric", "metric_display",
+            "kpi_category",
             "operator", "condition", "operator_display",
             "threshold", "severity", "severity_display",
             "dashboard", "notify_roles",
@@ -83,7 +84,7 @@ class AlertRuleWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = AlertRule
         fields = [
-            "name", "description", "metric", "operator",
+            "name", "description", "metric", "kpi_category", "operator",
             "threshold", "severity", "dashboard",
             "notify_roles", "is_active", "cooldown_minutes",
         ]

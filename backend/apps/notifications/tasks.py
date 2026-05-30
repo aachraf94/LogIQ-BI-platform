@@ -18,56 +18,276 @@ logger = logging.getLogger(__name__)
 # SQL queries per metric — executed against the warehouse DB
 # ---------------------------------------------------------------------------
 
-_METRIC_QUERIES = {
-    "ecart_tarif_pct": """
-        SELECT ROUND(AVG(ecart_tarif_dzd / NULLIF(tarif_theorique, 0) * 100)::NUMERIC, 2)
-        FROM warehouse.fact_livraisons
-        WHERE date_key >= (SELECT date_key FROM warehouse.dim_date
-                           WHERE full_date = DATE_TRUNC('month', CURRENT_DATE))
-          AND tarif_theorique IS NOT NULL AND ecart_tarif_dzd IS NOT NULL
-    """,
-    "taux_livraison_pct": """
-        SELECT ROUND(
-            100.0 * COUNT(*) FILTER (WHERE statut_final = 'Livré')
-            / NULLIF(COUNT(*), 0)
-        ::NUMERIC, 2)
-        FROM warehouse.fact_livraisons
-        WHERE date_key >= (SELECT date_key FROM warehouse.dim_date
-                           WHERE full_date = DATE_TRUNC('month', CURRENT_DATE))
-    """,
-    "transport_cost_dzd": """
-        SELECT COALESCE(SUM(total_cost), 0)
-        FROM warehouse.fact_transport
-        WHERE date_key IN (
-            SELECT date_key FROM warehouse.dim_date
-            WHERE EXTRACT(YEAR FROM full_date) = EXTRACT(YEAR FROM CURRENT_DATE)
-              AND EXTRACT(MONTH FROM full_date) = EXTRACT(MONTH FROM CURRENT_DATE)
-        )
-    """,
-    "nbr_sous_tarif": """
+# ---------------------------------------------------------------------------
+# Weekly KPI queries — last 7 full days (CURRENT_DATE - 7 to CURRENT_DATE - 1)
+# All queries use the same warehouse schema as the analytics app.
+# ---------------------------------------------------------------------------
+
+_W = "dd.full_date >= CURRENT_DATE - INTERVAL '7 days' AND dd.full_date < CURRENT_DATE"
+
+_METRIC_QUERIES: dict[str, str] = {
+    # ── Parcel Delivery — Operations ────────────────────────────────────────
+    "pd_ops_total_parcels": f"""
         SELECT COUNT(*)
-        FROM warehouse.fact_livraisons
-        WHERE date_key >= (SELECT date_key FROM warehouse.dim_date
-                           WHERE full_date = DATE_TRUNC('month', CURRENT_DATE))
-          AND ecart_tarif_dzd < 0
+        FROM warehouse.dim_parcel dp
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        WHERE {_W}
     """,
-    "marge_brute_transport_pct": """
-        SELECT ROUND(
-            100.0 * SUM(amount_invoiced - total_cost)
-            / NULLIF(SUM(amount_invoiced), 0)
-        ::NUMERIC, 2)
-        FROM warehouse.fact_transport
-        WHERE date_key IN (
-            SELECT date_key FROM warehouse.dim_date
-            WHERE EXTRACT(YEAR FROM full_date) = EXTRACT(YEAR FROM CURRENT_DATE)
-              AND EXTRACT(MONTH FROM full_date) = EXTRACT(MONTH FROM CURRENT_DATE)
-        )
+    "pd_ops_delivered": f"""
+        SELECT COUNT(*) FILTER (WHERE dp.current_status_id = 13)
+        FROM warehouse.dim_parcel dp
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        WHERE {_W}
     """,
-    "nbr_livraisons_jour": """
+    "pd_ops_returns": f"""
         SELECT COUNT(*)
-        FROM warehouse.fact_livraisons
-        WHERE date_key = (SELECT date_key FROM warehouse.dim_date
-                          WHERE full_date = CURRENT_DATE)
+        FROM warehouse.dim_parcel dp
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        WHERE {_W} AND dp.current_status_id = 19
+    """,
+    "pd_ops_in_transit": f"""
+        SELECT COUNT(*)
+        FROM warehouse.dim_parcel dp
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        WHERE {_W} AND dp.is_terminal = FALSE
+    """,
+    "pd_ops_avg_duration": f"""
+        SELECT ROUND(COALESCE(AVG(fpp.duree_totale_minutes) / 60.0, 0)::NUMERIC, 2)
+        FROM warehouse.fact_parcel_performance fpp
+        JOIN warehouse.dim_parcel dp ON fpp.parcel_id = dp.parcel_id
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        WHERE {_W} AND dp.current_status_id = 13
+    """,
+
+    # ── Parcel Delivery — Cost & Profitability ───────────────────────────────
+    "pd_cost_fees_collected": f"""
+        SELECT COALESCE(SUM(fpr.delivery_fee), 0)
+        FROM warehouse.fact_parcel_revenue fpr
+        JOIN warehouse.dim_date dd ON fpr.date_terminal_id = dd.date_key
+        WHERE {_W}
+    """,
+    "pd_cost_total_cost": f"""
+        SELECT COALESCE(SUM(fc.montant), 0)
+        FROM warehouse.fact_charges fc
+        JOIN warehouse.dim_date dd ON fc.date_key = dd.date_key
+        WHERE {_W} AND fc.depense_status_id = 2
+    """,
+    "pd_cost_gross_margin": f"""
+        SELECT ROUND(
+            100.0 * (fees.v - cost.v) / NULLIF(fees.v, 0)::NUMERIC, 2
+        )
+        FROM (
+            SELECT COALESCE(SUM(fpr.delivery_fee), 0) AS v
+            FROM warehouse.fact_parcel_revenue fpr
+            JOIN warehouse.dim_date dd ON fpr.date_terminal_id = dd.date_key
+            WHERE {_W}
+        ) fees,
+        (
+            SELECT COALESCE(SUM(fc.montant), 0) AS v
+            FROM warehouse.fact_charges fc
+            JOIN warehouse.dim_date dd ON fc.date_key = dd.date_key
+            WHERE {_W} AND fc.depense_status_id = 2
+        ) cost
+    """,
+    "pd_cost_avg_fee": f"""
+        SELECT ROUND(
+            COALESCE(SUM(fpr.delivery_fee), 0)
+            / NULLIF(COUNT(dp.parcel_id) FILTER (WHERE dp.current_status_id = 13), 0)
+        ::NUMERIC, 2)
+        FROM warehouse.fact_parcel_revenue fpr
+        JOIN warehouse.dim_parcel dp ON fpr.parcel_id = dp.parcel_id
+        JOIN warehouse.dim_date dd ON fpr.date_terminal_id = dd.date_key
+        WHERE {_W}
+    """,
+    "pd_cost_per_delivery": f"""
+        SELECT ROUND(
+            COALESCE(SUM(fc.montant), 0)
+            / NULLIF(
+                (SELECT COUNT(*) FROM warehouse.dim_parcel dp2
+                 JOIN warehouse.dim_date dd2 ON dp2.date_creation_id = dd2.date_key
+                 WHERE dd2.full_date >= CURRENT_DATE - INTERVAL '7 days'
+                   AND dd2.full_date < CURRENT_DATE
+                   AND dp2.current_status_id = 13),
+                0)
+        ::NUMERIC, 2)
+        FROM warehouse.fact_charges fc
+        JOIN warehouse.dim_date dd ON fc.date_key = dd.date_key
+        WHERE {_W} AND fc.depense_status_id = 2
+    """,
+
+    # ── Parcel Delivery — Performance ────────────────────────────────────────
+    "pd_perf_delivery_rate": f"""
+        SELECT ROUND(
+            100.0 * COUNT(*) FILTER (WHERE dp.current_status_id = 13)
+            / NULLIF(COUNT(*), 0)::NUMERIC, 2
+        )
+        FROM warehouse.dim_parcel dp
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        WHERE {_W}
+    """,
+    "pd_perf_avg_attempts": f"""
+        SELECT ROUND(COALESCE(
+            AVG(fpp.nbr_tentatives_livraison + 1), 0
+        )::NUMERIC, 2)
+        FROM warehouse.fact_parcel_performance fpp
+        JOIN warehouse.dim_parcel dp ON fpp.parcel_id = dp.parcel_id
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        WHERE {_W} AND dp.current_status_id = 13
+    """,
+    "pd_perf_first_attempt_rate": f"""
+        SELECT ROUND(
+            100.0 * COUNT(*) FILTER (WHERE fpp.nbr_tentatives_livraison = 0)
+            / NULLIF(COUNT(*), 0)::NUMERIC, 2
+        )
+        FROM warehouse.fact_parcel_performance fpp
+        JOIN warehouse.dim_parcel dp ON fpp.parcel_id = dp.parcel_id
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        WHERE {_W} AND dp.current_status_id = 13
+    """,
+    "pd_perf_avg_duration": f"""
+        SELECT ROUND(COALESCE(AVG(fpp.duree_totale_minutes) / 60.0, 0)::NUMERIC, 2)
+        FROM warehouse.fact_parcel_performance fpp
+        JOIN warehouse.dim_parcel dp ON fpp.parcel_id = dp.parcel_id
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        WHERE {_W} AND dp.current_status_id = 13
+    """,
+    "pd_perf_claims_count": f"""
+        SELECT COUNT(*)
+        FROM warehouse.dim_remboursement dr
+        JOIN warehouse.dim_date dd ON dr.date_remboursement_id = dd.date_key
+        WHERE {_W}
+    """,
+
+    # ── Transport — Operations ────────────────────────────────────────────────
+    "tr_ops_total_requests": f"""
+        SELECT COUNT(*)
+        FROM warehouse.dim_transport dt
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
+    """,
+    "tr_ops_completion_rate": f"""
+        SELECT ROUND(
+            100.0 * COUNT(*) FILTER (WHERE dts.status_name = 'terminée')
+            / NULLIF(COUNT(*), 0)::NUMERIC, 2
+        )
+        FROM warehouse.dim_transport dt
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport_status dts ON dt.status_id = dts.status_id
+        WHERE {_W}
+    """,
+    "tr_ops_cancellation_rate": f"""
+        SELECT ROUND(
+            100.0 * COUNT(*) FILTER (WHERE dts.status_name = 'annulée')
+            / NULLIF(COUNT(*), 0)::NUMERIC, 2
+        )
+        FROM warehouse.dim_transport dt
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport_status dts ON dt.status_id = dts.status_id
+        WHERE {_W}
+    """,
+    "tr_ops_avg_distance": f"""
+        SELECT ROUND(COALESCE(AVG(ftp.distance_real_km), 0)::NUMERIC, 2)
+        FROM warehouse.fact_transport_performance ftp
+        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
+    """,
+    "tr_ops_avg_stops": f"""
+        SELECT ROUND(COALESCE(AVG(ftp.nbr_stops_total), 0)::NUMERIC, 2)
+        FROM warehouse.fact_transport_performance ftp
+        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
+    """,
+
+    # ── Transport — Cost & Profitability ─────────────────────────────────────
+    "tr_cost_total_revenue": f"""
+        SELECT COALESCE(SUM(ftb.amount_invoiced), 0)
+        FROM warehouse.fact_transport_billing ftb
+        JOIN warehouse.dim_transport dt ON ftb.transport_id = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
+    """,
+    "tr_cost_total_cost": f"""
+        SELECT COALESCE(SUM(ftc.total_cost), 0)
+        FROM warehouse.fact_transport_cost ftc
+        JOIN warehouse.dim_transport dt ON ftc.transport_id = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
+    """,
+    "tr_cost_gross_margin": f"""
+        SELECT COALESCE(SUM(ftb.marge_brute_dzd), 0)
+        FROM warehouse.fact_transport_billing ftb
+        JOIN warehouse.dim_transport dt ON ftb.transport_id = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
+    """,
+    "tr_cost_margin_pct": f"""
+        SELECT ROUND(
+            100.0 * COALESCE(SUM(ftb.marge_brute_dzd), 0)
+            / NULLIF(SUM(ftb.amount_invoiced), 0)::NUMERIC, 2
+        )
+        FROM warehouse.fact_transport_billing ftb
+        JOIN warehouse.dim_transport dt ON ftb.transport_id = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
+    """,
+    "tr_cost_per_km": f"""
+        SELECT ROUND(
+            COALESCE(SUM(ftc.total_cost), 0)
+            / NULLIF(SUM(ftp.distance_real_km), 0)::NUMERIC, 2
+        )
+        FROM warehouse.fact_transport_cost ftc
+        JOIN warehouse.fact_transport_performance ftp ON ftc.transport_id = ftp.transport_id
+        JOIN warehouse.dim_transport dt ON ftc.transport_id = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
+    """,
+
+    # ── Transport — Performance ───────────────────────────────────────────────
+    "tr_perf_on_time_rate": f"""
+        SELECT ROUND(
+            100.0 * COUNT(*) FILTER (WHERE ftp.is_on_time = TRUE)
+            / NULLIF(COUNT(*) FILTER (WHERE ftp.is_on_time IS NOT NULL), 0)::NUMERIC, 2
+        )
+        FROM warehouse.fact_transport_performance ftp
+        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
+    """,
+    "tr_perf_avg_duration": f"""
+        SELECT ROUND(COALESCE(AVG(ftp.total_duration_minutes) / 60.0, 0)::NUMERIC, 2)
+        FROM warehouse.fact_transport_performance ftp
+        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
+    """,
+    "tr_perf_avg_rating": f"""
+        SELECT ROUND(COALESCE(AVG(ftp.client_rating), 0)::NUMERIC, 2)
+        FROM warehouse.fact_transport_performance ftp
+        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W} AND ftp.client_rating IS NOT NULL
+    """,
+    "tr_perf_avg_delay": f"""
+        SELECT ROUND(COALESCE(AVG(ftp.arrival_delay_minutes), 0)::NUMERIC, 2)
+        FROM warehouse.fact_transport_performance ftp
+        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
+        JOIN warehouse.dim_transport_status dts ON dt.status_id = dts.status_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
+          AND dts.status_name = 'terminée'
+          AND ftp.arrival_delay_minutes IS NOT NULL
+    """,
+    "tr_perf_night_shift_rate": f"""
+        SELECT ROUND(
+            100.0 * COUNT(*) FILTER (WHERE ftp.night_shift_hours > 0)
+            / NULLIF(COUNT(*), 0)::NUMERIC, 2
+        )
+        FROM warehouse.fact_transport_performance ftp
+        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        WHERE {_W}
     """,
 }
 

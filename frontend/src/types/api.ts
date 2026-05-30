@@ -106,6 +106,8 @@ export interface NotificationCount {
 export type AlertSeverity = 'critical' | 'warning' | 'info'
 export type AlertCondition = 'gt' | 'lt' | 'gte' | 'lte'
 
+export type KpiCategory = 'operations' | 'cost_profitability' | 'performance'
+
 export interface AlertRule {
   id: number
   name: string
@@ -113,6 +115,7 @@ export interface AlertRule {
   is_default: boolean
   metric: string
   metric_display: string
+  kpi_category: KpiCategory
   operator: string
   condition: AlertCondition
   threshold: number

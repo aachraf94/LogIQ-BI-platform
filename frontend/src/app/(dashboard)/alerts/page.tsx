@@ -10,7 +10,7 @@ import {
   alertsApi, alertRulesApi, myAlertRulesApi, ApiError,
 } from '@/lib/api'
 import type {
-  Alert, AlertRule, AlertRuleWithPreference, AlertSeverity,
+  Alert, AlertRule, AlertRuleWithPreference, AlertSeverity, KpiCategory,
 } from '@/types/api'
 import ReactECharts from 'echarts-for-react'
 import { formatDistanceToNow } from 'date-fns'
@@ -143,29 +143,48 @@ function AlertCard({ alert, onAcknowledge }: { alert: Alert; onAcknowledge: (id:
   )
 }
 
+// ─── KPI tree: dashboard → category → metric keys ─────────────────────────────
+
+const KPI_TREE: Record<string, Record<KpiCategory, string[]>> = {
+  parcels: {
+    operations:        ['pd_ops_total_parcels','pd_ops_delivered','pd_ops_returns','pd_ops_in_transit','pd_ops_avg_duration'],
+    cost_profitability:['pd_cost_fees_collected','pd_cost_total_cost','pd_cost_gross_margin','pd_cost_avg_fee','pd_cost_per_delivery'],
+    performance:       ['pd_perf_delivery_rate','pd_perf_avg_attempts','pd_perf_first_attempt_rate','pd_perf_avg_duration','pd_perf_claims_count'],
+  },
+  transport: {
+    operations:        ['tr_ops_total_requests','tr_ops_completion_rate','tr_ops_cancellation_rate','tr_ops_avg_distance','tr_ops_avg_stops'],
+    cost_profitability:['tr_cost_total_revenue','tr_cost_total_cost','tr_cost_gross_margin','tr_cost_margin_pct','tr_cost_per_km'],
+    performance:       ['tr_perf_on_time_rate','tr_perf_avg_duration','tr_perf_avg_rating','tr_perf_avg_delay','tr_perf_night_shift_rate'],
+  },
+}
+
+const KPI_CATEGORIES: KpiCategory[] = ['operations', 'cost_profitability', 'performance']
+
 // ─── Rule form (admin only) ────────────────────────────────────────────────────
 
 interface RuleFormData {
   name: string
   description: string
+  dashboard: string
+  kpi_category: KpiCategory
   metric: string
   operator: string
   threshold: string
   severity: string
-  dashboard: string
   cooldown_minutes: string
   is_active: boolean
 }
 
-const EMPTY_FORM: RuleFormData = {
-  name: '', description: '', metric: 'taux_livraison_pct', operator: 'lt',
-  threshold: '', severity: 'warning', dashboard: 'parcels', cooldown_minutes: '60', is_active: true,
+function makeEmptyForm(dashboard = 'parcels'): RuleFormData {
+  const cat: KpiCategory = 'operations'
+  return {
+    name: '', description: '',
+    dashboard, kpi_category: cat,
+    metric: KPI_TREE[dashboard][cat][0] ?? '',
+    operator: 'lt', threshold: '', severity: 'warning',
+    cooldown_minutes: '10080', is_active: true,
+  }
 }
-
-const METRIC_CHOICES = [
-  'taux_livraison_pct', 'ecart_tarif_pct', 'nbr_sous_tarif',
-  'nbr_livraisons_jour', 'marge_brute_transport_pct', 'transport_cost_dzd',
-]
 
 function RuleFormModal({
   rule, onClose, onSaved,
@@ -176,35 +195,55 @@ function RuleFormModal({
 }) {
   const { t } = useTranslation()
   const p = t.pages.alerts
+
   const [form, setForm] = useState<RuleFormData>(
     rule ? {
-      name: rule.name, description: rule.description, metric: rule.metric,
+      name: rule.name, description: rule.description,
+      dashboard: rule.dashboard,
+      kpi_category: rule.kpi_category,
+      metric: rule.metric,
       operator: rule.operator, threshold: String(rule.threshold),
-      severity: rule.severity, dashboard: rule.dashboard,
+      severity: rule.severity,
       cooldown_minutes: String(rule.cooldown_minutes), is_active: rule.is_active,
-    } : EMPTY_FORM
+    } : makeEmptyForm()
   )
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
 
-  const set = (k: keyof RuleFormData, v: string | boolean) =>
+  const set = <K extends keyof RuleFormData>(k: K, v: RuleFormData[K]) =>
     setForm((f) => ({ ...f, [k]: v }))
 
+  // Cascade: dashboard change → reset category + metric
+  const handleDashboardChange = (dash: string) => {
+    const cat: KpiCategory = 'operations'
+    const metric = KPI_TREE[dash]?.[cat]?.[0] ?? ''
+    setForm((f) => ({ ...f, dashboard: dash, kpi_category: cat, metric }))
+  }
+
+  // Cascade: category change → reset metric
+  const handleCategoryChange = (cat: KpiCategory) => {
+    const metric = KPI_TREE[form.dashboard]?.[cat]?.[0] ?? ''
+    setForm((f) => ({ ...f, kpi_category: cat, metric }))
+  }
+
+  const availableMetrics = KPI_TREE[form.dashboard]?.[form.kpi_category] ?? []
+
   const handleSave = async () => {
-    if (!form.name.trim() || !form.threshold) return
+    if (!form.name.trim() || !form.threshold || !form.metric) return
     setSaving(true)
     setError(null)
     try {
       const payload: Partial<AlertRule> = {
         name: form.name,
         description: form.description,
+        dashboard: form.dashboard,
+        kpi_category: form.kpi_category,
         metric: form.metric,
         operator: form.operator,
         threshold: parseFloat(form.threshold),
         severity: form.severity as AlertSeverity,
-        dashboard: form.dashboard,
         is_active: form.is_active,
-        cooldown_minutes: parseInt(form.cooldown_minutes, 10) || 60,
+        cooldown_minutes: parseInt(form.cooldown_minutes, 10) || 10080,
         notify_roles: [],
       }
       const saved = rule
@@ -227,7 +266,7 @@ function RuleFormModal({
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.95 }}
-        className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl w-full max-w-lg p-6 shadow-2xl"
+        className="bg-[var(--surface)] border border-[var(--border)] rounded-2xl w-full max-w-lg p-6 shadow-2xl overflow-y-auto max-h-[90vh]"
       >
         <div className="flex items-center justify-between mb-5">
           <h3 className="font-semibold text-[var(--text-primary)]">
@@ -239,34 +278,85 @@ function RuleFormModal({
         </div>
 
         <div className="space-y-4">
+          {/* Row 1: Dashboard (first, drives cascade) */}
+          <div>
+            <label className={labelCls}>{p.ruleDashboard}</label>
+            <div className="flex gap-2">
+              {Object.entries(p.dashboardLabels).map(([k, v]) => (
+                <button
+                  key={k} type="button"
+                  onClick={() => handleDashboardChange(k)}
+                  className={cn(
+                    'flex-1 py-2 px-3 text-xs font-medium rounded-lg border transition-colors',
+                    form.dashboard === k
+                      ? 'bg-primary border-primary text-white'
+                      : 'border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
+                  )}
+                >
+                  {v}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Row 2: KPI Category (depends on dashboard) */}
+          <div>
+            <label className={labelCls}>{p.ruleMetric} — Catégorie</label>
+            <div className="flex gap-2">
+              {KPI_CATEGORIES.map((cat) => (
+                <button
+                  key={cat} type="button"
+                  onClick={() => handleCategoryChange(cat)}
+                  className={cn(
+                    'flex-1 py-1.5 px-2 text-[11px] font-medium rounded-lg border transition-colors',
+                    form.kpi_category === cat
+                      ? 'bg-primary/20 border-primary/40 text-primary'
+                      : 'border-[var(--border)] text-[var(--text-secondary)] hover:text-[var(--text-primary)]',
+                  )}
+                >
+                  {p.kpiCategories[cat]}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Row 3: KPI Metric (depends on dashboard + category) */}
+          <div>
+            <label className={labelCls}>{p.ruleMetric}</label>
+            <select
+              value={form.metric}
+              onChange={(e) => set('metric', e.target.value)}
+              className={inputCls}
+            >
+              {availableMetrics.map((m) => (
+                <option key={m} value={m}>{p.metricLabels[m] ?? m}</option>
+              ))}
+            </select>
+          </div>
+
+          {/* Row 4: Name */}
           <div>
             <label className={labelCls}>{p.ruleName}</label>
-            <input value={form.name} onChange={(e) => set('name', e.target.value)}
-              placeholder={p.ruleNamePlaceholder} className={inputCls} />
+            <input
+              value={form.name}
+              onChange={(e) => set('name', e.target.value)}
+              placeholder={p.ruleNamePlaceholder}
+              className={inputCls}
+            />
           </div>
+
+          {/* Row 5: Description */}
           <div>
             <label className={labelCls}>{p.ruleDescription}</label>
-            <textarea value={form.description} onChange={(e) => set('description', e.target.value)}
-              rows={2} className={cn(inputCls, 'resize-none')} />
+            <textarea
+              value={form.description}
+              onChange={(e) => set('description', e.target.value)}
+              rows={2}
+              className={cn(inputCls, 'resize-none')}
+            />
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={labelCls}>{p.ruleMetric}</label>
-              <select value={form.metric} onChange={(e) => set('metric', e.target.value)} className={inputCls}>
-                {METRIC_CHOICES.map((m) => (
-                  <option key={m} value={m}>{p.metricLabels[m] ?? m}</option>
-                ))}
-              </select>
-            </div>
-            <div>
-              <label className={labelCls}>{p.ruleDashboard}</label>
-              <select value={form.dashboard} onChange={(e) => set('dashboard', e.target.value)} className={inputCls}>
-                {Object.entries(p.dashboardLabels).map(([k, v]) => (
-                  <option key={k} value={k}>{v}</option>
-                ))}
-              </select>
-            </div>
-          </div>
+
+          {/* Row 6: Operator + Threshold + Severity */}
           <div className="grid grid-cols-3 gap-3">
             <div>
               <label className={labelCls}>{p.ruleOperator}</label>
@@ -278,7 +368,12 @@ function RuleFormModal({
             </div>
             <div>
               <label className={labelCls}>{p.ruleThreshold}</label>
-              <input type="number" value={form.threshold} onChange={(e) => set('threshold', e.target.value)} className={inputCls} />
+              <input
+                type="number" step="any"
+                value={form.threshold}
+                onChange={(e) => set('threshold', e.target.value)}
+                className={inputCls}
+              />
             </div>
             <div>
               <label className={labelCls}>{p.ruleSeverity}</label>
@@ -289,10 +384,17 @@ function RuleFormModal({
               </select>
             </div>
           </div>
+
+          {/* Row 7: Cooldown + Active */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={labelCls}>{p.ruleCooldownMin}</label>
-              <input type="number" value={form.cooldown_minutes} onChange={(e) => set('cooldown_minutes', e.target.value)} className={inputCls} />
+              <input
+                type="number"
+                value={form.cooldown_minutes}
+                onChange={(e) => set('cooldown_minutes', e.target.value)}
+                className={inputCls}
+              />
             </div>
             <div className="flex items-end pb-1">
               <label className="flex items-center gap-2 cursor-pointer">
@@ -300,12 +402,12 @@ function RuleFormModal({
                   onClick={() => set('is_active', !form.is_active)}
                   className={cn(
                     'relative w-10 h-5 rounded-full transition-colors cursor-pointer',
-                    form.is_active ? 'bg-primary' : 'bg-slate-600'
+                    form.is_active ? 'bg-primary' : 'bg-slate-600',
                   )}
                 >
                   <div className={cn(
                     'absolute top-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform',
-                    form.is_active ? 'translate-x-5' : 'translate-x-0.5'
+                    form.is_active ? 'translate-x-5' : 'translate-x-0.5',
                   )} />
                 </div>
                 <span className="text-sm text-[var(--text-secondary)]">{p.ruleActive}</span>
@@ -320,8 +422,11 @@ function RuleFormModal({
           <button onClick={onClose} className="px-4 py-2 text-sm text-slate-400 hover:text-slate-200 transition-colors">
             {p.cancel}
           </button>
-          <button onClick={handleSave} disabled={saving || !form.name.trim() || !form.threshold}
-            className="px-5 py-2 text-sm font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50">
+          <button
+            onClick={handleSave}
+            disabled={saving || !form.name.trim() || !form.threshold || !form.metric}
+            className="px-5 py-2 text-sm font-semibold bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50"
+          >
             {saving ? '…' : p.save}
           </button>
         </div>
@@ -424,10 +529,11 @@ function MyRulesTab({
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 mt-1">
-                    {p.metricLabels[rule.metric] ?? rule.metric}
+                    {p.dashboardLabels[rule.dashboard] ?? rule.dashboard}
+                    {' · '}{p.kpiCategories[rule.kpi_category] ?? rule.kpi_category}
+                    {' · '}{p.metricLabels[rule.metric] ?? rule.metric}
                     {' '}{COND_LABEL[rule.operator]}{' '}{rule.threshold}
                     {' · '}{p.cooldown} {rule.cooldown_minutes}m
-                    {' · '}{p.dashboardLabels[rule.dashboard] ?? rule.dashboard}
                   </p>
                   {rule.description && (
                     <p className="text-xs text-slate-600 mt-1">{rule.description}</p>

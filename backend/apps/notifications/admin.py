@@ -37,16 +37,16 @@ class NotificationAdmin(admin.ModelAdmin):
 
 @admin.register(AlertRule)
 class AlertRuleAdmin(admin.ModelAdmin):
-    list_display = ["name", "is_default", "metric_display_col", "condition_display", "severity_badge",
-                    "dashboard", "is_active", "cooldown_minutes", "last_triggered_at", "trigger_count"]
-    list_filter = ["is_active", "is_default", "severity", "dashboard", "metric"]
+    list_display = ["name", "is_default", "kpi_category", "metric_display_col", "condition_display",
+                    "severity_badge", "dashboard", "is_active", "cooldown_minutes", "last_triggered_at", "trigger_count"]
+    list_filter = ["is_active", "is_default", "severity", "dashboard", "kpi_category", "metric"]
     search_fields = ["name", "description"]
     readonly_fields = ["last_triggered_at", "created_at", "updated_at", "trigger_count"]
-    ordering = ["-is_default", "-created_at"]
+    ordering = ["-is_default", "dashboard", "kpi_category", "-created_at"]
     fieldsets = [
         (None, {"fields": ["name", "description", "is_active", "is_default"]}),
-        ("Condition", {"fields": ["metric", "operator", "threshold", "severity"]}),
-        ("Portée", {"fields": ["dashboard", "notify_roles", "cooldown_minutes"]}),
+        ("Condition", {"fields": ["dashboard", "kpi_category", "metric", "operator", "threshold", "severity"]}),
+        ("Portée", {"fields": ["notify_roles", "cooldown_minutes"]}),
         ("Statistiques", {"fields": ["last_triggered_at", "trigger_count", "created_at", "updated_at"],
                           "classes": ["collapse"]}),
     ]
