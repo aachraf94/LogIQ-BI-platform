@@ -291,7 +291,8 @@ function buildVehiclePerfOption(
     grid: { left: 16, right: 36, top: 8, bottom: 0, containLabel: true },
     xAxis: {
       type: "value" as const,
-      min: 70, max: 100,
+      min: 0,
+      max: 100,
       axisLine: { show: false },
       splitLine: { lineStyle: { color: ct.splitColor, type: "dashed" as const } },
       axisLabel: { color: ct.labelColor, fontSize: 10, formatter: (v: number) => `${v}%` },
