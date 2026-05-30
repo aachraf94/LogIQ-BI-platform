@@ -204,8 +204,10 @@ export function ParcelKpiDataTableModal({
     min_date: string; max_date: string; total_count: number;
     min_terminal_date: string | null; max_terminal_date: string | null; terminal_count: number;
   } | null>(null);
-  const [probingRange,  setProbingRange]  = useState(false);
+  const [probingRange,   setProbingRange]   = useState(false);
+  const [rangeApplied,   setRangeApplied]   = useState(false);
   const [effectiveDates, setEffectiveDates] = useState<{ start: string; end: string } | null>(null);
+  const [refetchKey,     setRefetchKey]     = useState(0);
 
   const tab         = kpiKey ? tabFromKey(kpiKey) : "ops";
   const currentPage = tab === "ops" ? opsData : tab === "cost" ? costData : perfData;
@@ -223,7 +225,7 @@ export function ParcelKpiDataTableModal({
 
   // Reset on KPI change
   useEffect(() => {
-    if (kpiKey) { setPage(1); setDwRange(null); setEffectiveDates(null); }
+    if (kpiKey) { setPage(1); setDwRange(null); setEffectiveDates(null); setRangeApplied(false); setRefetchKey(0); }
   }, [kpiKey]);
 
   const fetchStart = effectiveDates?.start ?? filters.start_date;
@@ -256,14 +258,14 @@ export function ParcelKpiDataTableModal({
     } finally {
       setLoading(false);
     }
-  }, [kpiKey, tab, fetchStart, fetchEnd, filters.delivery_type, page]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [kpiKey, tab, fetchStart, fetchEnd, filters.delivery_type, page, refetchKey]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
   // DW range probe when results are empty and backend is live
   const hasResults = (currentPage?.count ?? 0) > 0;
   useEffect(() => {
-    if (!kpiKey || loading || hasResults || usingMock || dwRange || probingRange) return;
+    if (!kpiKey || loading || hasResults || usingMock || dwRange || probingRange || rangeApplied) return;
     if (currentPage === null) return;
     setProbingRange(true);
     parcelDeliveryApi.dateRange()
@@ -279,7 +281,7 @@ export function ParcelKpiDataTableModal({
       })
       .catch(() => { /* silent */ })
       .finally(() => setProbingRange(false));
-  }, [kpiKey, loading, hasResults, usingMock, dwRange, probingRange, currentPage]);
+  }, [kpiKey, loading, hasResults, usingMock, dwRange, probingRange, rangeApplied, currentPage]);
 
   function getSuggestedRange(r: NonNullable<typeof dwRange>): { start: string; end: string; count: number } {
     if (tab === "cost" && r.min_terminal_date && r.max_terminal_date) {
@@ -295,7 +297,9 @@ export function ParcelKpiDataTableModal({
     setEndDate(end);
     setEffectiveDates({ start, end });
     setDwRange(null);
+    setRangeApplied(true);
     setPage(1);
+    setRefetchKey((k) => k + 1);   // Always force a new fetch, even if dates match
   }
 
   // ─── Table content ───────────────────────────────────────────────────────────

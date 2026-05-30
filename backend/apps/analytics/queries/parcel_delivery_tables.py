@@ -11,11 +11,14 @@ Table grain:
 All kpi / delivery_type values are validated against whitelists before interpolation.
 """
 
+import logging
 import math
 
 from django.db import connections
 
 from .parcel_delivery import _coerce, _rows, _dt_filter
+
+logger = logging.getLogger(__name__)
 
 
 # ─── Sort / filter whitelists ─────────────────────────────────────────────────
@@ -82,11 +85,12 @@ def get_parcel_date_range():
         """)
         row = cur.fetchone()
     if not row or row[0] is None:
+        logger.info("date-range probe: dim_parcel is empty")
         return {
             "min_date": None, "max_date": None, "total_count": 0,
             "min_terminal_date": None, "max_terminal_date": None, "terminal_count": 0,
         }
-    return {
+    result = {
         "min_date":           row[0],
         "max_date":           row[1],
         "total_count":        int(row[2]),
@@ -94,6 +98,11 @@ def get_parcel_date_range():
         "max_terminal_date":  row[4],
         "terminal_count":     int(row[5]),
     }
+    logger.info(
+        "date-range probe: creation=%s→%s (%d rows)  terminal=%s→%s (%d rows)",
+        row[0], row[1], int(row[2]), row[3], row[4], int(row[5]),
+    )
+    return result
 
 
 # ─── Pagination helpers ───────────────────────────────────────────────────────
@@ -176,7 +185,9 @@ def get_parcel_ops_table(
     """
 
     base_args = [start_date, end_date] + dt_args
-    return _run_table(count_sql, data_sql, base_args, base_args, page, page_size)
+    result = _run_table(count_sql, data_sql, base_args, base_args, page, page_size)
+    logger.info("ops-table start=%s end=%s dt=%s kpi=%s → count=%d", start_date, end_date, delivery_type, kpi, result["count"])
+    return result
 
 
 # ─── 2. Cost & Profitability table ────────────────────────────────────────────
@@ -226,7 +237,9 @@ def get_parcel_cost_table(
     """
 
     base_args = [start_date, end_date] + dt_args
-    return _run_table(count_sql, data_sql, base_args, base_args, page, page_size)
+    result = _run_table(count_sql, data_sql, base_args, base_args, page, page_size)
+    logger.info("cost-table start=%s end=%s dt=%s kpi=%s → count=%d", start_date, end_date, delivery_type, kpi, result["count"])
+    return result
 
 
 # ─── 3. Performance table ─────────────────────────────────────────────────────
@@ -283,4 +296,6 @@ def get_parcel_perf_table(
     """
 
     base_args = [start_date, end_date] + dt_args
-    return _run_table(count_sql, data_sql, base_args, base_args, page, page_size)
+    result = _run_table(count_sql, data_sql, base_args, base_args, page, page_size)
+    logger.info("perf-table start=%s end=%s dt=%s kpi=%s → count=%d", start_date, end_date, delivery_type, kpi, result["count"])
+    return result
