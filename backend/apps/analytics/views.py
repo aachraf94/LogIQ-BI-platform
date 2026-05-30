@@ -11,6 +11,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
+from .queries import overview as ovq
 from .queries import parcel_delivery as pdq
 from .queries import transport as tq
 
@@ -649,6 +650,46 @@ class TransportVehiclePerfView(APIView):
             return Response({"error": "start_date and end_date are required"}, status=400)
         try:
             return Response(tq.get_vehicle_perf(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+# ─── Overview analytics ───────────────────────────────────────────────────────
+#
+# No filter parameters — always current calendar month vs previous month.
+# Endpoints are mounted at /api/analytics/overview/...
+
+
+class OverviewKpisView(APIView):
+    """
+    GET /api/analytics/overview/kpis/
+
+    Returns 5 KPIs covering both On-demand Transport and Parcel Delivery,
+    with period-over-period % deltas (current calendar month vs previous).
+    Also returns transport_revenue and parcel_revenue for the revenue-split donut.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            return Response(ovq.get_kpis())
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class OverviewActivityTrendView(APIView):
+    """
+    GET /api/analytics/overview/activity-trend/
+
+    Returns [{period, transport_requests, parcel_handled}] for the last 6 months.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            return Response(ovq.get_activity_trend())
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)

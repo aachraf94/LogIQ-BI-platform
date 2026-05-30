@@ -267,6 +267,36 @@ export const alertsApi = {
     }),
 }
 
+// ─── Overview analytics ───────────────────────────────────────────────────────
+
+export interface OverviewKpis {
+  transport_requests:        number
+  pop_transport_requests:    number
+  transport_on_time_pct:     number
+  pop_transport_on_time:     number
+  parcel_handled:            number
+  pop_parcel_handled:        number
+  parcel_delivery_rate_pct:  number
+  pop_parcel_delivery_rate:  number
+  total_revenue:             number
+  pop_total_revenue:         number
+  transport_revenue:         number
+  parcel_revenue:            number
+}
+
+export interface OverviewActivityPoint {
+  period:              string   // YYYY-MM
+  transport_requests:  number
+  parcel_handled:      number
+}
+
+export const overviewApi = {
+  kpis: () =>
+    request<OverviewKpis>('/analytics/overview/kpis/'),
+  activityTrend: () =>
+    request<OverviewActivityPoint[]>('/analytics/overview/activity-trend/'),
+}
+
 // ─── ETL ──────────────────────────────────────────────────────────────────────
 
 export const etlApi = {

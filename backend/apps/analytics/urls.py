@@ -3,6 +3,10 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
+    # Overview (no filter — current month vs previous month)
+    path("overview/kpis/",           views.OverviewKpisView.as_view(),          name="overview-kpis"),
+    path("overview/activity-trend/", views.OverviewActivityTrendView.as_view(), name="overview-activity-trend"),
+
     # On-Demand Transport analytics (date-range based — Operations / Cost & Profitability / Performance)
     path("transport-analytics/ops-kpis/",          views.TransportOpsKpisView.as_view(),          name="transport-ops-kpis"),
     path("transport-analytics/monthly-trend/",     views.TransportMonthlyTrendView.as_view(),     name="transport-monthly-trend"),

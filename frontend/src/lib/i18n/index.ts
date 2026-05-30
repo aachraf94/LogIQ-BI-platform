@@ -111,33 +111,23 @@ export interface Translations {
       }
     }
     overview: {
-      kpiTotalDemands: string
-      kpiTotalRevenue: string
-      kpiAvgCost: string
-      kpiProfitMargin: string
-      kpiActiveVehicles: string
-      kpiOnTimeRate: string
-      vsLastMonth: string
-      deployed: string
-      last30Days: string
-      revenueCostTrends: string
-      demandsByRegion: string
-      topRoutesByVolume: string
-      profitMarginGauge: string
-      gaugeDesc: string
-      logisticsNetwork: string
-      networkSub: string
-      legendRoute: string
-      legendParcel: string
-      legendCity: string
-      recentAlerts: string
-      viewAllAlerts: string
-      colSeverity: string
-      colAlert: string
-      colKpi: string
-      colValueThreshold: string
-      colTime: string
-      colStatus: string
+      kpiTransportRequests:  string
+      kpiPunctuality:        string
+      kpiParcelHandled:      string
+      kpiDeliveryRate:       string
+      kpiTotalRevenue:       string
+      vsLastMonth:           string
+      sectionActivityTrend:  string
+      sectionRevenueSplit:   string
+      seriesTransport:       string
+      seriesParcels:         string
+      recentAlerts:          string
+      viewAllAlerts:         string
+      colSeverity:           string
+      colAlert:              string
+      colValueThreshold:     string
+      colTime:               string
+      colStatus:             string
     }
     transport: {
       kpiTotalRequests: string
@@ -623,33 +613,23 @@ const fr: Translations = {
       },
     },
     overview: {
-      kpiTotalDemands: 'Total Demandes',
-      kpiTotalRevenue: "Chiffre d'affaires",
-      kpiAvgCost: 'Coût moy. / Colis',
-      kpiProfitMargin: 'Marge bénéficiaire',
-      kpiActiveVehicles: 'Véhicules actifs',
-      kpiOnTimeRate: 'Taux ponctualité',
-      vsLastMonth: 'vs mois dernier',
-      deployed: 'actuellement déployés',
-      last30Days: '30 derniers jours',
-      revenueCostTrends: 'Tendances revenus & coûts',
-      demandsByRegion: 'Demandes par région',
-      topRoutesByVolume: 'Top 10 Routes par volume',
-      profitMarginGauge: 'Marge bénéficiaire du mois',
-      gaugeDesc: 'Vert > 25% | Ambré 15–25% | Rouge < 15%',
-      logisticsNetwork: 'Réseau logistique — Algérie',
-      networkSub: 'Taille nœud = volume demande | Épaisseur ligne = volume route | Points mobiles = colis en transit',
-      legendRoute: 'Route',
-      legendParcel: 'Colis',
-      legendCity: 'Ville',
-      recentAlerts: 'Alertes actives récentes',
-      viewAllAlerts: 'Voir toutes les alertes →',
-      colSeverity: 'Sévérité',
-      colAlert: 'Alerte',
-      colKpi: 'KPI',
-      colValueThreshold: 'Valeur / Seuil',
-      colTime: 'Heure',
-      colStatus: 'Statut',
+      kpiTransportRequests: 'Demandes transport',
+      kpiPunctuality:       'Ponctualité transport',
+      kpiParcelHandled:     'Colis traités',
+      kpiDeliveryRate:      'Taux de livraison',
+      kpiTotalRevenue:      "CA global",
+      vsLastMonth:          'vs mois dernier',
+      sectionActivityTrend: 'Activité mensuelle',
+      sectionRevenueSplit:  'Répartition CA',
+      seriesTransport:      'Transport',
+      seriesParcels:        'Colis',
+      recentAlerts:         'Alertes non acquittées',
+      viewAllAlerts:        'Voir toutes les alertes →',
+      colSeverity:          'Sévérité',
+      colAlert:             'Alerte',
+      colValueThreshold:    'Valeur / Seuil',
+      colTime:              'Heure',
+      colStatus:            'Statut',
     },
     transport: {
       kpiTotalRequests: 'Demandes totales',
@@ -1148,33 +1128,23 @@ const en: Translations = {
       },
     },
     overview: {
-      kpiTotalDemands: 'Total Demands',
-      kpiTotalRevenue: 'Total Revenue',
-      kpiAvgCost: 'Avg Cost / Parcel',
-      kpiProfitMargin: 'Profit Margin',
-      kpiActiveVehicles: 'Active Vehicles',
-      kpiOnTimeRate: 'On-Time Rate',
-      vsLastMonth: 'vs last month',
-      deployed: 'currently deployed',
-      last30Days: 'last 30 days',
-      revenueCostTrends: 'Revenue & Cost Trends',
-      demandsByRegion: 'Demands by Region',
-      topRoutesByVolume: 'Top 10 Routes by Volume',
-      profitMarginGauge: 'Current Month Profit Margin',
-      gaugeDesc: 'Green > 25% | Amber 15–25% | Red < 15%',
-      logisticsNetwork: 'Logistics Network — Algeria',
-      networkSub: 'Node size = demand volume | Line thickness = route volume | Moving dots = active parcels in transit',
-      legendRoute: 'Route',
-      legendParcel: 'Parcel',
-      legendCity: 'City',
-      recentAlerts: 'Recent Active Alerts',
-      viewAllAlerts: 'View all alerts →',
-      colSeverity: 'Severity',
-      colAlert: 'Alert',
-      colKpi: 'KPI',
-      colValueThreshold: 'Value / Threshold',
-      colTime: 'Time',
-      colStatus: 'Status',
+      kpiTransportRequests: 'Transport Requests',
+      kpiPunctuality:       'Transport Punctuality',
+      kpiParcelHandled:     'Parcels Handled',
+      kpiDeliveryRate:      'Delivery Rate',
+      kpiTotalRevenue:      'Total Revenue',
+      vsLastMonth:          'vs last month',
+      sectionActivityTrend: 'Monthly Activity',
+      sectionRevenueSplit:  'Revenue Split',
+      seriesTransport:      'Transport',
+      seriesParcels:        'Parcels',
+      recentAlerts:         'Unacknowledged Alerts',
+      viewAllAlerts:        'View all alerts →',
+      colSeverity:          'Severity',
+      colAlert:             'Alert',
+      colValueThreshold:    'Value / Threshold',
+      colTime:              'Time',
+      colStatus:            'Status',
     },
     transport: {
       kpiTotalRequests: 'Total Requests',
@@ -1673,33 +1643,23 @@ const ar: Translations = {
       },
     },
     overview: {
-      kpiTotalDemands: 'إجمالي الطلبات',
-      kpiTotalRevenue: 'إجمالي الإيرادات',
-      kpiAvgCost: 'متوسط التكلفة / طرد',
-      kpiProfitMargin: 'هامش الربح',
-      kpiActiveVehicles: 'المركبات النشطة',
-      kpiOnTimeRate: 'معدل التسليم في الوقت',
-      vsLastMonth: 'مقابل الشهر الماضي',
-      deployed: 'مُنشرة حالياً',
-      last30Days: 'آخر 30 يوماً',
-      revenueCostTrends: 'اتجاهات الإيرادات والتكاليف',
-      demandsByRegion: 'الطلبات حسب المنطقة',
-      topRoutesByVolume: 'أعلى 10 مسارات حسب الحجم',
-      profitMarginGauge: 'هامش ربح الشهر الحالي',
-      gaugeDesc: 'أخضر > 25% | عنبري 15–25% | أحمر < 15%',
-      logisticsNetwork: 'الشبكة اللوجستية — الجزائر',
-      networkSub: 'حجم العقدة = حجم الطلب | سماكة الخط = حجم المسار | النقاط المتحركة = طرود في العبور',
-      legendRoute: 'مسار',
-      legendParcel: 'طرد',
-      legendCity: 'مدينة',
-      recentAlerts: 'التنبيهات النشطة الأخيرة',
-      viewAllAlerts: '← عرض جميع التنبيهات',
-      colSeverity: 'الخطورة',
-      colAlert: 'التنبيه',
-      colKpi: 'المؤشر',
-      colValueThreshold: 'القيمة / الحد',
-      colTime: 'الوقت',
-      colStatus: 'الحالة',
+      kpiTransportRequests: 'طلبات النقل',
+      kpiPunctuality:       'انضباط النقل',
+      kpiParcelHandled:     'الطرود المعالجة',
+      kpiDeliveryRate:      'معدل التسليم',
+      kpiTotalRevenue:      'إجمالي الإيرادات',
+      vsLastMonth:          'مقابل الشهر الماضي',
+      sectionActivityTrend: 'النشاط الشهري',
+      sectionRevenueSplit:  'توزيع الإيرادات',
+      seriesTransport:      'النقل',
+      seriesParcels:        'الطرود',
+      recentAlerts:         'تنبيهات غير مُقرّة',
+      viewAllAlerts:        '← عرض جميع التنبيهات',
+      colSeverity:          'الخطورة',
+      colAlert:             'التنبيه',
+      colValueThreshold:    'القيمة / الحد',
+      colTime:              'الوقت',
+      colStatus:            'الحالة',
     },
     transport: {
       kpiTotalRequests: 'إجمالي الطلبات',
