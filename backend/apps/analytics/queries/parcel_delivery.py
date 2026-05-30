@@ -597,7 +597,7 @@ def get_perf_kpis(start_date, end_date, delivery_type=None):
             COUNT(*)                                                                         AS nbr_colis,
             COUNT(*) FILTER (WHERE dp.current_status_id = 13)                               AS nbr_livres,
             COALESCE(
-                AVG(fpp.nbr_tentatives_livraison)
+                AVG(fpp.nbr_tentatives_livraison + 1)
                     FILTER (WHERE dp.current_status_id = 13),
                 0
             )                                                                                AS avg_tentatives,
