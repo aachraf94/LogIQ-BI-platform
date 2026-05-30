@@ -6,9 +6,12 @@ import { motion } from "framer-motion";
 import { Package, TrendingUp, TrendingDown, Clock, Truck } from "lucide-react";
 
 import { KpiCard } from "@/components/ui/KpiCard";
+import { InfoPanel } from "@/components/ui/InfoPanel";
+import type { KpiInfo } from "@/components/ui/InfoPanel";
 import { PieChart } from "@/components/charts/PieChart";
 import { BarChart } from "@/components/charts/BarChart";
 import { useTranslation } from "@/lib/i18n";
+import { getParcelDeliveryKpiInfo } from "@/lib/kpi-info/parcel-delivery";
 import { useChartTheme } from "@/lib/chartTheme";
 import { useParcelDeliveryStore } from "@/stores/parcelDeliveryStore";
 import { parcelDeliveryApi } from "@/lib/api";
@@ -236,6 +239,7 @@ export default function OperationsPage() {
   const [data, setData] = useState<PageData>(MOCK);
   const [fetching, setFetching] = useState(false);
   const [chartsReady, setChartsReady] = useState(false);
+  const [activeKpiInfo, setActiveKpiInfo] = useState<KpiInfo | null>(null);
   const raf = useRef<number | null>(null);
 
   useEffect(() => {
@@ -243,9 +247,10 @@ export default function OperationsPage() {
     return () => { if (raf.current) cancelAnimationFrame(raf.current); };
   }, []);
 
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const p = t.pages.parcelDelivery;
   const ct = useChartTheme();
+  const kpiInfo = getParcelDeliveryKpiInfo(locale);
 
   const { startDate, endDate, deliveryType, rangeDays, setUsingMock } = useParcelDeliveryStore();
   const days = rangeDays();
@@ -313,8 +318,8 @@ export default function OperationsPage() {
           trendLabel={trendLabel}
           icon={<Package size={15} />}
           index={0}
+          onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_total_parcels)}
         />
-        {/* Delivered Parcels — count, not rate */}
         <KpiCard
           title={p.kpiDeliveryRate}
           value={formatNumber(kpis.nbr_livres)}
@@ -322,8 +327,8 @@ export default function OperationsPage() {
           trendLabel={trendLabel}
           icon={<TrendingUp size={15} />}
           index={1}
+          onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_delivered)}
         />
-        {/* Returns — count, not rate */}
         <KpiCard
           title={p.kpiReturnRate}
           value={formatNumber(kpis.nbr_retours)}
@@ -331,8 +336,8 @@ export default function OperationsPage() {
           trendLabel={trendLabel}
           icon={<TrendingDown size={15} />}
           index={2}
+          onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_returns)}
         />
-        {/* In Transit */}
         <KpiCard
           title={p.kpiFailedParcels}
           value={formatNumber(kpis.nbr_en_transit)}
@@ -340,6 +345,7 @@ export default function OperationsPage() {
           trendLabel={trendLabel}
           icon={<Truck size={15} />}
           index={3}
+          onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_in_transit)}
         />
         <KpiCard
           title={p.kpiAvgDuration}
@@ -348,8 +354,11 @@ export default function OperationsPage() {
           trendLabel={trendLabel}
           icon={<Clock size={15} />}
           index={4}
+          onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_avg_duration)}
         />
       </div>
+
+      <InfoPanel info={activeKpiInfo} onClose={() => setActiveKpiInfo(null)} />
 
       {/* ── Row 2: Volume trend + Status breakdown ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

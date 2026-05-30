@@ -6,8 +6,11 @@ import { motion } from "framer-motion";
 import { TrendingUp, Repeat2, CheckCircle2, Clock, FileWarning } from "lucide-react";
 
 import { KpiCard } from "@/components/ui/KpiCard";
+import { InfoPanel } from "@/components/ui/InfoPanel";
+import type { KpiInfo } from "@/components/ui/InfoPanel";
 import { PieChart } from "@/components/charts/PieChart";
 import { useTranslation } from "@/lib/i18n";
+import { getParcelDeliveryKpiInfo } from "@/lib/kpi-info/parcel-delivery";
 import { useChartTheme } from "@/lib/chartTheme";
 import { useParcelDeliveryStore } from "@/stores/parcelDeliveryStore";
 import { parcelDeliveryApi } from "@/lib/api";
@@ -290,6 +293,7 @@ export default function PerformancePage() {
   const [data, setData] = useState<PageData>(MOCK);
   const [fetching, setFetching] = useState(false);
   const [chartsReady, setChartsReady] = useState(false);
+  const [activeKpiInfo, setActiveKpiInfo] = useState<KpiInfo | null>(null);
   const raf = useRef<number | null>(null);
 
   useEffect(() => {
@@ -299,9 +303,10 @@ export default function PerformancePage() {
     return () => { if (raf.current) cancelAnimationFrame(raf.current); };
   }, []);
 
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const p = t.pages.parcelDelivery;
   const ct = useChartTheme();
+  const kpiInfo = getParcelDeliveryKpiInfo(locale);
 
   const { startDate, endDate, deliveryType, rangeDays, setUsingMock } = useParcelDeliveryStore();
   const days = rangeDays();
@@ -364,6 +369,7 @@ export default function PerformancePage() {
           trendLabel={trendLabel}
           icon={<TrendingUp size={15} />}
           index={0}
+          onInfoClick={() => setActiveKpiInfo(kpiInfo.perf_delivery_rate)}
         />
         <KpiCard
           title={p.kpiAvgAttempts}
@@ -372,6 +378,7 @@ export default function PerformancePage() {
           trendLabel={trendLabel}
           icon={<Repeat2 size={15} />}
           index={1}
+          onInfoClick={() => setActiveKpiInfo(kpiInfo.perf_avg_attempts)}
         />
         <KpiCard
           title={p.kpiFirstAttemptRate}
@@ -380,6 +387,7 @@ export default function PerformancePage() {
           trendLabel={trendLabel}
           icon={<CheckCircle2 size={15} />}
           index={2}
+          onInfoClick={() => setActiveKpiInfo(kpiInfo.perf_first_attempt_rate)}
         />
         <KpiCard
           title={p.kpiAvgDurationPerf}
@@ -388,6 +396,7 @@ export default function PerformancePage() {
           trendLabel={trendLabel}
           icon={<Clock size={15} />}
           index={3}
+          onInfoClick={() => setActiveKpiInfo(kpiInfo.perf_avg_duration)}
         />
         <KpiCard
           title={p.kpiClaimsCount}
@@ -396,8 +405,11 @@ export default function PerformancePage() {
           trendLabel={trendLabel}
           icon={<FileWarning size={15} />}
           index={4}
+          onInfoClick={() => setActiveKpiInfo(kpiInfo.perf_claims_count)}
         />
       </div>
+
+      <InfoPanel info={activeKpiInfo} onClose={() => setActiveKpiInfo(null)} />
 
       {/* ── Row 2: Monthly Performance trend + Duration distribution ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
