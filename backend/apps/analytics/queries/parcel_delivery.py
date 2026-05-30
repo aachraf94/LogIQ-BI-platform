@@ -97,6 +97,21 @@ def _get_salaires(start_date, end_date):
     return float(rows[0]["total"]) if rows else 0.0
 
 
+def _get_total_fees(start_date, end_date):
+    """Total delivery fees for ALL delivery types in the date window (no delivery_type filter).
+
+    Used as the denominator when proportionally allocating costs to a delivery_type
+    subset: allocated_cost = total_cost × (filtered_fees / total_fees_all).
+    """
+    rows = _run("""
+        SELECT COALESCE(SUM(fpr.delivery_fee), 0) AS total
+        FROM warehouse.fact_parcel_revenue fpr
+        JOIN warehouse.dim_parcel dp ON fpr.parcel_key = dp.parcel_key
+        WHERE dp.date_terminal_id >= %s AND dp.date_terminal_id <= %s
+    """, [start_date, end_date])
+    return float(rows[0]["total"]) if rows else 0.0
+
+
 # ═══════════════════════════════════════════════════════════════════════════════
 # SUB-PAGE 1 — OPERATIONS
 # ═══════════════════════════════════════════════════════════════════════════════
@@ -304,13 +319,17 @@ def get_cost_kpis(start_date, end_date, delivery_type=None):
     rev  = _run(rev_sql, [start_date, end_date] + dt_args)[0]
     fees = float(rev.get("total_fees") or 0)
     nbr  = int(rev.get("nbr_colis_livres") or 0)
-    cost = _get_charges(start_date, end_date) + _get_salaires(start_date, end_date)
+    total_cost = _get_charges(start_date, end_date) + _get_salaires(start_date, end_date)
+    all_fees   = _get_total_fees(start_date, end_date)
+    cost = round(total_cost * (fees / all_fees), 2) if all_fees else total_cost
 
     prev_s, prev_e = _prev_period(start_date, end_date)
     p_rev  = _run(rev_sql, [prev_s, prev_e] + dt_args)[0]
     p_fees = float(p_rev.get("total_fees") or 0)
     p_nbr  = int(p_rev.get("nbr_colis_livres") or 0)
-    p_cost = _get_charges(prev_s, prev_e) + _get_salaires(prev_s, prev_e)
+    p_total_cost = _get_charges(prev_s, prev_e) + _get_salaires(prev_s, prev_e)
+    p_all_fees   = _get_total_fees(prev_s, prev_e)
+    p_cost = round(p_total_cost * (p_fees / p_all_fees), 2) if p_all_fees else p_total_cost
 
     marge    = fees - cost
     marge_pct = round(marge / fees * 100, 1) if fees else 0.0
@@ -381,6 +400,17 @@ def get_revenue_cost_trend(start_date, end_date, delivery_type=None):
         ORDER BY period
     """
 
+    all_rev_sql = """
+        SELECT
+            TO_CHAR(dp.date_terminal_id, 'YYYY-MM') AS period,
+            COALESCE(SUM(fpr.delivery_fee), 0)       AS total_fees
+        FROM warehouse.fact_parcel_revenue fpr
+        JOIN warehouse.dim_parcel dp ON fpr.parcel_key = dp.parcel_key
+        WHERE dp.date_terminal_id >= %s AND dp.date_terminal_id <= %s
+        GROUP BY period
+        ORDER BY period
+    """
+
     rev_rows  = _run(rev_sql,     [start_date, end_date] + dt_args)
     chr_rows  = _run(charges_sql, [start_date, end_date])
     sal_rows  = _run(sal_sql,     [start_date, end_date])
@@ -389,15 +419,25 @@ def get_revenue_cost_trend(start_date, end_date, delivery_type=None):
     chr_map = {r["period"]: float(r["total_charges"])  for r in chr_rows}
     sal_map = {r["period"]: float(r["total_salaires"]) for r in sal_rows}
 
+    # When delivery_type is active, fetch unfiltered monthly revenue to use as
+    # the denominator for proportional cost allocation per month.
+    if dt_args:
+        all_rev_rows = _run(all_rev_sql, [start_date, end_date])
+        all_rev_map  = {r["period"]: float(r["total_fees"]) for r in all_rev_rows}
+    else:
+        all_rev_map = rev_map  # no filter — filtered revenue equals total revenue
+
     all_periods = sorted(set(rev_map) | set(chr_map) | set(sal_map))
     result = []
     for p in all_periods:
-        fees  = rev_map.get(p, 0.0)
-        costs = chr_map.get(p, 0.0) + sal_map.get(p, 0.0)
+        fees     = rev_map.get(p, 0.0)
+        all_fees = all_rev_map.get(p, 0.0)
+        raw_cost = chr_map.get(p, 0.0) + sal_map.get(p, 0.0)
+        costs    = round(raw_cost * (fees / all_fees), 2) if all_fees else raw_cost
         result.append({
             "period":      p,
             "total_fees":  round(fees, 2),
-            "cout_total":  round(costs, 2),
+            "cout_total":  costs,
             "marge_brute": round(fees - costs, 2),
         })
     return result
@@ -467,8 +507,10 @@ def get_region_profit(start_date, end_date, delivery_type=None):
     if not rows:
         return []
 
-    total_cost  = _get_charges(start_date, end_date) + _get_salaires(start_date, end_date)
-    total_fees  = sum(float(r["total_fees"]) for r in rows)
+    total_cost = _get_charges(start_date, end_date) + _get_salaires(start_date, end_date)
+    # Use actual total revenue (no LIMIT, no delivery_type filter) as the denominator
+    # so that LIMIT 200 on displayed rows does not inflate the per-flow cost allocation.
+    total_fees = _get_total_fees(start_date, end_date)
 
     result = []
     for r in rows:
@@ -514,7 +556,9 @@ def get_zone_profit(start_date, end_date, delivery_type=None):
         return []
 
     total_cost = _get_charges(start_date, end_date) + _get_salaires(start_date, end_date)
-    total_fees = sum(float(r["total_fees"]) for r in rows)
+    # Use actual total revenue (no delivery_type filter) as the denominator so that
+    # HD/SD-filtered views only absorb their proportional share of total costs.
+    total_fees = _get_total_fees(start_date, end_date)
 
     result = []
     for r in rows:
@@ -574,18 +618,21 @@ def get_perf_kpis(start_date, end_date, delivery_type=None):
           {dt_sql}
     """
 
-    claims_sql = """
+    claims_sql = f"""
         SELECT COUNT(*) AS nbr_sinistres
-        FROM warehouse.dim_remboursement
-        WHERE date_remboursement_id >= %s AND date_remboursement_id <= %s
+        FROM warehouse.dim_remboursement   dr
+        LEFT JOIN warehouse.dim_parcel        dp  ON dr.colis_tracking   = dp.tracking
+        LEFT JOIN warehouse.dim_delivery_type ddt ON dp.delivery_type_id = ddt.delivery_type_id
+        WHERE dr.date_remboursement_id >= %s AND dr.date_remboursement_id <= %s
+          {dt_sql}
     """
 
     curr_p = _run(parcel_sql, [start_date, end_date] + dt_args)[0]
-    curr_c = _run(claims_sql, [start_date, end_date])[0]
+    curr_c = _run(claims_sql, [start_date, end_date] + dt_args)[0]
 
     prev_s, prev_e = _prev_period(start_date, end_date)
     prev_p = _run(parcel_sql, [prev_s, prev_e] + dt_args)[0]
-    prev_c = _run(claims_sql, [prev_s, prev_e])[0]
+    prev_c = _run(claims_sql, [prev_s, prev_e] + dt_args)[0]
 
     nbr      = curr_p.get("nbr_colis")  or 0
     livres   = curr_p.get("nbr_livres") or 0

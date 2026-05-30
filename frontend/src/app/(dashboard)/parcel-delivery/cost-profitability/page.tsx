@@ -388,9 +388,7 @@ export default function CostProfitabilityPage() {
 
   const { kpis, revenueCostTrend, costByNature, regionProfit, zoneProfit } = data;
 
-  const costNatureBarData = [...costByNature]
-    .sort((a, b) => b.total_dzd - a.total_dzd)
-    .map((n) => ({ name: n.nature_name, value: n.total_dzd }));
+  const costNatureBarData = costByNature.map((n) => ({ name: n.nature_name, value: n.total_dzd }));
 
   return (
     <div className="space-y-5">

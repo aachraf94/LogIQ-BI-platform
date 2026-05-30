@@ -161,7 +161,7 @@ function buildDurationDistOption(
   label: string,
   ct: ReturnType<typeof useChartTheme>
 ) {
-  const sorted = [...buckets].sort((a, b) => a.bucket_order - b.bucket_order);
+  const sorted = buckets;
   return {
     backgroundColor: "transparent",
     tooltip: {
