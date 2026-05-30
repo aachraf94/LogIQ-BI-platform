@@ -8,9 +8,11 @@ import { DollarSign, TrendingUp, TrendingDown, BarChart2, Layers } from "lucide-
 import { KpiCard } from "@/components/ui/KpiCard";
 import { InfoPanel } from "@/components/ui/InfoPanel";
 import type { KpiInfo } from "@/components/ui/InfoPanel";
+import { ParcelKpiDataTableModal } from "@/components/ui/ParcelKpiDataTableModal";
 import { BarChart } from "@/components/charts/BarChart";
 import { useTranslation } from "@/lib/i18n";
 import { getParcelDeliveryKpiInfo } from "@/lib/kpi-info/parcel-delivery";
+import type { ParcelDeliveryKpiKey } from "@/lib/kpi-info/parcel-delivery";
 import { useChartTheme } from "@/lib/chartTheme";
 import { useParcelDeliveryStore } from "@/stores/parcelDeliveryStore";
 import { parcelDeliveryApi } from "@/lib/api";
@@ -346,7 +348,8 @@ export default function CostProfitabilityPage() {
   const [data, setData] = useState<PageData>(MOCK);
   const [fetching, setFetching] = useState(false);
   const [chartsReady, setChartsReady] = useState(false);
-  const [activeKpiInfo, setActiveKpiInfo] = useState<KpiInfo | null>(null);
+  const [activeKpi, setActiveKpi] = useState<{ key: ParcelDeliveryKpiKey; info: KpiInfo } | null>(null);
+  const [tableKpiKey, setTableKpiKey] = useState<ParcelDeliveryKpiKey | null>(null);
   const raf = useRef<number | null>(null);
 
   useEffect(() => {
@@ -359,7 +362,7 @@ export default function CostProfitabilityPage() {
   const ct = useChartTheme();
   const kpiInfo = getParcelDeliveryKpiInfo(locale);
 
-  const { startDate, endDate, deliveryType, rangeDays, setUsingMock } = useParcelDeliveryStore();
+  const { startDate, endDate, deliveryType, rangeDays, setUsingMock, usingMock } = useParcelDeliveryStore();
   const days = rangeDays();
   const trendLabel = `vs ${days} j précédents`;
 
@@ -412,14 +415,25 @@ export default function CostProfitabilityPage() {
 
       {/* ── Row 1: 5 KPI cards ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard title={p.kpiFeesCollected}    value={formatDZD(kpis.total_fees)}                       trend={kpis.pop_fees}            trendLabel={trendLabel} icon={<DollarSign size={15} />}  index={0} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_fees_collected)} />
-        <KpiCard title={p.kpiTotalCost}        value={formatDZD(kpis.cout_total)}                       trend={-kpis.pop_cout}           trendLabel={trendLabel} icon={<TrendingDown size={15} />} index={1} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_total_cost)} />
-        <KpiCard title={p.kpiGrossMargin}      value={formatPercent(kpis.marge_pct)}                    trend={kpis.pop_marge}           trendLabel={trendLabel} icon={<TrendingUp size={15} />}   index={2} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_gross_margin)} />
-        <KpiCard title={p.kpiAvgFee}           value={`${formatNumber(kpis.avg_fee_par_colis)} DZD`}    trend={kpis.pop_avg_fee}         trendLabel={trendLabel} icon={<BarChart2 size={15} />}    index={3} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_avg_fee)} />
-        <KpiCard title={p.kpiCostPerDelivery}  value={`${formatNumber(kpis.cout_par_colis_livre)} DZD`} trend={-kpis.pop_cout_par_livre} trendLabel={trendLabel} icon={<Layers size={15} />}      index={4} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_per_delivery)} />
+        <KpiCard title={p.kpiFeesCollected}    value={formatDZD(kpis.total_fees)}                       trend={kpis.pop_fees}            trendLabel={trendLabel} icon={<DollarSign size={15} />}  index={0} onInfoClick={() => setActiveKpi({ key: "cost_fees_collected", info: kpiInfo.cost_fees_collected })} />
+        <KpiCard title={p.kpiTotalCost}        value={formatDZD(kpis.cout_total)}                       trend={-kpis.pop_cout}           trendLabel={trendLabel} icon={<TrendingDown size={15} />} index={1} onInfoClick={() => setActiveKpi({ key: "cost_total_cost",     info: kpiInfo.cost_total_cost })} />
+        <KpiCard title={p.kpiGrossMargin}      value={formatPercent(kpis.marge_pct)}                    trend={kpis.pop_marge}           trendLabel={trendLabel} icon={<TrendingUp size={15} />}   index={2} onInfoClick={() => setActiveKpi({ key: "cost_gross_margin",   info: kpiInfo.cost_gross_margin })} />
+        <KpiCard title={p.kpiAvgFee}           value={`${formatNumber(kpis.avg_fee_par_colis)} DZD`}    trend={kpis.pop_avg_fee}         trendLabel={trendLabel} icon={<BarChart2 size={15} />}    index={3} onInfoClick={() => setActiveKpi({ key: "cost_avg_fee",         info: kpiInfo.cost_avg_fee })} />
+        <KpiCard title={p.kpiCostPerDelivery}  value={`${formatNumber(kpis.cout_par_colis_livre)} DZD`} trend={-kpis.pop_cout_par_livre} trendLabel={trendLabel} icon={<Layers size={15} />}      index={4} onInfoClick={() => setActiveKpi({ key: "cost_per_delivery",   info: kpiInfo.cost_per_delivery })} />
       </div>
 
-      <InfoPanel info={activeKpiInfo} onClose={() => setActiveKpiInfo(null)} />
+      <InfoPanel
+        info={activeKpi?.info ?? null}
+        onClose={() => setActiveKpi(null)}
+        onViewDataTable={() => { if (activeKpi) { setTableKpiKey(activeKpi.key); setActiveKpi(null); } }}
+      />
+      <ParcelKpiDataTableModal
+        kpiKey={tableKpiKey}
+        kpiTitle={tableKpiKey ? kpiInfo[tableKpiKey].title : ""}
+        filters={filters}
+        usingMock={usingMock}
+        onClose={() => setTableKpiKey(null)}
+      />
 
       {/* ── Row 2: Revenue vs Cost trend (left) + Expenses by Category (right) ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

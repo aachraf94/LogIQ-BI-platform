@@ -15,6 +15,7 @@ from .queries import overview as ovq
 from .queries import parcel_delivery as pdq
 from .queries import transport as tq
 from .queries import transport_tables as ttq
+from .queries import parcel_delivery_tables as pdtq
 
 logger = logging.getLogger(__name__)
 
@@ -793,4 +794,103 @@ class TransportPerfTableView(APIView):
             return Response(ttq.get_perf_table(start, end, st, kpi, page, page_size))
         except Exception as exc:
             logger.exception("Table query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+# ─── Parcel Delivery KPI data tables (paginated) ──────────────────────────────
+#
+# All three views accept:
+#   start_date    (required) — YYYY-MM-DD
+#   end_date      (required) — YYYY-MM-DD
+#   delivery_type (optional) — 'HD' | 'SD'
+#   kpi           (optional) — KPI key used to sort/filter rows
+#   page          (optional, default 1)
+#   page_size     (optional, default 20, max 100)
+#
+# Response: {count, page, page_size, total_pages, results: [...]}
+
+
+def _parcel_table_params(request):
+    """Extract common table pagination + filter params for parcel delivery."""
+    start = request.query_params.get("start_date")
+    end   = request.query_params.get("end_date")
+    dt    = request.query_params.get("delivery_type")
+    kpi   = request.query_params.get("kpi", "")
+    try:
+        page = max(1, int(request.query_params.get("page", 1)))
+    except (ValueError, TypeError):
+        page = 1
+    try:
+        page_size = min(100, max(1, int(request.query_params.get("page_size", 20))))
+    except (ValueError, TypeError):
+        page_size = 20
+    return start, end, dt, kpi, page, page_size
+
+
+class ParcelDeliveryDateRangeView(APIView):
+    """
+    GET /api/analytics/parcel-delivery/date-range/
+    Returns min_date, max_date, total_count from dim_parcel.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            return Response(pdtq.get_parcel_date_range())
+        except Exception as exc:
+            logger.exception("Parcel date range query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class ParcelDeliveryOpsTableView(APIView):
+    """
+    GET /api/analytics/parcel-delivery/table/ops/
+    Paginated row-level data for the Operations KPI cards.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, dt, kpi, page, page_size = _parcel_table_params(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(pdtq.get_parcel_ops_table(start, end, dt, kpi, page, page_size))
+        except Exception as exc:
+            logger.exception("Parcel ops table query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class ParcelDeliveryCostTableView(APIView):
+    """
+    GET /api/analytics/parcel-delivery/table/cost/
+    Paginated row-level data for the Cost & Profitability KPI cards.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, dt, kpi, page, page_size = _parcel_table_params(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(pdtq.get_parcel_cost_table(start, end, dt, kpi, page, page_size))
+        except Exception as exc:
+            logger.exception("Parcel cost table query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class ParcelDeliveryPerfTableView(APIView):
+    """
+    GET /api/analytics/parcel-delivery/table/perf/
+    Paginated row-level data for the Performance KPI cards.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, dt, kpi, page, page_size = _parcel_table_params(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(pdtq.get_parcel_perf_table(start, end, dt, kpi, page, page_size))
+        except Exception as exc:
+            logger.exception("Parcel perf table query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)

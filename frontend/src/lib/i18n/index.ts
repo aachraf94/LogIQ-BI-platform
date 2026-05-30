@@ -142,6 +142,16 @@ export interface Translations {
         no: string
         onTime: string
         late: string
+        // Parcel-specific columns
+        colDeliveryType: string
+        colDepartCenter: string
+        colDestCenter: string
+        colAttempts: string
+        colZone: string
+        colFee: string
+        colTarifRef: string
+        colEcartTarif: string
+        colFirstAttempt: string
       }
     }
     overview: {
@@ -711,6 +721,15 @@ const fr: Translations = {
         no: 'Non',
         onTime: 'À l\'heure',
         late: 'En retard',
+        colDeliveryType: 'Type',
+        colDepartCenter: 'Centre départ',
+        colDestCenter:   'Centre dest.',
+        colAttempts:     'Tentatives',
+        colZone:         'Zone',
+        colFee:          'Frais (DZD)',
+        colTarifRef:     'Tarif réf.',
+        colEcartTarif:   'Écart tarif',
+        colFirstAttempt: '1er essai',
       },
     },
     overview: {
@@ -1320,6 +1339,15 @@ const en: Translations = {
         no: 'No',
         onTime: 'On time',
         late: 'Late',
+        colDeliveryType: 'Type',
+        colDepartCenter: 'Depart. Center',
+        colDestCenter:   'Dest. Center',
+        colAttempts:     'Attempts',
+        colZone:         'Zone',
+        colFee:          'Fee (DZD)',
+        colTarifRef:     'Ref. Tariff',
+        colEcartTarif:   'Tariff Gap',
+        colFirstAttempt: '1st Attempt',
       },
     },
     overview: {
@@ -1923,6 +1951,15 @@ const ar: Translations = {
         no: 'لا',
         onTime: 'في الموعد',
         late: 'متأخر',
+        colDeliveryType: 'النوع',
+        colDepartCenter: 'مركز الانطلاق',
+        colDestCenter:   'مركز الوجهة',
+        colAttempts:     'المحاولات',
+        colZone:         'المنطقة',
+        colFee:          'الرسوم (دج)',
+        colTarifRef:     'التعريفة المرجعية',
+        colEcartTarif:   'فجوة التعريفة',
+        colFirstAttempt: 'المحاولة الأولى',
       },
     },
     overview: {

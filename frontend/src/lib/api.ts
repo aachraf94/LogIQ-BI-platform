@@ -748,6 +748,28 @@ export const parcelDeliveryApi = {
     request<import("@/types/parcel_delivery").ParcelClaimsType[]>(
       `/analytics/parcel-delivery/claims-types/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
+
+  // Date-range probe
+  dateRange: () =>
+    request<{ min_date: string | null; max_date: string | null; total_count: number }>(
+      `/analytics/parcel-delivery/date-range/`
+    ),
+
+  // Paginated KPI data tables
+  opsTable: (f: ParcelDeliveryFilters & { kpi?: string; page?: number; page_size?: number }) =>
+    request<import("@/types/parcel_delivery").ParcelTablePage<import("@/types/parcel_delivery").ParcelOpsRow>>(
+      `/analytics/parcel-delivery/table/ops/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
+    ),
+
+  costTable: (f: ParcelDeliveryFilters & { kpi?: string; page?: number; page_size?: number }) =>
+    request<import("@/types/parcel_delivery").ParcelTablePage<import("@/types/parcel_delivery").ParcelCostRow>>(
+      `/analytics/parcel-delivery/table/cost/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
+    ),
+
+  perfTable: (f: ParcelDeliveryFilters & { kpi?: string; page?: number; page_size?: number }) =>
+    request<import("@/types/parcel_delivery").ParcelTablePage<import("@/types/parcel_delivery").ParcelPerfRow>>(
+      `/analytics/parcel-delivery/table/perf/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
+    ),
 }
 
 // ─── Admin — roles ────────────────────────────────────────────────────────────

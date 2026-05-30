@@ -8,10 +8,12 @@ import { Package, TrendingUp, TrendingDown, Clock, Truck } from "lucide-react";
 import { KpiCard } from "@/components/ui/KpiCard";
 import { InfoPanel } from "@/components/ui/InfoPanel";
 import type { KpiInfo } from "@/components/ui/InfoPanel";
+import { ParcelKpiDataTableModal } from "@/components/ui/ParcelKpiDataTableModal";
 import { PieChart } from "@/components/charts/PieChart";
 import { BarChart } from "@/components/charts/BarChart";
 import { useTranslation } from "@/lib/i18n";
 import { getParcelDeliveryKpiInfo } from "@/lib/kpi-info/parcel-delivery";
+import type { ParcelDeliveryKpiKey } from "@/lib/kpi-info/parcel-delivery";
 import { useChartTheme } from "@/lib/chartTheme";
 import { useParcelDeliveryStore } from "@/stores/parcelDeliveryStore";
 import { parcelDeliveryApi } from "@/lib/api";
@@ -239,7 +241,8 @@ export default function OperationsPage() {
   const [data, setData] = useState<PageData>(MOCK);
   const [fetching, setFetching] = useState(false);
   const [chartsReady, setChartsReady] = useState(false);
-  const [activeKpiInfo, setActiveKpiInfo] = useState<KpiInfo | null>(null);
+  const [activeKpi, setActiveKpi] = useState<{ key: ParcelDeliveryKpiKey; info: KpiInfo } | null>(null);
+  const [tableKpiKey, setTableKpiKey] = useState<ParcelDeliveryKpiKey | null>(null);
   const raf = useRef<number | null>(null);
 
   useEffect(() => {
@@ -252,7 +255,7 @@ export default function OperationsPage() {
   const ct = useChartTheme();
   const kpiInfo = getParcelDeliveryKpiInfo(locale);
 
-  const { startDate, endDate, deliveryType, rangeDays, setUsingMock } = useParcelDeliveryStore();
+  const { startDate, endDate, deliveryType, rangeDays, setUsingMock, usingMock } = useParcelDeliveryStore();
   const days = rangeDays();
   const trendLabel = `vs ${days} j précédents`;
 
@@ -318,7 +321,7 @@ export default function OperationsPage() {
           trendLabel={trendLabel}
           icon={<Package size={15} />}
           index={0}
-          onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_total_parcels)}
+          onInfoClick={() => setActiveKpi({ key: "ops_total_parcels", info: kpiInfo.ops_total_parcels })}
         />
         <KpiCard
           title={p.kpiDeliveryRate}
@@ -327,7 +330,7 @@ export default function OperationsPage() {
           trendLabel={trendLabel}
           icon={<TrendingUp size={15} />}
           index={1}
-          onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_delivered)}
+          onInfoClick={() => setActiveKpi({ key: "ops_delivered", info: kpiInfo.ops_delivered })}
         />
         <KpiCard
           title={p.kpiReturnRate}
@@ -336,7 +339,7 @@ export default function OperationsPage() {
           trendLabel={trendLabel}
           icon={<TrendingDown size={15} />}
           index={2}
-          onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_returns)}
+          onInfoClick={() => setActiveKpi({ key: "ops_returns", info: kpiInfo.ops_returns })}
         />
         <KpiCard
           title={p.kpiFailedParcels}
@@ -345,7 +348,7 @@ export default function OperationsPage() {
           trendLabel={trendLabel}
           icon={<Truck size={15} />}
           index={3}
-          onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_in_transit)}
+          onInfoClick={() => setActiveKpi({ key: "ops_in_transit", info: kpiInfo.ops_in_transit })}
         />
         <KpiCard
           title={p.kpiAvgDuration}
@@ -354,11 +357,22 @@ export default function OperationsPage() {
           trendLabel={trendLabel}
           icon={<Clock size={15} />}
           index={4}
-          onInfoClick={() => setActiveKpiInfo(kpiInfo.ops_avg_duration)}
+          onInfoClick={() => setActiveKpi({ key: "ops_avg_duration", info: kpiInfo.ops_avg_duration })}
         />
       </div>
 
-      <InfoPanel info={activeKpiInfo} onClose={() => setActiveKpiInfo(null)} />
+      <InfoPanel
+        info={activeKpi?.info ?? null}
+        onClose={() => setActiveKpi(null)}
+        onViewDataTable={() => { if (activeKpi) { setTableKpiKey(activeKpi.key); setActiveKpi(null); } }}
+      />
+      <ParcelKpiDataTableModal
+        kpiKey={tableKpiKey}
+        kpiTitle={tableKpiKey ? kpiInfo[tableKpiKey].title : ""}
+        filters={filters}
+        usingMock={usingMock}
+        onClose={() => setTableKpiKey(null)}
+      />
 
       {/* ── Row 2: Volume trend + Status breakdown ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

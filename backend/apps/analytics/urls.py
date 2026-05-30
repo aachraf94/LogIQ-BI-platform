@@ -46,4 +46,10 @@ urlpatterns = [
     path("parcel-delivery/duration-distribution/",     views.ParcelDeliveryDurationDistributionView.as_view(),     name="parcel-delivery-duration-distribution"),
     path("parcel-delivery/center-expedition-ranking/", views.ParcelDeliveryCenterExpeditionRankingView.as_view(),  name="parcel-delivery-center-expedition-ranking"),
     path("parcel-delivery/claims-types/",              views.ParcelDeliveryClaimsTypesView.as_view(),              name="parcel-delivery-claims-types"),
+    # DW date-range probe
+    path("parcel-delivery/date-range/",                views.ParcelDeliveryDateRangeView.as_view(),                name="parcel-delivery-date-range"),
+    # Paginated data table views (one per sub-page)
+    path("parcel-delivery/table/ops/",                 views.ParcelDeliveryOpsTableView.as_view(),                 name="parcel-delivery-table-ops"),
+    path("parcel-delivery/table/cost/",                views.ParcelDeliveryCostTableView.as_view(),                name="parcel-delivery-table-cost"),
+    path("parcel-delivery/table/perf/",                views.ParcelDeliveryPerfTableView.as_view(),                name="parcel-delivery-table-perf"),
 ]

@@ -128,3 +128,46 @@ export interface ParcelClaimsType {
   sinistre_type: string
   nbr_sinistres: number
 }
+
+// ─── Paginated table rows ──────────────────────────────────────────────────────
+
+export interface ParcelTablePage<T> {
+  count: number
+  page: number
+  page_size: number
+  total_pages: number
+  results: T[]
+}
+
+export interface ParcelOpsRow {
+  tracking: string
+  date_creation: string          // YYYY-MM-DD
+  type_livraison: string | null  // HD | SD
+  statut: string | null
+  code_depart: string | null
+  code_destination: string | null
+  duree_h: number
+  nbr_tentatives: number
+}
+
+export interface ParcelCostRow {
+  tracking: string
+  date_terminal: string          // YYYY-MM-DD
+  type_livraison: string | null  // HD | SD
+  statut: string | null
+  zone_num: number | null
+  frais_livraison: number
+  tarif_reference: number
+  ecart_tarif: number
+}
+
+export interface ParcelPerfRow {
+  tracking: string
+  date_creation: string          // YYYY-MM-DD
+  type_livraison: string | null  // HD | SD
+  statut: string | null
+  code_depart: string | null
+  nbr_tentatives: number
+  duree_h: number
+  premier_essai: boolean
+}
