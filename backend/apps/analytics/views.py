@@ -12,6 +12,7 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from .queries import parcel_delivery as pdq
+from .queries import transport as tq
 
 logger = logging.getLogger(__name__)
 
@@ -338,6 +339,316 @@ class ParcelDeliveryClaimsTypesView(APIView):
             return Response({"error": "start_date and end_date are required"}, status=400)
         try:
             return Response(pdq.get_claims_types(start, end, dt))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+# ─── On-Demand Transport analytics ───────────────────────────────────────────
+#
+# All views accept:
+#   start_date   (required) — YYYY-MM-DD
+#   end_date     (required) — YYYY-MM-DD
+#   service_type (optional) — 'course_dediee' | 'courrier' | 'manutention'
+#
+# Endpoints are mounted at /api/analytics/transport-analytics/...
+
+
+def _ta_filters(request):
+    return (
+        request.query_params.get("start_date"),
+        request.query_params.get("end_date"),
+        request.query_params.get("service_type"),
+    )
+
+
+class TransportOpsKpisView(APIView):
+    """
+    GET /api/analytics/transport-analytics/ops-kpis/
+
+    Returns: nbr_requests, completion_rate_pct, cancellation_rate_pct,
+             avg_distance_km, avg_stops + pop_* period-over-period deltas.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_ops_kpis(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportMonthlyTrendView(APIView):
+    """
+    GET /api/analytics/transport-analytics/monthly-trend/
+
+    Returns: [{period, nbr_requests, nbr_terminees, nbr_en_cours, nbr_annulees}].
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_monthly_trend(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportServiceBreakdownView(APIView):
+    """
+    GET /api/analytics/transport-analytics/service-breakdown/
+
+    Returns: [{service_type, nbr_requests, completion_rate_pct}].
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_service_breakdown(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportODMatrixView(APIView):
+    """
+    GET /api/analytics/transport-analytics/od-matrix/
+
+    Returns: [{origin, destination, nbr_requests}] — wilaya-level flow (≤500 pairs).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_od_matrix(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportDistanceCategoryView(APIView):
+    """
+    GET /api/analytics/transport-analytics/distance-category/
+
+    Returns: [{distance_category, km_range, nbr_requests}].
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_distance_category(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportCostKpisView(APIView):
+    """
+    GET /api/analytics/transport-analytics/cost-kpis/
+
+    Returns: total_revenue, total_cost, marge_brute_dzd, marge_brute_pct,
+             cout_par_km + pop_* deltas.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_cost_kpis(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportRevCostTrendView(APIView):
+    """
+    GET /api/analytics/transport-analytics/rev-cost-trend/
+
+    Returns: [{period, total_revenue, total_cost, marge_brute_dzd, marge_brute_pct}].
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_rev_cost_trend(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportCostCategoriesView(APIView):
+    """
+    GET /api/analytics/transport-analytics/cost-categories/
+
+    Returns: [{category, label, total_dzd}] — 8 cost components.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_cost_categories(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportCostPerKmView(APIView):
+    """
+    GET /api/analytics/transport-analytics/cost-per-km/
+
+    Returns: [{vehicle_type, total_cost, total_km, cout_par_km, nbr_requests}].
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_cost_per_km(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportTopCorridorsView(APIView):
+    """
+    GET /api/analytics/transport-analytics/top-corridors/
+
+    Params: + limit (default 8)
+    Returns: [{corridor, nbr_requests, total_revenue, taux_marge_pct}].
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_top_corridors(
+                start, end, st,
+                limit=request.query_params.get("limit", 8),
+            ))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportPerfKpisView(APIView):
+    """
+    GET /api/analytics/transport-analytics/perf-kpis/
+
+    Returns: on_time_rate_pct, avg_duration_h, avg_client_rating,
+             avg_arrival_delay_min, night_shift_rate_pct + pop_* deltas.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_perf_kpis(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportOnTimeTrendView(APIView):
+    """
+    GET /api/analytics/transport-analytics/on-time-trend/
+
+    Returns: [{period, on_time_rate_pct, avg_duration_h}].
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_on_time_trend(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportDelayBucketsView(APIView):
+    """
+    GET /api/analytics/transport-analytics/delay-buckets/
+
+    Returns: [{bucket, bucket_order, nbr_requests}] — 5-bucket histogram.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_delay_buckets(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportRatingBucketsView(APIView):
+    """
+    GET /api/analytics/transport-analytics/rating-buckets/
+
+    Returns: [{rating, nbr_requests}] — ratings 1–5.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_rating_buckets(start, end, st))
+        except Exception as exc:
+            logger.exception("Analytics query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
+class TransportVehiclePerfView(APIView):
+    """
+    GET /api/analytics/transport-analytics/vehicle-perf/
+
+    Returns: [{vehicle_type, nbr_requests, on_time_rate_pct, avg_duration_h}].
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        start, end, st = _ta_filters(request)
+        if not start or not end:
+            return Response({"error": "start_date and end_date are required"}, status=400)
+        try:
+            return Response(tq.get_vehicle_perf(start, end, st))
         except Exception as exc:
             logger.exception("Analytics query failed: %s", exc)
             return Response({"error": str(exc)}, status=503)

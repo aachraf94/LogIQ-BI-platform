@@ -3,9 +3,22 @@ from django.urls import path
 from . import views
 
 urlpatterns = [
-    # On-Demand Transport analytics
-    
-
+    # On-Demand Transport analytics (date-range based — Operations / Cost & Profitability / Performance)
+    path("transport-analytics/ops-kpis/",          views.TransportOpsKpisView.as_view(),          name="transport-ops-kpis"),
+    path("transport-analytics/monthly-trend/",     views.TransportMonthlyTrendView.as_view(),     name="transport-monthly-trend"),
+    path("transport-analytics/service-breakdown/", views.TransportServiceBreakdownView.as_view(), name="transport-service-breakdown"),
+    path("transport-analytics/od-matrix/",         views.TransportODMatrixView.as_view(),         name="transport-od-matrix"),
+    path("transport-analytics/distance-category/", views.TransportDistanceCategoryView.as_view(), name="transport-distance-category"),
+    path("transport-analytics/cost-kpis/",         views.TransportCostKpisView.as_view(),         name="transport-cost-kpis"),
+    path("transport-analytics/rev-cost-trend/",    views.TransportRevCostTrendView.as_view(),     name="transport-rev-cost-trend"),
+    path("transport-analytics/cost-categories/",   views.TransportCostCategoriesView.as_view(),   name="transport-cost-categories"),
+    path("transport-analytics/cost-per-km/",       views.TransportCostPerKmView.as_view(),        name="transport-cost-per-km"),
+    path("transport-analytics/top-corridors/",     views.TransportTopCorridorsView.as_view(),     name="transport-top-corridors"),
+    path("transport-analytics/perf-kpis/",         views.TransportPerfKpisView.as_view(),         name="transport-perf-kpis"),
+    path("transport-analytics/on-time-trend/",     views.TransportOnTimeTrendView.as_view(),      name="transport-on-time-trend"),
+    path("transport-analytics/delay-buckets/",     views.TransportDelayBucketsView.as_view(),     name="transport-delay-buckets"),
+    path("transport-analytics/rating-buckets/",    views.TransportRatingBucketsView.as_view(),    name="transport-rating-buckets"),
+    path("transport-analytics/vehicle-perf/",      views.TransportVehiclePerfView.as_view(),      name="transport-vehicle-perf"),
 
     # Parcel Delivery analytics (date-range based — Operations / Cost & Profitability / Performance)
     path("parcel-delivery/ops-kpis/",                  views.ParcelDeliveryOpsKpisView.as_view(),                  name="parcel-delivery-ops-kpis"),
