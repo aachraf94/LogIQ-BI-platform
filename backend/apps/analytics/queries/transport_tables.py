@@ -121,9 +121,9 @@ def get_ops_table(start_date, end_date, service_type=None, kpi="ops_total_reques
     count_sql = f"""
         SELECT COUNT(*)
         FROM warehouse.dim_transport dt
-        JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id   = dt.status_id
-        JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id    = dt.service_type_id
-        LEFT JOIN warehouse.fact_transport_performance ftp   ON ftp.transport_key      = dt.transport_key
+        LEFT JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id   = dt.status_id
+        LEFT JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id    = dt.service_type_id
+        LEFT JOIN warehouse.fact_transport_performance ftp        ON ftp.transport_key       = dt.transport_key
         {base_where}
     """
 
@@ -138,13 +138,13 @@ def get_ops_table(start_date, end_date, service_type=None, kpi="ops_total_reques
             ROUND(ftp.distance_real_km::numeric, 1)        AS distance_km,
             ftp.nbr_stops_total                            AS nbr_stops
         FROM warehouse.dim_transport dt
-        JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id   = dt.status_id
-        JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id    = dt.service_type_id
-        LEFT JOIN warehouse.dim_transport_departure dep      ON dep.departure_key       = dt.departure_key
-        LEFT JOIN warehouse.dim_wilaya             dw_dep    ON dw_dep.wilaya_id        = dep.wilaya_id
-        LEFT JOIN warehouse.dim_transport_arrival  arr       ON arr.arrival_key         = dt.arrival_key
-        LEFT JOIN warehouse.dim_wilaya             dw_arr    ON dw_arr.wilaya_id        = arr.wilaya_id
-        LEFT JOIN warehouse.fact_transport_performance ftp   ON ftp.transport_key       = dt.transport_key
+        LEFT JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id   = dt.status_id
+        LEFT JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id    = dt.service_type_id
+        LEFT JOIN warehouse.dim_transport_departure dep            ON dep.departure_key       = dt.departure_key
+        LEFT JOIN warehouse.dim_wilaya             dw_dep          ON dw_dep.wilaya_id        = dep.wilaya_id
+        LEFT JOIN warehouse.dim_transport_arrival  arr             ON arr.arrival_key         = dt.arrival_key
+        LEFT JOIN warehouse.dim_wilaya             dw_arr          ON dw_arr.wilaya_id        = arr.wilaya_id
+        LEFT JOIN warehouse.fact_transport_performance ftp         ON ftp.transport_key       = dt.transport_key
         {base_where}
         ORDER BY {order_by}
         LIMIT %s OFFSET %s
@@ -168,11 +168,11 @@ def get_cost_table(start_date, end_date, service_type=None, kpi="cost_total_reve
     count_sql = f"""
         SELECT COUNT(*)
         FROM warehouse.dim_transport dt
-        JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id   = dt.status_id
-        JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id    = dt.service_type_id
-        LEFT JOIN warehouse.fact_transport_billing     ftb   ON ftb.transport_key       = dt.transport_key
-        LEFT JOIN warehouse.fact_transport_cost        ftc   ON ftc.transport_key       = dt.transport_key
-        LEFT JOIN warehouse.fact_transport_performance ftp   ON ftp.transport_key       = dt.transport_key
+        LEFT JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id   = dt.status_id
+        LEFT JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id    = dt.service_type_id
+        LEFT JOIN warehouse.fact_transport_billing     ftb        ON ftb.transport_key       = dt.transport_key
+        LEFT JOIN warehouse.fact_transport_cost        ftc        ON ftc.transport_key       = dt.transport_key
+        LEFT JOIN warehouse.fact_transport_performance ftp        ON ftp.transport_key       = dt.transport_key
         {base_where}
     """
 
@@ -196,11 +196,11 @@ def get_cost_table(start_date, end_date, service_type=None, kpi="cost_total_reve
                 2
             )                                                                   AS cout_par_km
         FROM warehouse.dim_transport dt
-        JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id   = dt.status_id
-        JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id    = dt.service_type_id
-        LEFT JOIN warehouse.fact_transport_billing     ftb   ON ftb.transport_key       = dt.transport_key
-        LEFT JOIN warehouse.fact_transport_cost        ftc   ON ftc.transport_key       = dt.transport_key
-        LEFT JOIN warehouse.fact_transport_performance ftp   ON ftp.transport_key       = dt.transport_key
+        LEFT JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id   = dt.status_id
+        LEFT JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id    = dt.service_type_id
+        LEFT JOIN warehouse.fact_transport_billing     ftb        ON ftb.transport_key       = dt.transport_key
+        LEFT JOIN warehouse.fact_transport_cost        ftc        ON ftc.transport_key       = dt.transport_key
+        LEFT JOIN warehouse.fact_transport_performance ftp        ON ftp.transport_key       = dt.transport_key
         {base_where}
         ORDER BY {order_by}
         LIMIT %s OFFSET %s
@@ -226,11 +226,11 @@ def get_perf_table(start_date, end_date, service_type=None, kpi="perf_on_time_ra
     count_sql = f"""
         SELECT COUNT(*)
         FROM warehouse.dim_transport dt
-        JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id    = dt.status_id
-        JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id     = dt.service_type_id
-        LEFT JOIN warehouse.dim_transport_vehicle      dv    ON dv.vehicle_id            = dt.vehicle_id
-        LEFT JOIN warehouse.dim_transport_vehicle_type dvt   ON dvt.vehicle_type_id      = dv.vehicle_type_id
-        LEFT JOIN warehouse.fact_transport_performance ftp   ON ftp.transport_key        = dt.transport_key
+        LEFT JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id   = dt.status_id
+        LEFT JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id    = dt.service_type_id
+        LEFT JOIN warehouse.dim_transport_vehicle      dv         ON dv.vehicle_id           = dt.vehicle_id
+        LEFT JOIN warehouse.dim_transport_vehicle_type dvt        ON dvt.vehicle_type_id     = dv.vehicle_type_id
+        LEFT JOIN warehouse.fact_transport_performance ftp        ON ftp.transport_key       = dt.transport_key
         {base_where}
     """
 
@@ -253,11 +253,11 @@ def get_perf_table(start_date, end_date, service_type=None, kpi="perf_on_time_ra
                 ELSE FALSE
             END                                                              AS is_nuit
         FROM warehouse.dim_transport dt
-        JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id    = dt.status_id
-        JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id     = dt.service_type_id
-        LEFT JOIN warehouse.dim_transport_vehicle      dv    ON dv.vehicle_id            = dt.vehicle_id
-        LEFT JOIN warehouse.dim_transport_vehicle_type dvt   ON dvt.vehicle_type_id      = dv.vehicle_type_id
-        LEFT JOIN warehouse.fact_transport_performance ftp   ON ftp.transport_key        = dt.transport_key
+        LEFT JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id   = dt.status_id
+        LEFT JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id    = dt.service_type_id
+        LEFT JOIN warehouse.dim_transport_vehicle      dv         ON dv.vehicle_id           = dt.vehicle_id
+        LEFT JOIN warehouse.dim_transport_vehicle_type dvt        ON dvt.vehicle_type_id     = dv.vehicle_type_id
+        LEFT JOIN warehouse.fact_transport_performance ftp        ON ftp.transport_key       = dt.transport_key
         {base_where}
         ORDER BY {order_by}
         LIMIT %s OFFSET %s

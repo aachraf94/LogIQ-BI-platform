@@ -90,8 +90,8 @@ def _run_one(sql, args):
 
 _BASE = """
     FROM warehouse.dim_transport dt
-    JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id    = dt.status_id
-    JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id     = dt.service_type_id
+    LEFT JOIN warehouse.dim_transport_status       dts_status ON dts_status.status_id   = dt.status_id
+    LEFT JOIN warehouse.dim_transport_service_type dts        ON dts.service_type_id    = dt.service_type_id
 """
 
 # Reusable expression for period grouping
