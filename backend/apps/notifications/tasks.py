@@ -36,32 +36,32 @@ _METRIC_QUERIES: dict[str, str] = {
     "pd_ops_total_parcels": f"""
         SELECT COUNT(*)
         FROM warehouse.dim_parcel dp
-        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
         WHERE {_W}
     """,
     "pd_ops_delivered": f"""
         SELECT COUNT(*) FILTER (WHERE dp.current_status_id = 13)
         FROM warehouse.dim_parcel dp
-        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
         WHERE {_W}
     """,
     "pd_ops_returns": f"""
         SELECT COUNT(*)
         FROM warehouse.dim_parcel dp
-        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
         WHERE {_W} AND dp.current_status_id = 19
     """,
     "pd_ops_in_transit": f"""
         SELECT COUNT(*)
         FROM warehouse.dim_parcel dp
-        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
         WHERE {_W} AND dp.is_terminal = FALSE
     """,
     "pd_ops_avg_duration": f"""
         SELECT ROUND(COALESCE(AVG(fpp.duree_totale_minutes) / 60.0, 0)::NUMERIC, 2)
         FROM warehouse.fact_parcel_performance fpp
-        JOIN warehouse.dim_parcel dp ON fpp.parcel_id = dp.parcel_id
-        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        JOIN warehouse.dim_parcel dp ON fpp.parcel_key = dp.parcel_id
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
         WHERE {_W} AND dp.current_status_id = 13
     """,
 
@@ -69,13 +69,14 @@ _METRIC_QUERIES: dict[str, str] = {
     "pd_cost_fees_collected": f"""
         SELECT COALESCE(SUM(fpr.delivery_fee), 0)
         FROM warehouse.fact_parcel_revenue fpr
-        JOIN warehouse.dim_date dd ON fpr.date_terminal_id = dd.date_key
+        JOIN warehouse.dim_parcel dp ON fpr.parcel_key = dp.parcel_id
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
         WHERE {_W}
     """,
     "pd_cost_total_cost": f"""
         SELECT COALESCE(SUM(fc.montant), 0)
         FROM warehouse.fact_charges fc
-        JOIN warehouse.dim_date dd ON fc.date_key = dd.date_key
+        JOIN warehouse.dim_date dd ON fc.date_id = dd.date_id
         WHERE {_W} AND fc.depense_status_id = 2
     """,
     "pd_cost_gross_margin": f"""
@@ -85,13 +86,14 @@ _METRIC_QUERIES: dict[str, str] = {
         FROM (
             SELECT COALESCE(SUM(fpr.delivery_fee), 0) AS v
             FROM warehouse.fact_parcel_revenue fpr
-            JOIN warehouse.dim_date dd ON fpr.date_terminal_id = dd.date_key
+            JOIN warehouse.dim_parcel dp ON fpr.parcel_key = dp.parcel_id
+            JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
             WHERE {_W}
         ) fees,
         (
             SELECT COALESCE(SUM(fc.montant), 0) AS v
             FROM warehouse.fact_charges fc
-            JOIN warehouse.dim_date dd ON fc.date_key = dd.date_key
+            JOIN warehouse.dim_date dd ON fc.date_id = dd.date_id
             WHERE {_W} AND fc.depense_status_id = 2
         ) cost
     """,
@@ -101,8 +103,8 @@ _METRIC_QUERIES: dict[str, str] = {
             / NULLIF(COUNT(dp.parcel_id) FILTER (WHERE dp.current_status_id = 13), 0)
         ::NUMERIC, 2)
         FROM warehouse.fact_parcel_revenue fpr
-        JOIN warehouse.dim_parcel dp ON fpr.parcel_id = dp.parcel_id
-        JOIN warehouse.dim_date dd ON fpr.date_terminal_id = dd.date_key
+        JOIN warehouse.dim_parcel dp ON fpr.parcel_key = dp.parcel_id
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
         WHERE {_W}
     """,
     "pd_cost_per_delivery": f"""
@@ -110,14 +112,14 @@ _METRIC_QUERIES: dict[str, str] = {
             COALESCE(SUM(fc.montant), 0)
             / NULLIF(
                 (SELECT COUNT(*) FROM warehouse.dim_parcel dp2
-                 JOIN warehouse.dim_date dd2 ON dp2.date_creation_id = dd2.date_key
+                 JOIN warehouse.dim_date dd2 ON dp2.date_creation_id = dd2.date_id
                  WHERE dd2.full_date >= CURRENT_DATE - INTERVAL '7 days'
                    AND dd2.full_date <= CURRENT_DATE - INTERVAL '1 day'
                    AND dp2.current_status_id = 13),
                 0)
         ::NUMERIC, 2)
         FROM warehouse.fact_charges fc
-        JOIN warehouse.dim_date dd ON fc.date_key = dd.date_key
+        JOIN warehouse.dim_date dd ON fc.date_id = dd.date_id
         WHERE {_W} AND fc.depense_status_id = 2
     """,
 
@@ -128,7 +130,7 @@ _METRIC_QUERIES: dict[str, str] = {
             / NULLIF(COUNT(*), 0)::NUMERIC, 2
         )
         FROM warehouse.dim_parcel dp
-        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
         WHERE {_W}
     """,
     "pd_perf_avg_attempts": f"""
@@ -136,8 +138,8 @@ _METRIC_QUERIES: dict[str, str] = {
             AVG(fpp.nbr_tentatives_livraison + 1), 0
         )::NUMERIC, 2)
         FROM warehouse.fact_parcel_performance fpp
-        JOIN warehouse.dim_parcel dp ON fpp.parcel_id = dp.parcel_id
-        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        JOIN warehouse.dim_parcel dp ON fpp.parcel_key = dp.parcel_id
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
         WHERE {_W} AND dp.current_status_id = 13
     """,
     "pd_perf_first_attempt_rate": f"""
@@ -146,21 +148,21 @@ _METRIC_QUERIES: dict[str, str] = {
             / NULLIF(COUNT(*), 0)::NUMERIC, 2
         )
         FROM warehouse.fact_parcel_performance fpp
-        JOIN warehouse.dim_parcel dp ON fpp.parcel_id = dp.parcel_id
-        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        JOIN warehouse.dim_parcel dp ON fpp.parcel_key = dp.parcel_id
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
         WHERE {_W} AND dp.current_status_id = 13
     """,
     "pd_perf_avg_duration": f"""
         SELECT ROUND(COALESCE(AVG(fpp.duree_totale_minutes) / 60.0, 0)::NUMERIC, 2)
         FROM warehouse.fact_parcel_performance fpp
-        JOIN warehouse.dim_parcel dp ON fpp.parcel_id = dp.parcel_id
-        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_key
+        JOIN warehouse.dim_parcel dp ON fpp.parcel_key = dp.parcel_id
+        JOIN warehouse.dim_date dd ON dp.date_creation_id = dd.date_id
         WHERE {_W} AND dp.current_status_id = 13
     """,
     "pd_perf_claims_count": f"""
         SELECT COUNT(*)
         FROM warehouse.dim_remboursement dr
-        JOIN warehouse.dim_date dd ON dr.date_remboursement_id = dd.date_key
+        JOIN warehouse.dim_date dd ON dr.date_remboursement_id = dd.date_id
         WHERE {_W}
     """,
 
@@ -168,7 +170,7 @@ _METRIC_QUERIES: dict[str, str] = {
     "tr_ops_total_requests": f"""
         SELECT COUNT(*)
         FROM warehouse.dim_transport dt
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
     """,
     "tr_ops_completion_rate": f"""
@@ -177,7 +179,7 @@ _METRIC_QUERIES: dict[str, str] = {
             / NULLIF(COUNT(*), 0)::NUMERIC, 2
         )
         FROM warehouse.dim_transport dt
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         JOIN warehouse.dim_transport_status dts ON dt.status_id = dts.status_id
         WHERE {_W}
     """,
@@ -187,22 +189,22 @@ _METRIC_QUERIES: dict[str, str] = {
             / NULLIF(COUNT(*), 0)::NUMERIC, 2
         )
         FROM warehouse.dim_transport dt
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         JOIN warehouse.dim_transport_status dts ON dt.status_id = dts.status_id
         WHERE {_W}
     """,
     "tr_ops_avg_distance": f"""
         SELECT ROUND(COALESCE(AVG(ftp.distance_real_km), 0)::NUMERIC, 2)
         FROM warehouse.fact_transport_performance ftp
-        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport dt ON ftp.transport_key = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
     """,
     "tr_ops_avg_stops": f"""
         SELECT ROUND(COALESCE(AVG(ftp.nbr_stops_total), 0)::NUMERIC, 2)
         FROM warehouse.fact_transport_performance ftp
-        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport dt ON ftp.transport_key = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
     """,
 
@@ -210,22 +212,22 @@ _METRIC_QUERIES: dict[str, str] = {
     "tr_cost_total_revenue": f"""
         SELECT COALESCE(SUM(ftb.amount_invoiced), 0)
         FROM warehouse.fact_transport_billing ftb
-        JOIN warehouse.dim_transport dt ON ftb.transport_id = dt.transport_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport dt ON ftb.transport_key = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
     """,
     "tr_cost_total_cost": f"""
         SELECT COALESCE(SUM(ftc.total_cost), 0)
         FROM warehouse.fact_transport_cost ftc
-        JOIN warehouse.dim_transport dt ON ftc.transport_id = dt.transport_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport dt ON ftc.transport_key = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
     """,
     "tr_cost_gross_margin": f"""
         SELECT COALESCE(SUM(ftb.marge_brute_dzd), 0)
         FROM warehouse.fact_transport_billing ftb
-        JOIN warehouse.dim_transport dt ON ftb.transport_id = dt.transport_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport dt ON ftb.transport_key = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
     """,
     "tr_cost_margin_pct": f"""
@@ -234,8 +236,8 @@ _METRIC_QUERIES: dict[str, str] = {
             / NULLIF(SUM(ftb.amount_invoiced), 0)::NUMERIC, 2
         )
         FROM warehouse.fact_transport_billing ftb
-        JOIN warehouse.dim_transport dt ON ftb.transport_id = dt.transport_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport dt ON ftb.transport_key = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
     """,
     "tr_cost_per_km": f"""
@@ -244,9 +246,9 @@ _METRIC_QUERIES: dict[str, str] = {
             / NULLIF(SUM(ftp.distance_real_km), 0)::NUMERIC, 2
         )
         FROM warehouse.fact_transport_cost ftc
-        JOIN warehouse.fact_transport_performance ftp ON ftc.transport_id = ftp.transport_id
-        JOIN warehouse.dim_transport dt ON ftc.transport_id = dt.transport_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.fact_transport_performance ftp ON ftc.transport_key = ftp.transport_key
+        JOIN warehouse.dim_transport dt ON ftc.transport_key = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
     """,
 
@@ -257,30 +259,30 @@ _METRIC_QUERIES: dict[str, str] = {
             / NULLIF(COUNT(*) FILTER (WHERE ftp.is_on_time IS NOT NULL), 0)::NUMERIC, 2
         )
         FROM warehouse.fact_transport_performance ftp
-        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport dt ON ftp.transport_key = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
     """,
     "tr_perf_avg_duration": f"""
         SELECT ROUND(COALESCE(AVG(ftp.total_duration_minutes) / 60.0, 0)::NUMERIC, 2)
         FROM warehouse.fact_transport_performance ftp
-        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport dt ON ftp.transport_key = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
     """,
     "tr_perf_avg_rating": f"""
         SELECT ROUND(COALESCE(AVG(ftp.client_rating), 0)::NUMERIC, 2)
         FROM warehouse.fact_transport_performance ftp
-        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport dt ON ftp.transport_key = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W} AND ftp.client_rating IS NOT NULL
     """,
     "tr_perf_avg_delay": f"""
         SELECT ROUND(COALESCE(AVG(ftp.arrival_delay_minutes), 0)::NUMERIC, 2)
         FROM warehouse.fact_transport_performance ftp
-        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
+        JOIN warehouse.dim_transport dt ON ftp.transport_key = dt.transport_id
         JOIN warehouse.dim_transport_status dts ON dt.status_id = dts.status_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
           AND dts.status_name = 'terminée'
           AND ftp.arrival_delay_minutes IS NOT NULL
@@ -291,8 +293,8 @@ _METRIC_QUERIES: dict[str, str] = {
             / NULLIF(COUNT(*), 0)::NUMERIC, 2
         )
         FROM warehouse.fact_transport_performance ftp
-        JOIN warehouse.dim_transport dt ON ftp.transport_id = dt.transport_id
-        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_key
+        JOIN warehouse.dim_transport dt ON ftp.transport_key = dt.transport_id
+        JOIN warehouse.dim_date dd ON dt.created_date_id = dd.date_id
         WHERE {_W}
     """,
 }

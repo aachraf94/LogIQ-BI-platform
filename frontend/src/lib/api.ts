@@ -543,6 +543,12 @@ export const transportAnalyticsApi = {
       `/analytics/transport-analytics/vehicle-perf/${_ta(f)}`
     ),
 
+  // DW date-range probe
+  dateRange: () =>
+    request<{ min_date: string | null; max_date: string | null; total_count: number }>(
+      '/analytics/transport-analytics/date-range/'
+    ),
+
   // Paginated KPI data tables
   opsTable: (f: TransportAnalyticsFilters & { kpi?: string; page?: number; page_size?: number }) =>
     request<import("@/types/transport_analytics").TransportTablePage<import("@/types/transport_analytics").TransportOpsRow>>(

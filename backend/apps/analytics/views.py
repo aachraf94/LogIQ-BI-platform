@@ -726,6 +726,22 @@ def _table_params(request):
     return start, end, st, kpi, page, page_size
 
 
+class TransportDataRangeView(APIView):
+    """
+    GET /api/analytics/transport-analytics/date-range/
+    Returns min_date, max_date, total_count from dim_transport so the
+    frontend can display what period actually has data and guide the user.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        try:
+            return Response(ttq.get_transport_date_range())
+        except Exception as exc:
+            logger.exception("Date range query failed: %s", exc)
+            return Response({"error": str(exc)}, status=503)
+
+
 class TransportOpsTableView(APIView):
     """
     GET /api/analytics/transport-analytics/table/ops/

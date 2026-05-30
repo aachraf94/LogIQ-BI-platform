@@ -62,6 +62,22 @@ _PERF_FILTER: dict[str, str] = {
 }
 
 
+def get_transport_date_range():
+    """Return the min/max created_date_id and total row count in dim_transport."""
+    with connections["warehouse"].cursor() as cur:
+        cur.execute("""
+            SELECT
+                MIN(created_date_id)::text AS min_date,
+                MAX(created_date_id)::text AS max_date,
+                COUNT(*)                   AS total_count
+            FROM warehouse.dim_transport
+        """)
+        row = cur.fetchone()
+    if not row or row[0] is None:
+        return {"min_date": None, "max_date": None, "total_count": 0}
+    return {"min_date": row[0], "max_date": row[1], "total_count": int(row[2])}
+
+
 def _paginate(count: int, page: int, page_size: int):
     total_pages = max(1, math.ceil(count / page_size))
     page = max(1, min(page, total_pages))

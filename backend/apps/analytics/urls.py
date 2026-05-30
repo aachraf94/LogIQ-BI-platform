@@ -23,6 +23,8 @@ urlpatterns = [
     path("transport-analytics/delay-buckets/",     views.TransportDelayBucketsView.as_view(),     name="transport-delay-buckets"),
     path("transport-analytics/rating-buckets/",    views.TransportRatingBucketsView.as_view(),    name="transport-rating-buckets"),
     path("transport-analytics/vehicle-perf/",      views.TransportVehiclePerfView.as_view(),      name="transport-vehicle-perf"),
+    # DW date-range probe (used by the table modal to guide the user)
+    path("transport-analytics/date-range/",        views.TransportDataRangeView.as_view(),         name="transport-date-range"),
     # Paginated data table views (one per sub-page)
     path("transport-analytics/table/ops/",         views.TransportOpsTableView.as_view(),         name="transport-table-ops"),
     path("transport-analytics/table/cost/",        views.TransportCostTableView.as_view(),        name="transport-table-cost"),

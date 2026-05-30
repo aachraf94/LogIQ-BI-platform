@@ -2,9 +2,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, ChevronLeft, ChevronRight, AlertCircle, Check, Moon } from "lucide-react";
+import { X, ChevronLeft, ChevronRight, AlertCircle, Check, Moon, CalendarSearch } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 import { transportAnalyticsApi, type TransportAnalyticsFilters } from "@/lib/api";
+import { useTransportStore } from "@/stores/transportStore";
 import type { TransportKpiKey } from "@/lib/kpi-info/transport";
 import type {
   TransportTablePage,
