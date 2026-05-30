@@ -6,11 +6,14 @@ import { motion } from "framer-motion";
 import { DollarSign, Receipt, TrendingUp, Percent, Gauge } from "lucide-react";
 
 import { KpiCard } from "@/components/ui/KpiCard";
+import { InfoPanel } from "@/components/ui/InfoPanel";
+import type { KpiInfo } from "@/components/ui/InfoPanel";
 import { useTranslation } from "@/lib/i18n";
 import { useChartTheme } from "@/lib/chartTheme";
 import { useTransportStore } from "@/stores/transportStore";
 import { transportAnalyticsApi } from "@/lib/api";
 import { formatDZD } from "@/lib/utils";
+import { getTransportKpiInfo } from "@/lib/kpi-info/transport";
 import {
   mockTransportCostKpis,
   mockTransportRevCostTrend,
@@ -356,6 +359,7 @@ export default function TransportCostPage() {
   const [data, setData] = useState<PageData>(MOCK);
   const [fetching, setFetching] = useState(false);
   const [chartsReady, setChartsReady] = useState(false);
+  const [activeKpiInfo, setActiveKpiInfo] = useState<KpiInfo | null>(null);
   const raf = useRef<number | null>(null);
 
   useEffect(() => {
@@ -365,9 +369,10 @@ export default function TransportCostPage() {
     return () => { if (raf.current) cancelAnimationFrame(raf.current); };
   }, []);
 
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const p = t.pages.transport;
   const ct = useChartTheme();
+  const kpiInfo = getTransportKpiInfo(locale);
 
   const { startDate, endDate, serviceType, rangeDays, setUsingMock } = useTransportStore();
   const days = rangeDays();
@@ -418,12 +423,14 @@ export default function TransportCostPage() {
 
       {/* ── Row 1: KPIs ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard title={p.kpiTotalRevenue} value={formatDZD(kpis.total_revenue)}              trend={kpis.pop_revenue}      trendLabel={trendLabel} icon={<DollarSign size={15} />} index={0} />
-        <KpiCard title={p.kpiTotalCost}    value={formatDZD(kpis.total_cost)}                 trend={-kpis.pop_cost}        trendLabel={trendLabel} icon={<Receipt size={15} />}    index={1} />
-        <KpiCard title={p.kpiGrossMargin}  value={formatDZD(kpis.marge_brute_dzd)}            trend={kpis.pop_margin_dzd}   trendLabel={trendLabel} icon={<TrendingUp size={15} />} index={2} />
-        <KpiCard title={p.kpiMarginPct}    value={`${kpis.marge_brute_pct.toFixed(1)}%`}      trend={kpis.pop_margin_pct}   trendLabel={trendLabel} icon={<Percent size={15} />}    index={3} />
-        <KpiCard title={p.kpiCostPerKm}    value={`${kpis.cout_par_km.toFixed(1)} DZD/km`}   trend={-kpis.pop_cout_par_km} trendLabel={trendLabel} icon={<Gauge size={15} />}      index={4} />
+        <KpiCard title={p.kpiTotalRevenue} value={formatDZD(kpis.total_revenue)}             trend={kpis.pop_revenue}      trendLabel={trendLabel} icon={<DollarSign size={15} />} index={0} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_total_revenue)} />
+        <KpiCard title={p.kpiTotalCost}    value={formatDZD(kpis.total_cost)}                trend={-kpis.pop_cost}        trendLabel={trendLabel} icon={<Receipt size={15} />}    index={1} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_total_cost)} />
+        <KpiCard title={p.kpiGrossMargin}  value={formatDZD(kpis.marge_brute_dzd)}           trend={kpis.pop_margin_dzd}   trendLabel={trendLabel} icon={<TrendingUp size={15} />} index={2} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_gross_margin)} />
+        <KpiCard title={p.kpiMarginPct}    value={`${kpis.marge_brute_pct.toFixed(1)}%`}     trend={kpis.pop_margin_pct}   trendLabel={trendLabel} icon={<Percent size={15} />}    index={3} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_margin_pct)} />
+        <KpiCard title={p.kpiCostPerKm}    value={`${kpis.cout_par_km.toFixed(1)} DZD/km`}  trend={-kpis.pop_cout_par_km} trendLabel={trendLabel} icon={<Gauge size={15} />}      index={4} onInfoClick={() => setActiveKpiInfo(kpiInfo.cost_per_km)} />
       </div>
+
+      <InfoPanel info={activeKpiInfo} onClose={() => setActiveKpiInfo(null)} />
 
       {/* ── Row 2: Rev vs Cost trend + Cost categories ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">

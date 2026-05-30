@@ -108,6 +108,7 @@ export interface Translations {
         labelDimensions: string
         labelUpdateFreq: string
         labelCalcNotes: string
+        viewDataTable: string
       }
     }
     overview: {
@@ -610,6 +611,7 @@ const fr: Translations = {
         labelDimensions: 'Dimensions / filtres',
         labelUpdateFreq: 'Fréquence de mise à jour',
         labelCalcNotes: 'Notes de calcul',
+        viewDataTable: 'Vue tableau de données',
       },
     },
     overview: {
@@ -1125,6 +1127,7 @@ const en: Translations = {
         labelDimensions: 'Dimensions / Filters',
         labelUpdateFreq: 'Update Frequency',
         labelCalcNotes: 'Calculation Notes',
+        viewDataTable: 'Data Table View',
       },
     },
     overview: {
@@ -1640,6 +1643,7 @@ const ar: Translations = {
         labelDimensions: 'الأبعاد / المرشِّحات',
         labelUpdateFreq: 'تكرار التحديث',
         labelCalcNotes: 'ملاحظات الحساب',
+        viewDataTable: 'عرض جدول البيانات',
       },
     },
     overview: {

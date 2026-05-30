@@ -2,7 +2,7 @@
 
 import { useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { X, Calculator, Database, RefreshCw, AlertTriangle, BookOpen, Filter, Info } from "lucide-react";
+import { X, Calculator, Database, RefreshCw, AlertTriangle, BookOpen, Filter, Info, Table2 } from "lucide-react";
 import { useTranslation } from "@/lib/i18n";
 
 export interface KpiInfo {
@@ -114,6 +114,17 @@ export function InfoPanel({ info, onClose }: InfoPanelProps) {
                   <p className="text-xs text-amber-700 dark:text-amber-300 leading-relaxed">{info.warning}</p>
                 </div>
               )}
+            </div>
+
+            <div className={`shrink-0 px-5 py-4 border-t border-[var(--border)]`}>
+              <button
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-primary/30 bg-primary/5 text-primary text-sm font-medium hover:bg-primary/10 transition-colors cursor-not-allowed opacity-60"
+                disabled
+                title="Coming soon"
+              >
+                <Table2 size={14} />
+                {ip.viewDataTable}
+              </button>
             </div>
           </motion.aside>
         </>

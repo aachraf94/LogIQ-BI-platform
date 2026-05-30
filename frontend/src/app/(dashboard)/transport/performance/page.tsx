@@ -6,11 +6,14 @@ import { motion } from "framer-motion";
 import { Clock, Timer, Star, AlertTriangle, Moon } from "lucide-react";
 
 import { KpiCard } from "@/components/ui/KpiCard";
+import { InfoPanel } from "@/components/ui/InfoPanel";
+import type { KpiInfo } from "@/components/ui/InfoPanel";
 import { useTranslation } from "@/lib/i18n";
 import { useChartTheme } from "@/lib/chartTheme";
 import { useTransportStore } from "@/stores/transportStore";
 import { transportAnalyticsApi } from "@/lib/api";
 import { formatPercent } from "@/lib/utils";
+import { getTransportKpiInfo } from "@/lib/kpi-info/transport";
 import {
   mockTransportPerfKpis,
   mockTransportOnTimeTrend,
@@ -353,6 +356,7 @@ export default function TransportPerformancePage() {
   const [data, setData] = useState<PageData>(MOCK);
   const [fetching, setFetching] = useState(false);
   const [chartsReady, setChartsReady] = useState(false);
+  const [activeKpiInfo, setActiveKpiInfo] = useState<KpiInfo | null>(null);
   const raf = useRef<number | null>(null);
 
   useEffect(() => {
@@ -362,9 +366,10 @@ export default function TransportPerformancePage() {
     return () => { if (raf.current) cancelAnimationFrame(raf.current); };
   }, []);
 
-  const { t } = useTranslation();
+  const { t, locale } = useTranslation();
   const p = t.pages.transport;
   const ct = useChartTheme();
+  const kpiInfo = getTransportKpiInfo(locale);
 
   const { startDate, endDate, serviceType, rangeDays, setUsingMock } = useTransportStore();
   const days = rangeDays();
@@ -415,12 +420,14 @@ export default function TransportPerformancePage() {
 
       {/* ── Row 1: KPIs ── */}
       <div className="grid grid-cols-2 sm:grid-cols-3 xl:grid-cols-5 gap-4">
-        <KpiCard title={p.kpiPunctuality}     value={formatPercent(kpis.on_time_rate_pct)}                               trend={kpis.pop_on_time}      trendLabel={trendLabel} icon={<Clock size={15} />}         index={0} />
-        <KpiCard title={p.kpiAvgDuration}     value={`${kpis.avg_duration_h.toFixed(1)} ${p.durationUnit}`}              trend={-kpis.pop_duration}    trendLabel={trendLabel} icon={<Timer size={15} />}         index={1} />
-        <KpiCard title={p.kpiAvgNote}         value={`${kpis.avg_client_rating.toFixed(1)} / 5`}                         trend={kpis.pop_rating}       trendLabel={trendLabel} icon={<Star size={15} />}          index={2} />
-        <KpiCard title={p.kpiAvgDelay}        value={`${kpis.avg_arrival_delay_min.toFixed(0)} ${p.minuteUnit}`}         trend={-kpis.pop_delay}       trendLabel={trendLabel} icon={<AlertTriangle size={15} />} index={3} />
-        <KpiCard title={p.kpiNightShiftRate}  value={formatPercent(kpis.night_shift_rate_pct)}                           trend={kpis.pop_night_shift}  trendLabel={trendLabel} icon={<Moon size={15} />}          index={4} />
+        <KpiCard title={p.kpiPunctuality}    value={formatPercent(kpis.on_time_rate_pct)}                       trend={kpis.pop_on_time}     trendLabel={trendLabel} icon={<Clock size={15} />}         index={0} onInfoClick={() => setActiveKpiInfo(kpiInfo.perf_on_time_rate)} />
+        <KpiCard title={p.kpiAvgDuration}    value={`${kpis.avg_duration_h.toFixed(1)} ${p.durationUnit}`}     trend={-kpis.pop_duration}   trendLabel={trendLabel} icon={<Timer size={15} />}         index={1} onInfoClick={() => setActiveKpiInfo(kpiInfo.perf_avg_duration)} />
+        <KpiCard title={p.kpiAvgNote}        value={`${kpis.avg_client_rating.toFixed(1)} / 5`}                trend={kpis.pop_rating}      trendLabel={trendLabel} icon={<Star size={15} />}          index={2} onInfoClick={() => setActiveKpiInfo(kpiInfo.perf_avg_rating)} />
+        <KpiCard title={p.kpiAvgDelay}       value={`${kpis.avg_arrival_delay_min.toFixed(0)} ${p.minuteUnit}`} trend={-kpis.pop_delay}     trendLabel={trendLabel} icon={<AlertTriangle size={15} />} index={3} onInfoClick={() => setActiveKpiInfo(kpiInfo.perf_avg_delay)} />
+        <KpiCard title={p.kpiNightShiftRate} value={formatPercent(kpis.night_shift_rate_pct)}                  trend={kpis.pop_night_shift} trendLabel={trendLabel} icon={<Moon size={15} />}          index={4} onInfoClick={() => setActiveKpiInfo(kpiInfo.perf_night_shift_rate)} />
       </div>
+
+      <InfoPanel info={activeKpiInfo} onClose={() => setActiveKpiInfo(null)} />
 
       {/* ── Row 2: On-Time Trend + Delay Distribution ── */}
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
