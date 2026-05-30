@@ -69,27 +69,6 @@ def _paginate(count: int, page: int, page_size: int):
     return page, total_pages, offset
 
 
-def _run_paginated(count_sql, data_sql, args, page, page_size):
-    with connections["warehouse"].cursor() as cur:
-        cur.execute(count_sql, args)
-        count = cur.fetchone()[0]
-
-    page, total_pages, offset = _paginate(count, page, page_size)
-
-    results = _coerce(_rows(
-        connections["warehouse"].cursor().__enter__().execute(data_sql, args + [page_size, offset]) or
-        _exec(data_sql, args + [page_size, offset])
-    ))
-
-    return {"count": count, "page": page, "page_size": page_size, "total_pages": total_pages, "results": results}
-
-
-def _exec(sql, args):
-    with connections["warehouse"].cursor() as cur:
-        cur.execute(sql, args)
-        return cur
-
-
 def _run_table(count_sql, data_sql, count_args, data_args, page, page_size):
     with connections["warehouse"].cursor() as cur:
         cur.execute(count_sql, count_args)

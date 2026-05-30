@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback, useRef } from "react";
+import { useEffect, useState, useCallback, useRef, useMemo } from "react";
 import ReactECharts from "echarts-for-react";
 import { motion } from "framer-motion";
 import { Truck, CheckCircle2, XCircle, Route, MapPin } from "lucide-react";
@@ -352,11 +352,11 @@ export default function TransportOperationsPage() {
   const days = rangeDays();
   const trendLabel = `vs ${days} j précédents`;
 
-  const filters = {
+  const filters = useMemo(() => ({
     start_date: startDate,
     end_date: endDate,
     service_type: serviceType !== "all" ? serviceType : undefined,
-  };
+  }), [startDate, endDate, serviceType]);
 
   const fetchData = useCallback(async () => {
     setFetching(true);
