@@ -202,11 +202,12 @@ interface KpiDataTableModalProps {
   kpiTitle: string;
   filters: TransportAnalyticsFilters;
   onClose: () => void;
+  usingMock?: boolean;
 }
 
 const PAGE_SIZE = 20;
 
-export function KpiDataTableModal({ kpiKey, kpiTitle, filters, onClose }: KpiDataTableModalProps) {
+export function KpiDataTableModal({ kpiKey, kpiTitle, filters, onClose, usingMock = false }: KpiDataTableModalProps) {
   const { t, isRTL } = useTranslation();
   const lb = t.pages.common.kpiTable;
 
@@ -238,25 +239,24 @@ export function KpiDataTableModal({ kpiKey, kpiTitle, filters, onClose }: KpiDat
     if (!kpiKey) return;
     setLoading(true);
     setError(null);
-    const qp = new URLSearchParams({
-      start_date: filters.start_date,
-      end_date:   filters.end_date,
-      kpi:        kpiKey,
-      page:       String(page),
-      page_size:  String(PAGE_SIZE),
-    });
-    if (filters.service_type) qp.set("service_type", filters.service_type);
-    const qs = `?${qp.toString()}`;
+    const params = { ...filters, kpi: kpiKey, page, page_size: PAGE_SIZE };
     try {
+      let result;
       if (tab === "ops") {
-        setOpsData(await transportAnalyticsApi.opsTable({ ...filters, kpi: kpiKey, page, page_size: PAGE_SIZE }));
+        result = await transportAnalyticsApi.opsTable(params);
+        console.log("[KpiDataTableModal] ops response:", result);
+        setOpsData(result);
       } else if (tab === "cost") {
-        setCostData(await transportAnalyticsApi.costTable({ ...filters, kpi: kpiKey, page, page_size: PAGE_SIZE }));
+        result = await transportAnalyticsApi.costTable(params);
+        console.log("[KpiDataTableModal] cost response:", result);
+        setCostData(result);
       } else {
-        setPerfData(await transportAnalyticsApi.perfTable({ ...filters, kpi: kpiKey, page, page_size: PAGE_SIZE }));
+        result = await transportAnalyticsApi.perfTable(params);
+        console.log("[KpiDataTableModal] perf response:", result);
+        setPerfData(result);
       }
-      void qs; // suppress unused warning
     } catch (err) {
+      console.error("[KpiDataTableModal] fetch error:", err);
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
@@ -269,17 +269,39 @@ export function KpiDataTableModal({ kpiKey, kpiTitle, filters, onClose }: KpiDat
 
   const rows = currentPage?.results ?? [];
 
+  const emptyNode = usingMock ? (
+    <td colSpan={colCount} className="py-16 text-center">
+      <div className="inline-flex flex-col items-center gap-2 max-w-xs mx-auto">
+        <span className="text-2xl">⚠️</span>
+        <p className="text-sm font-medium text-amber-500">
+          Données de démonstration
+        </p>
+        <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+          Les cartes KPI affichent des données mock (backend indisponible). Le tableau de données nécessite une connexion live au backend.
+        </p>
+      </div>
+    </td>
+  ) : (
+    <td colSpan={colCount} className="py-16 text-center">
+      <div className="inline-flex flex-col items-center gap-1.5">
+        <p className="text-sm text-[var(--text-muted)]">{lb.noData}</p>
+        <p className="text-xs text-[var(--text-muted)] opacity-60">
+          {filters.start_date} → {filters.end_date}
+        </p>
+        <p className="text-[10px] text-[var(--text-muted)] opacity-40 mt-1">
+          Vérifiez que la plage de dates correspond aux données chargées dans votre DW.
+        </p>
+      </div>
+    </td>
+  );
+
   const tableBody = loading ? (
     <tbody>
       {Array.from({ length: 10 }).map((_, i) => <SkeletonRow key={i} cols={colCount} />)}
     </tbody>
   ) : rows.length === 0 ? (
     <tbody>
-      <tr>
-        <td colSpan={colCount} className="py-24 text-center text-sm text-[var(--text-muted)]">
-          {lb.noData}
-        </td>
-      </tr>
+      <tr>{emptyNode}</tr>
     </tbody>
   ) : tab === "ops" ? (
     <tbody>

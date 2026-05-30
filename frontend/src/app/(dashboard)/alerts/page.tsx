@@ -195,9 +195,15 @@ function RuleFormModal({
     setSaving(true)
     setError(null)
     try {
-      const payload = {
-        ...form,
+      const payload: Partial<AlertRule> = {
+        name: form.name,
+        description: form.description,
+        metric: form.metric,
+        operator: form.operator,
         threshold: parseFloat(form.threshold),
+        severity: form.severity as AlertSeverity,
+        dashboard: form.dashboard,
+        is_active: form.is_active,
         cooldown_minutes: parseInt(form.cooldown_minutes, 10) || 60,
         notify_roles: [],
       }

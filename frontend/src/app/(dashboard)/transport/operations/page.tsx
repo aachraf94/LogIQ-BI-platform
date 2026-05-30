@@ -348,7 +348,7 @@ export default function TransportOperationsPage() {
   const ct = useChartTheme();
   const kpiInfo = getTransportKpiInfo(locale);
 
-  const { startDate, endDate, serviceType, rangeDays, setUsingMock } = useTransportStore();
+  const { startDate, endDate, serviceType, rangeDays, setUsingMock, usingMock } = useTransportStore();
   const days = rangeDays();
   const trendLabel = `vs ${days} j précédents`;
 
@@ -413,6 +413,7 @@ export default function TransportOperationsPage() {
         kpiKey={tableKpiKey}
         kpiTitle={tableKpiKey ? kpiInfo[tableKpiKey].title : ""}
         filters={filters}
+        usingMock={usingMock}
         onClose={() => setTableKpiKey(null)}
       />
 
