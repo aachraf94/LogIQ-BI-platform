@@ -63,11 +63,11 @@ function buildActivityTrendOption(
       axisPointer: { type: "cross" as const, label: { backgroundColor: "#6366F1" } },
     },
     legend: {
-      top: 0, right: 0,
+      top: 4, right: 0,
       textStyle: { color: ct.legendColor, fontSize: 11 },
       itemWidth: 10, itemHeight: 10,
     },
-    grid: { left: 16, right: 52, top: 36, bottom: 0, containLabel: true },
+    grid: { left: 16, right: 52, top: 52, bottom: 0, containLabel: true },
     xAxis: {
       type: "category" as const,
       data: trend.map((d) => d.period),
@@ -78,16 +78,12 @@ function buildActivityTrendOption(
     yAxis: [
       {
         type: "value" as const,
-        name: labels.transport,
-        nameTextStyle: { color: ct.labelColor, fontSize: 10 },
         axisLine: { show: false },
         splitLine: { lineStyle: { color: ct.splitColor, type: "dashed" as const } },
         axisLabel: { color: ct.labelColor, fontSize: 10 },
       },
       {
         type: "value" as const,
-        name: labels.parcels,
-        nameTextStyle: { color: ct.labelColor, fontSize: 10 },
         axisLine: { show: false },
         splitLine: { show: false },
         axisLabel: { color: ct.labelColor, fontSize: 10 },
