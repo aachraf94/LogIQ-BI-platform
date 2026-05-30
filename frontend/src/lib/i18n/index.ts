@@ -395,6 +395,8 @@ export interface Translations {
       radarVolume: string
       radarDistance: string
       radarProfitability: string
+      wipTitle: string
+      wipDesc: string
     }
     alerts: {
       triggeredValue: string
@@ -911,6 +913,8 @@ const fr: Translations = {
       radarVolume: 'Volume',
       radarDistance: 'Distance',
       radarProfitability: 'Rentabilité',
+      wipTitle: 'En cours de développement',
+      wipDesc: 'Cette page utilise actuellement des données de démonstration. Les analyses de routes réelles seront disponibles prochainement.',
     },
     alerts: {
       triggeredValue: 'Valeur déclenchée',
@@ -1434,6 +1438,8 @@ const en: Translations = {
       radarVolume: 'Volume',
       radarDistance: 'Distance',
       radarProfitability: 'Profitability',
+      wipTitle: 'Under Development',
+      wipDesc: 'This page currently uses demo data. Real route analytics will be available soon.',
     },
     alerts: {
       triggeredValue: 'Triggered value',
@@ -1957,6 +1963,8 @@ const ar: Translations = {
       radarVolume: 'الحجم',
       radarDistance: 'المسافة',
       radarProfitability: 'الربحية',
+      wipTitle: 'قيد التطوير',
+      wipDesc: 'تستخدم هذه الصفحة حالياً بيانات تجريبية. ستتوفر تحليلات المسارات الحقيقية قريباً.',
     },
     alerts: {
       triggeredValue: 'القيمة المُشغِّلة',
