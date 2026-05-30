@@ -546,15 +546,15 @@ export const transportAnalyticsApi = {
   // Paginated KPI data tables
   opsTable: (f: TransportAnalyticsFilters & { kpi?: string; page?: number; page_size?: number }) =>
     request<import("@/types/transport_analytics").TransportTablePage<import("@/types/transport_analytics").TransportOpsRow>>(
-      `/analytics/transport-analytics/table/ops/${_ta(f as unknown as TransportAnalyticsFilters)}`
+      `/analytics/transport-analytics/table/ops/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
   costTable: (f: TransportAnalyticsFilters & { kpi?: string; page?: number; page_size?: number }) =>
     request<import("@/types/transport_analytics").TransportTablePage<import("@/types/transport_analytics").TransportCostRow>>(
-      `/analytics/transport-analytics/table/cost/${_ta(f as unknown as TransportAnalyticsFilters)}`
+      `/analytics/transport-analytics/table/cost/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
   perfTable: (f: TransportAnalyticsFilters & { kpi?: string; page?: number; page_size?: number }) =>
     request<import("@/types/transport_analytics").TransportTablePage<import("@/types/transport_analytics").TransportPerfRow>>(
-      `/analytics/transport-analytics/table/perf/${_ta(f as unknown as TransportAnalyticsFilters)}`
+      `/analytics/transport-analytics/table/perf/${_qs(f as unknown as Record<string, string | number | undefined | null>)}`
     ),
 }
 

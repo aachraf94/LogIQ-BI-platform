@@ -257,7 +257,9 @@ export function KpiDataTableModal({ kpiKey, kpiTitle, filters, onClose, usingMoc
       }
     } catch (err) {
       console.error("[KpiDataTableModal] fetch error:", err);
-      setError(err instanceof Error ? err.message : String(err));
+      // Surface the full error object so date-range vs auth vs SQL issues are distinguishable
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
     } finally {
       setLoading(false);
     }

@@ -438,10 +438,11 @@ function RuleFormModal({
 // ─── My rules tab ─────────────────────────────────────────────────────────────
 
 function MyRulesTab({
-  isSuperAdmin, onEditRule,
+  isSuperAdmin, onEditRule, refreshKey,
 }: {
   isSuperAdmin: boolean
   onEditRule: (r: AlertRule) => void
+  refreshKey: number
 }) {
   const { t } = useTranslation()
   const p = t.pages.alerts
@@ -449,6 +450,8 @@ function MyRulesTab({
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<number | null>(null)
   const [deleting, setDeleting] = useState<number | null>(null)
+  const [dashFilter, setDashFilter] = useState<string>('all')
+  const [catFilter, setCatFilter] = useState<string>('all')
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -458,6 +461,8 @@ function MyRulesTab({
   }, [])
 
   useEffect(() => { load() }, [load])
+  // Reload whenever the parent signals a new rule was saved
+  useEffect(() => { if (refreshKey > 0) load() }, [refreshKey, load])
 
   const handleToggle = async (rule: AlertRuleWithPreference) => {
     setToggling(rule.id)
@@ -484,19 +489,59 @@ function MyRulesTab({
     )
   }
 
-  if (rules.length === 0) {
-    return (
-      <div className="text-center py-14 text-slate-500">
-        <Bell size={32} className="mx-auto mb-3 opacity-30" />
-        <p>{p.noRules}</p>
-      </div>
-    )
-  }
+  const filtered = rules.filter((r) => {
+    const byDash = dashFilter === 'all' || r.dashboard === dashFilter
+    const byCat  = catFilter  === 'all' || r.kpi_category === catFilter
+    return byDash && byCat
+  })
 
   return (
-    <div className="space-y-3">
-      <p className="text-xs text-slate-500 mb-4">{p.subscriptionNote}</p>
-      {rules.map((rule) => (
+    <div className="space-y-4">
+      {/* Filters */}
+      <div className="flex flex-wrap gap-3 items-center">
+        {/* Dashboard filter */}
+        <div className="flex gap-0.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-1">
+          <button onClick={() => setDashFilter('all')}
+            className={cn('px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+              dashFilter === 'all' ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200')}>
+            {p.allSeverity}
+          </button>
+          {Object.entries(p.dashboardLabels).map(([k, v]) => (
+            <button key={k} onClick={() => setDashFilter(k)}
+              className={cn('px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                dashFilter === k ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200')}>
+              {v}
+            </button>
+          ))}
+        </div>
+        {/* Category filter */}
+        <div className="flex gap-0.5 bg-[var(--surface)] border border-[var(--border)] rounded-lg p-1">
+          <button onClick={() => setCatFilter('all')}
+            className={cn('px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+              catFilter === 'all' ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200')}>
+            {p.allSeverity}
+          </button>
+          {Object.entries(p.kpiCategories).map(([k, v]) => (
+            <button key={k} onClick={() => setCatFilter(k)}
+              className={cn('px-3 py-1.5 rounded-md text-xs font-medium transition-colors',
+                catFilter === k ? 'bg-primary text-white' : 'text-slate-400 hover:text-slate-200')}>
+              {v}
+            </button>
+          ))}
+        </div>
+        <span className="text-xs text-slate-500 ml-auto">{filtered.length} / {rules.length}</span>
+      </div>
+
+      <p className="text-xs text-slate-500">{p.subscriptionNote}</p>
+
+      {filtered.length === 0 && (
+        <div className="text-center py-14 text-slate-500">
+          <Bell size={32} className="mx-auto mb-3 opacity-30" />
+          <p>{p.noRules}</p>
+        </div>
+      )}
+
+      {filtered.map((rule) => (
         <motion.div
           key={rule.id}
           layout
@@ -603,6 +648,8 @@ export default function AlertsPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('unacknowledged')
   const [showForm, setShowForm] = useState(false)
   const [editingRule, setEditingRule] = useState<AlertRule | null>(null)
+  const [saveToast, setSaveToast] = useState<string | null>(null)
+  const [myRulesRefreshKey, setMyRulesRefreshKey] = useState(0)
   const { t } = useTranslation()
   const p = t.pages.alerts
   const chartT = useChartTheme()
@@ -623,8 +670,11 @@ export default function AlertsPage() {
   const handleRuleSaved = (rule: AlertRule) => {
     setShowForm(false)
     setEditingRule(null)
-    // Switch to rules tab after creating/editing
     setTab('my-rules')
+    setMyRulesRefreshKey((k) => k + 1)
+    const msg = editingRule ? p.updated : p.created
+    setSaveToast(msg)
+    setTimeout(() => setSaveToast(null), 3500)
   }
 
   const filtered = alerts.filter((a) => {
@@ -694,6 +744,22 @@ export default function AlertsPage() {
           </button>
         )}
       </div>
+
+      {/* Save success toast */}
+      <AnimatePresence>
+        {saveToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            transition={{ duration: 0.2 }}
+            className="flex items-center gap-2 px-4 py-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl text-emerald-400 text-sm font-medium"
+          >
+            <CheckCircle size={15} />
+            {saveToast}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── Alerts tab ────────────────────────────────────────────────── */}
       {tab === 'alerts' && (
@@ -777,6 +843,7 @@ export default function AlertsPage() {
         <MyRulesTab
           isSuperAdmin={isSuperAdmin}
           onEditRule={(rule) => { setEditingRule(rule); setShowForm(true) }}
+          refreshKey={myRulesRefreshKey}
         />
       )}
 
