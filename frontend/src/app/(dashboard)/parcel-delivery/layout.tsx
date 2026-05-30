@@ -155,7 +155,12 @@ export default function ParcelDeliveryLayout({ children }: { children: React.Rea
               value={pendingStart}
               min={MIN_DATE}
               max={pendingEnd}
-              onChange={(e) => { setPendingStart(e.target.value); setActiveQuick(null); }}
+              onChange={(e) => {
+                const val = e.target.value;
+                setPendingStart(val);
+                if (pendingEnd && val > pendingEnd) setPendingEnd(val);
+                setActiveQuick(null);
+              }}
               className={cn(
                 "bg-[var(--surface-secondary)] border text-[var(--text-primary)] text-xs font-mono",
                 "rounded-xl pl-8 pr-2 py-1.5 w-[138px] cursor-pointer transition-all",
